@@ -120,6 +120,18 @@ run_case() {
   elif ! grep -Eq '^OK \(1 test\)' "$output/instrumentation.txt"; then
     status=failed
   fi
+  if [[ "$case_name" == '393x851-gestural-font1.0' ]]; then
+    # Render the approved image's sample state using the production composables in a test-only Activity composition.
+    if ! timeout 120s "$adb_command" shell am instrument -w -r \
+      -e class 'com.mylo.browser.HomeReferenceRenderTest#approvedReferenceStateAt393x851' \
+      -e layoutCase "$case_name" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
+      | tee "$output/reference-instrumentation.txt"; then
+      status=failed
+    elif ! grep -Eq '^OK \(1 test\)' "$output/reference-instrumentation.txt"; then
+      status=failed
+    fi
+  fi
   "$adb_command" pull "$remote_artifacts/$case_name/." "$output/" >/dev/null 2>&1 || true
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$case_name" "$navigation" "$width" "$height" "$font_scale" "$status" >> "$evidence_dir/matrix.tsv"
   if [[ "$status" != passed ]]; then failed=1; fi

@@ -72,6 +72,16 @@ class HomeLayoutTest {
             val scrollBefore = scrollPosition()
             report.put("homeInitial", geometry(initial)).put("scrollBefore", scrollBefore.first)
                 .put("scrollMaximum", scrollBefore.second)
+            // The approved comparison composition must fit before scrolling on the
+            // requested portrait with gesture navigation and the default font size.
+            val bottomInsetDp = (device.displayHeight - safeArea().bottom) / density
+            if (widthDp in 392f..394f && heightDp >= 850f && fontScale <= 1.01f && bottomInsetDp <= 30f) {
+                compose.onNodeWithTag(DISCOVERY).assertIsDisplayed()
+                assertInside("The complete approved banner must fit in the initial 393×851 Home",
+                    bounds(DISCOVERY), initial.getValue(MIDDLE))
+                assertTrue("The approved portrait should not require a middle-content scroll", scrollBefore.second <= density)
+                report.put("completeReferenceCompositionVisible", true)
+            }
             capture("01-home-top.png")
 
             // Exercise the actual touch scroll region before bringing its final card fully into view.

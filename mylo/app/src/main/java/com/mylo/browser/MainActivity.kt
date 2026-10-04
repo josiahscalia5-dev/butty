@@ -83,10 +83,12 @@ private val Line = Color(0xFF303F67)
 }
 
 /** Shared by the activity and the native portrait preview. Insets belong to the shell. */
-@Composable fun MyloViewport(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = Night, modifier = Modifier.fillMaxSize()) {
+@Composable fun MyloViewport(edgeToEdgeHome: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    Surface(color = if (edgeToEdgeHome) HomeNight else Night, modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(if (edgeToEdgeHome) WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom) else WindowInsets.safeDrawing)
+                .imePadding(),
             content = content,
         )
     }
@@ -151,7 +153,7 @@ class MainActivity : ComponentActivity() {
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { open(it) }
     }
-    MyloViewport {
+    MyloViewport(edgeToEdgeHome = !searching && (home || store.tabs.none { it.id == currentTab })) {
             Box(Modifier.weight(1f)) {
                 Box(Modifier.fillMaxSize().then(if (searching) Modifier.clearAndSetSemantics { } else Modifier)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
@@ -198,152 +200,6 @@ class MainActivity : ComponentActivity() {
         onDispose { manager.unregisterNetworkCallback(callback) }
     }
     return active
-}
-
-/** Native responsive layout. Only the middle content scrolls; search and navigation stay usable. */
-@Composable fun HomeScreen(
-    query: String = "", onQuery: (String) -> Unit = {}, onSearch: () -> Unit = {}, onVoice: () -> Unit = {},
-    onPanel: (String) -> Unit = {}, onOpen: (String) -> Unit = {}, onPrivate: () -> Unit = {},
-    vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null
-) {
-    val requester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(searchRequest) { if (searchRequest > 0) { requester.requestFocus(); keyboard?.show() } }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Match the artwork's 2:1 aspect ratio so the moon and mascot stay intact.
-        // The middle content scrolls on short portraits instead of hiding the header.
-        val heroHeight = maxWidth / 2f
-        val brandWidth = maxWidth * .47f
-        // The wordmark is decorative branding; supporting copy still follows font scale.
-        val brandSize = with(LocalDensity.current) { (maxWidth * .145f).coerceAtMost(60.dp).toSp() }
-        Column(Modifier.fillMaxSize()) {
-                Row(Modifier.fillMaxWidth().testTag("home-header").padding(horizontal = 20.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(34.dp).background(Color(0xFF1A2951), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.WbSunny, null, tint = Color(0xFFFFD264), modifier = Modifier.size(20.dp)) }
-                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text("Good evening!", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        Text("A little wonder awaits", fontSize = 10.sp, color = Muted)
-                    }
-                    IconButton(onClick = { onPanel("settings") }) { Icon(Icons.Rounded.Settings, "Settings", tint = Color(0xFFDBD7F7), modifier = Modifier.size(23.dp)) }
-                }
-                Box(Modifier.fillMaxWidth().height(heroHeight)) {
-                    Image(painterResource(R.drawable.mylo_night_hero), "Mylo, a cheerful corgi by a moonlit lake", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Night.copy(alpha = .05f), Color.Transparent, Night.copy(alpha = .55f)))))
-                    Column(Modifier.align(Alignment.CenterStart).padding(start = 24.dp, bottom = 16.dp).width(brandWidth)) {
-                        Text("Mylo", fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = brandSize, letterSpacing = (-2).sp, maxLines = 1,
-                            style = TextStyle(brush = Brush.horizontalGradient(listOf(Color.White, Color(0xFFB5A4FF)))))
-                        Text("A brighter web awaits", fontSize = 12.sp, color = Color(0xFFD2CEED), fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            SearchBar(query, onQuery, onSearch, onVoice, requester, Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 20.dp).testTag("home-search"), onActivateSearch)
-            Column(Modifier.weight(1f).testTag("home-middle").verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                    Shortcut("Explore", Icons.Rounded.Explore, Color(0xFF5DAAFF), Modifier.weight(1f)) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
-                    Shortcut("Videos", Icons.Rounded.PlayArrow, Color(0xFFFF6D98), Modifier.weight(1f)) { onOpen("https://m.youtube.com") }
-                    Shortcut("Shop", Icons.Rounded.ShoppingBag, Color(0xFF4CD9B5), Modifier.weight(1f)) { onOpen("https://www.amazon.com") }
-                    Shortcut("AI", Icons.Rounded.AutoAwesome, Color(0xFFFFCB67), Modifier.weight(1f)) { onOpen("https://chatgpt.com") }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        UtilityCard("Private", "Browse without\na trace", Icons.Rounded.Masks, Color(0xFF9475FF), Modifier.weight(1f), onPrivate)
-                        UtilityCard("Bookmarks", "Your favorite\nplaces", Icons.Rounded.Bookmark, Color(0xFF559EF5), Modifier.weight(1f)) { onPanel("bookmarks") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        UtilityCard("History", "Pick up where\nyou left off", Icons.Rounded.History, Color(0xFF50CCB6), Modifier.weight(1f)) { onPanel("history") }
-                        UtilityCard("Tools", "A little more\npossibility", Icons.Rounded.GridView, Color(0xFFEAC16D), Modifier.weight(1f)) { onPanel("tools") }
-                    }
-                }
-                VpnStrip(vpnActive) { onPanel("vpn") }
-                DiscoveryBanner { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
-            }
-        }
-    }
-}
-
-@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier, onActivate: (() -> Unit)? = null) {
-    val keyboard = LocalSoftwareKeyboardController.current
-    Row(modifier.fillMaxWidth().heightIn(min = 58.dp).clip(RoundedCornerShape(30.dp)).background(Brush.horizontalGradient(listOf(Color(0xFFF6F3FF), Color(0xFFE3DFFF)))).padding(start = 7.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() } }) { Icon(Icons.Rounded.Search, "Focus search", tint = Color(0xFF302B70), modifier = Modifier.size(27.dp)) }
-        BasicTextField(value, onValue, Modifier.weight(1f).focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }.semantics { contentDescription = "Search or enter address" }.padding(vertical = 16.dp), singleLine = true, readOnly = onActivate != null,
-            textStyle = TextStyle(color = Color(0xFF252750), fontSize = 15.sp), cursorBrush = Brush.verticalGradient(listOf(Color(0xFF493B96), Color(0xFF493B96))),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { onSubmit() }),
-            decorationBox = { inner -> Box { if (value.isEmpty()) Text("Search or enter address", color = Color(0xFF626487), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
-        Box(Modifier.width(1.dp).height(24.dp).background(Color(0xFFC8C4E6)))
-        IconButton(onClick = onVoice) { Icon(Icons.Rounded.Mic, "Voice search", tint = Color(0xFF302B70), modifier = Modifier.size(24.dp)) }
-        if (value.isNotBlank()) IconButton(onClick = onSubmit) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Go", tint = Color(0xFF302B70)) }
-    }
-}
-
-@Composable private fun Shortcut(label: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(modifier.widthIn(min = 48.dp).clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(vertical = 3.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.size(44.dp).background(Brush.linearGradient(listOf(color.copy(alpha = .18f), Color(0xFF18223E))), CircleShape).border(1.dp, color.copy(alpha = .17f), CircleShape), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(30.dp).background(Brush.linearGradient(listOf(color, color.copy(alpha = .6f))), CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp)) }
-        }
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFFEEEAF9), maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-    }
-}
-
-@Composable private fun UtilityCard(title: String, subtitle: String, icon: ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.heightIn(min = 82.dp).clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(color.copy(alpha = .13f), Panel))).border(1.dp, Line.copy(alpha = .8f), RoundedCornerShape(17.dp)).clickable(onClick = onClick).padding(horizontal = 11.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(35.dp).background(Brush.linearGradient(listOf(color, color.copy(alpha = .65f))), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
-        Column(Modifier.padding(start = 10.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, fontSize = 11.sp, lineHeight = 14.sp, color = Muted)
-        }
-    }
-}
-
-@Composable private fun VpnStrip(active: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 70.dp).clip(RoundedCornerShape(17.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF14303D), Panel))).border(1.dp, Color(0xFF2B435C), RoundedCornerShape(17.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Rounded.VerifiedUser, null, tint = Color(0xFF65D7B9), modifier = Modifier.size(29.dp))
-        Column(Modifier.weight(1f).padding(start = 10.dp, end = 8.dp)) {
-            Text(if (active) "VPN active" else "VPN protection", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (active) "Connected on this device" else "Manage connection", color = Muted, fontSize = 10.sp)
-        }
-        Box(Modifier.height(28.dp).width(1.dp).background(Line))
-        Row(Modifier.widthIn(min = 58.dp, max = 85.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (active) "System VPN" else "Set up", modifier = Modifier.weight(1f), fontSize = 11.sp, color = Color(0xFFDEDDF4), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Rounded.ExpandMore, null, modifier = Modifier.size(15.dp), tint = Muted)
-        }
-        // Status is never simulated: tapping opens the real Android VPN controls.
-        Switch(checked = active, onCheckedChange = { onClick() }, modifier = Modifier.heightIn(min = 48.dp), colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF32C998), checkedThumbColor = Color.White, uncheckedTrackColor = Color(0xFF35425F), uncheckedThumbColor = Color(0xFFBBC3D8)))
-    }
-}
-
-@Composable private fun DiscoveryBanner(onClick: () -> Unit) {
-    // Render only the landscape illustration from the approved reference; all controls/text are native.
-    val reference = ImageBitmap.imageResource(R.drawable.approved_design)
-    val landscape = remember(reference) {
-        BitmapPainter(reference, srcOffset = IntOffset(242, 968), srcSize = IntSize(328, 152))
-    }
-    Box(Modifier.fillMaxWidth().heightIn(min = 88.dp).testTag("home-discovery").clip(RoundedCornerShape(18.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF263366), Color(0xFF182445)))).border(1.dp, Line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
-        Image(landscape, null, modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop, alignment = Alignment.CenterEnd, alpha = .92f)
-        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(Color(0xFF1B2858), Color(0xFF192651).copy(alpha = .25f)))))
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text("A little more wonder", fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.5).sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text("Explore today", fontSize = 12.sp, color = Color(0xFFD7D1F3))
-                Box(Modifier.size(23.dp).background(Lavender, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color(0xFF322B62), modifier = Modifier.size(15.dp)) }
-            }
-        }
-    }
-}
-
-@Composable fun BottomBar(home: Boolean, tabs: Int, onHome: () -> Unit, onSearch: () -> Unit, onTabs: () -> Unit, onMylo: () -> Unit) {
-    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 66.dp).testTag("home-bottom-nav").clip(RoundedCornerShape(21.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1A274A), Color(0xFF14203D)))).border(1.dp, Line.copy(alpha = .7f), RoundedCornerShape(21.dp)), verticalAlignment = Alignment.CenterVertically) {
-        NavItem("Home", Icons.Rounded.Home, home, Modifier.weight(1f), onHome)
-        NavItem("Search", Icons.Rounded.Search, false, Modifier.weight(1f), onSearch)
-        Column(Modifier.weight(1f).heightIn(min = 66.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onTabs).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Box(Modifier.size(24.dp).border(1.8.dp, Muted, RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) { Text(if (tabs > 99) "99+" else tabs.toString(), fontSize = 11.sp, color = Muted) }
-            Text("Tabs", fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 5.dp))
-        }
-        NavItem("Mylo", Icons.Rounded.Pets, false, Modifier.weight(1f), onMylo)
-    }
-}
-@Composable private fun NavItem(label: String, icon: ImageVector, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier.heightIn(min = 66.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.width(51.dp).height(32.dp).background(if (selected) Lavender else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (selected) Color(0xFF4A398F) else Muted, modifier = Modifier.size(24.dp)) }
-        Text(label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = if (selected) Lavender else Muted, modifier = Modifier.padding(top = 2.dp))
-    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")

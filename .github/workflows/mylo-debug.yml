@@ -86,6 +86,21 @@ jobs:
       - name: Build live search instrumentation APK
         id: test_apk_build
         run: gradle --no-daemon --stacktrace :app:assembleDebugAndroidTest
+      - name: Render the production Home against the approved reference
+        id: home_layoutlib
+        continue-on-error: true
+        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest
+      - name: Upload Android Home reference renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-Home-reference-renders
+          path: |
+            mylo/app/src/test/snapshots/images/
+            mylo/app/src/main/res/drawable-nodpi/approved_home.jpg
+            mylo/app/build/reports/paparazzi/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload instrumentation APK
         if: steps.test_apk_build.outcome == 'success'
         uses: actions/upload-artifact@v4
