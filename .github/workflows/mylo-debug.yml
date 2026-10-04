@@ -1,0 +1,162 @@
+name: Mylo debug APK
+
+# This workflow belongs at the repository root. The Android project is in mylo/.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["codex/mylo-apk-*"]
+    paths:
+      - "mylo/**"
+      - ".github/workflows/mylo-debug.yml"
+  pull_request:
+    paths:
+      - "mylo/**"
+      - ".github/workflows/mylo-debug.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mylo-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build installable APK and run unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mylo
+    outputs:
+      apk-url: ${{ steps.apk.outputs.artifact-url }}
+      test-apk-ready: ${{ steps.test_apk_build.outcome == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Ensure Android 35 build tools
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Build APK and run URL resolver tests
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest
+      - name: Verify and package debug APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Mylo-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/Mylo-debug.apk
+          cd dist
+          sha256sum Mylo-debug.apk > Mylo-debug.apk.sha256
+      - name: Upload installable Mylo APK
+        id: apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-debug
+          path: |
+            mylo/dist/Mylo-debug.apk
+            mylo/dist/Mylo-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish APK download link
+        env:
+          APK_ARTIFACT_URL: ${{ steps.apk.outputs.artifact-url }}
+        run: |
+          {
+            echo '## Install Mylo on Android'
+            echo
+            echo "[Download Mylo-debug]($APK_ARTIFACT_URL)"
+            echo
+            echo 'Tap the artifact link, download its ZIP, extract it, then tap Mylo-debug.apk on your Android phone.'
+            echo 'The APK is debug signed. Android may ask you to allow installation from the app you use to open it.'
+            echo
+            echo 'URL resolver tests passed. APK signature verification passed.'
+            echo "Commit: $GITHUB_SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build live search instrumentation APK
+        id: test_apk_build
+        continue-on-error: true
+        run: gradle --no-daemon --stacktrace :app:assembleDebugAndroidTest
+      - name: Upload instrumentation APK
+        if: steps.test_apk_build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-debug-tests
+          path: mylo/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-unit-test-reports
+          path: |
+            mylo/app/build/reports/tests/testDebugUnitTest/
+            mylo/app/build/test-results/testDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  android-preview:
+    name: Verify the APK on a Pixel emulator
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The download remains available if the emulator or a public search provider is unavailable.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Download the exact APK published above
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-debug
+          path: mylo/dist
+      - name: Download live search test APK
+        if: needs.build.outputs.test-apk-ready == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-debug-tests
+          path: mylo/dist/tests
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch Home and verify live search
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
+      - name: Upload Android screenshot and smoke-test evidence
+        if: always()
+        id: preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-Android-preview
+          path: mylo/dist/preview/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Link Android evidence
+        if: always() && steps.preview.outputs.artifact-url != ''
+        env:
+          PREVIEW_ARTIFACT_URL: ${{ steps.preview.outputs.artifact-url }}
+        run: |
+          echo "[Download real emulator screenshots and test evidence]($PREVIEW_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"

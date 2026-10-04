@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.Mylo" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">#09142E</item>
+        <item name="android:navigationBarColor">#09142E</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#C9BFFF</item>
+        <item name="android:windowBackground">#09142E</item>
+    </style>
+</resources>
