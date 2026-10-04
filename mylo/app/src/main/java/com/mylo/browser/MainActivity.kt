@@ -22,7 +22,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
@@ -181,7 +180,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 }
-                AnimatedVisibility(visible = searching, enter = fadeIn(tween(150)), exit = fadeOut(tween(100))) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = searching, enter = fadeIn(tween(150)), exit = fadeOut(tween(100)),
+                ) {
                     Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
                         SearchInputScreen(query, { query = it }, searchProvider, { searchProvider = it },
                             { open(query, searchProvider) }, ::closeSearch,
