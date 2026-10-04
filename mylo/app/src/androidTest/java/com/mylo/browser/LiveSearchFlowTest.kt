@@ -59,56 +59,19 @@ class LiveSearchFlowTest {
 
     @Test
     fun searchInputFocusKeyboardAndProviderPersistence() {
-        var originalDefault = SearchProvider.DUCKDUCKGO
-        compose.runOnIdle { originalDefault = store().provider }
-        compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
-        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
-        openSearch()
-        compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
         SearchProvider.entries.forEach { provider ->
             chooseProvider(provider)
-            compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-            assertKeyboardVisible()
-            compose.runOnIdle {
-                assertEquals("A temporary choice must not change the saved default", originalDefault, store().provider)
-                // This fresh model reads preferences instead of the live Compose state.
-                assertEquals(originalDefault, BrowserStore(compose.activity.application).provider)
-                assertTrue("Choosing a provider must not navigate", store().tabs.isEmpty())
-            }
+            compose.runOnIdle { assertEquals(provider, BrowserStore(compose.activity).provider) }
         }
-        val temporary = SearchProvider.entries.first { it != originalDefault }
-        chooseProvider(temporary)
-        compose.activityRule.scenario.recreate()
-        compose.waitForIdle()
-        compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
-        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-        compose.onNodeWithContentDescription("Search provider: ${temporary.displayName}").assertIsDisplayed()
-        assertKeyboardVisible()
-        compose.runOnIdle {
-            assertEquals(originalDefault, store().provider)
-            assertEquals(originalDefault, BrowserStore(compose.activity.application).provider)
-        }
-
-        val savedDefault = SearchProvider.entries.first { it != originalDefault && it != temporary }
-        chooseProvider(savedDefault, setDefault = true)
-        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-        compose.runOnIdle {
-            assertEquals(savedDefault, store().provider)
-            assertEquals(savedDefault, BrowserStore(compose.activity.application).provider)
-        }
-        compose.activityRule.scenario.recreate()
-        compose.waitForIdle()
-        compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
-        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-        compose.onNodeWithContentDescription("Search provider: ${savedDefault.displayName}").assertIsDisplayed()
-        assertKeyboardVisible()
-        compose.runOnIdle { assertEquals(savedDefault, BrowserStore(compose.activity.application).provider) }
-        compose.onNodeWithContentDescription("Close search").performClick()
-        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
-        compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
         openSearch()
-        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals("")
-        compose.onNodeWithContentDescription("Search provider: ${savedDefault.displayName}").assertIsDisplayed()
+        compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
+        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
+        compose.onNodeWithTag("home-header").assertIsDisplayed()
+        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
+        compose.activityRule.scenario.recreate()
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(SearchProvider.STARTPAGE, BrowserStore(compose.activity).provider) }
+        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY)
     }
 
     @Test
@@ -121,7 +84,8 @@ class LiveSearchFlowTest {
             capture("01-home.png")
             openSearch()
             capture("02-search-input-and-keyboard.png")
-            chooseProvider(SearchProvider.GOOGLE, "03-provider-selector.png", setDefault = true)
+            chooseProvider(SearchProvider.GOOGLE, "03-settings.png")
+            openSearch()
             compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
             capture("04-query-and-keyboard.png")
             compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
@@ -160,7 +124,7 @@ class LiveSearchFlowTest {
                 assertEquals(firstTabId, store().tabs.single().id)
             }
             evidence.writeText(result.put("verified", true)
-                .put("flow", "Home → focused input and Android keyboard → choose Google → query → real mobile Google results")
+                .put("flow", "Home Settings → save Google → Home input and Android keyboard → query → real mobile Google results")
                 .put("openedResult", linkedPage)
                 .put("backAndForwardVerified", true)
                 .put("currentTabReused", true).toString(2))
@@ -178,24 +142,23 @@ class LiveSearchFlowTest {
         val report = JSONArray()
         val failures = mutableListOf<String>()
         var currentTabId: Long? = null
-        var savedDefault = SearchProvider.DUCKDUCKGO
-        compose.runOnIdle { savedDefault = store().provider }
         SearchProvider.entries.forEach { provider ->
             val filename = "provider-${provider.name.lowercase()}"
             val evidence = JSONObject().put("provider", provider.displayName).put("query", QUERY)
-                .put("verified", false).put("savedDefault", savedDefault.displayName)
-                .put("temporarySelection", true)
+                .put("verified", false).put("savedDefault", provider.displayName)
+                .put("temporarySelection", false)
             File(artifacts, "$filename.png").delete()
             try {
                 // Recover to native Home after a denied provider; select through the same UI a user sees.
                 recoverToHome()
                 openSearch()
                 chooseProvider(provider)
+                openSearch()
                 submitInput(QUERY)
                 compose.waitUntil(5_000) { currentWebView() != null }
                 compose.runOnIdle {
-                    assertEquals("Live search choice must not change the default", savedDefault, store().provider)
-                    assertEquals(savedDefault, BrowserStore(compose.activity.application).provider)
+                    assertEquals("Settings must save the selected default", provider, store().provider)
+                    assertEquals(provider, BrowserStore(compose.activity.application).provider)
                     assertEquals("Changing search engines must reuse the current tab", 1, store().tabs.size)
                     val id = store().tabs.single().id
                     if (currentTabId == null) currentTabId = id else assertEquals(currentTabId, id)
@@ -204,7 +167,7 @@ class LiveSearchFlowTest {
                 assertBrowserControls()
                 capture("$filename.png")
                 compose.runOnIdle {
-                    assertEquals(savedDefault, BrowserStore(compose.activity.application).provider)
+                    assertEquals(provider, BrowserStore(compose.activity.application).provider)
                 }
                 evidence.put("verified", true).put("document", page).put("savedDefaultUnchanged", true)
                 compose.onNodeWithText("Home", useUnmergedTree = true).performClick()
@@ -325,22 +288,13 @@ class LiveSearchFlowTest {
 
     private fun openSearch() {
         compose.onNodeWithContentDescription(SEARCH_FIELD).performClick()
-        compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
+        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
         compose.onNodeWithTag(SEARCH_INPUT).assertIsDisplayed().assertIsFocused()
         assertKeyboardVisible()
     }
 
     private fun recoverToHome() {
-        // A failed picker/input assertion can leave search mode open. Dismiss it
-        // before looking for Home so one UI failure cannot cascade into later engines.
-        if (compose.onAllNodesWithTag(PROVIDER_PICKER).fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithContentDescription("Close provider selector").performClick()
-            compose.waitForIdle()
-        }
-        if (compose.onAllNodesWithTag(SEARCH_MODE).fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithContentDescription("Close search").performClick()
-            compose.waitForIdle()
-        }
+        device.pressBack()
         compose.onNodeWithText("Home", useUnmergedTree = true).performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
@@ -355,35 +309,12 @@ class LiveSearchFlowTest {
         compose.waitForIdle()
     }
 
-    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null, setDefault: Boolean = false) {
-        var priorDefault = SearchProvider.DUCKDUCKGO
-        compose.runOnIdle { priorDefault = store().provider }
-        // The current search engine can intentionally differ from the stored default.
-        compose.onNode(hasContentDescription("Search provider:", substring = true)).performClick()
-        compose.onNodeWithTag(PROVIDER_PICKER).assertIsDisplayed()
-        SearchProvider.entries.forEach {
-            compose.onNode(hasText(it.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
-                .assertExists()
-        }
+    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null) {
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithTag("default-provider-${provider.name}").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(provider, BrowserStore(compose.activity).provider) }
         screenshot?.let(::capture)
-        compose.onNode(hasText(provider.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
-            .performScrollTo().assertIsDisplayed().performClick()
-        compose.onNodeWithTag(PROVIDER_PICKER).assertIsDisplayed()
-        compose.runOnIdle {
-            assertEquals("Selecting a draft row must not save a default", priorDefault, store().provider)
-            assertEquals(priorDefault, BrowserStore(compose.activity.application).provider)
-        }
-        compose.onNodeWithText(if (setDefault) "Set as default" else "Use for this search").performClick()
-        compose.waitForIdle()
-        compose.onNodeWithTag(PROVIDER_PICKER).assertDoesNotExist()
-        compose.onNodeWithContentDescription("Search provider: ${provider.displayName}").assertIsDisplayed()
-        compose.runOnIdle {
-            val expectedDefault = if (setDefault) provider else priorDefault
-            assertEquals(expectedDefault, store().provider)
-            assertEquals(expectedDefault, BrowserStore(compose.activity.application).provider)
-        }
-        compose.onNodeWithTag(SEARCH_INPUT).assertIsFocused()
-        assertKeyboardVisible()
+        compose.onNodeWithContentDescription("Close Mylo Settings").performClick()
     }
 
     private fun assertKeyboardVisible() {
@@ -619,7 +550,7 @@ class LiveSearchFlowTest {
     companion object {
         private const val SEARCH_FIELD = "Search or enter address"
         private const val SEARCH_MODE = "search-input-mode"
-        private const val SEARCH_INPUT = "search-input"
+        private const val SEARCH_INPUT = "home-search-input"
         private const val PROVIDER_PICKER = "search-provider-picker"
         private const val QUERY = "best beaches in Florida"
     }

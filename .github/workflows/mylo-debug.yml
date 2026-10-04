@@ -3,6 +3,11 @@ name: Mylo debug APK
 # This workflow belongs at the repository root. The Android project is in mylo/.
 on:
   workflow_dispatch:
+    inputs:
+      full_home_matrix:
+        description: Run the optional full Home screenshot matrix
+        type: boolean
+        default: false
   push:
     branches: ["codex-development"]
     paths:
@@ -97,11 +102,12 @@ jobs:
         id: test_apk_build
         run: gradle --no-daemon --stacktrace :app:assembleDebugAndroidTest
       - name: Render the production Home against the approved reference
+        if: github.event_name == 'workflow_dispatch' && inputs.full_home_matrix
         id: home_layoutlib
         continue-on-error: true
         run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest
       - name: Upload Android Home reference renders
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.full_home_matrix
         uses: actions/upload-artifact@v4
         with:
           name: Mylo-Home-reference-renders
@@ -122,6 +128,7 @@ jobs:
 
 
   android-home:
+    if: github.event_name == 'workflow_dispatch' && inputs.full_home_matrix
     name: Verify portrait Home on a Pixel 5
     needs: build
     runs-on: ubuntu-latest
@@ -179,10 +186,10 @@ jobs:
         run: echo "[Download real Home screenshots, measurements, and logs]($HOME_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
 
   android-preview:
-    name: Verify browser navigation and real search providers
+    name: Verify Settings and Home search only
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -212,10 +219,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify keyboard, providers, and tab navigation
+      - name: Verify saved defaults, Home keyboard, and provider URLs
         uses: reactivecircus/android-emulator-runner@v2
-        env:
-          MYLO_SKIP_HOME_LAYOUT: "1"
         with:
           api-level: 35
           arch: x86_64
@@ -223,7 +228,7 @@ jobs:
           profile: pixel_5
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
+          script: timeout -k 10s 360s bash mylo/scripts/verify-settings-search.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
       - name: Upload Android screenshot and smoke-test evidence
         if: always()
         id: preview

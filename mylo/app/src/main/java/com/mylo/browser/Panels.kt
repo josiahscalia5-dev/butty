@@ -9,6 +9,9 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -99,7 +102,7 @@ fun MyloPanel(
         "bookmarks" -> "Your bookmarks"
         "history" -> "Browsing history"
         "tabs" -> "Your tabs"
-        "settings" -> "Search engine"
+        "settings" -> "Mylo Settings"
         "tools" -> "Browser tools"
         "vpn" -> "VPN & privacy"
         "mylo" -> "Hello, from Mylo"
@@ -268,22 +271,29 @@ fun MyloPanel(
 
 @Composable
 private fun SearchProviderChoices(store: BrowserStore) {
-    PanelDescription("Web addresses open directly. Everything else searches with your preferred provider.")
+    Text("Default search provider", color = PanelText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(8.dp))
+    PanelDescription("Home searches use this engine automatically. Web addresses open directly.")
+    Column(Modifier.selectableGroup()) {
     SearchProvider.entries.forEach { provider ->
         Surface(
             color = if (store.provider == provider) Color(0xFF2A2850) else PanelCard,
             shape = RoundedCornerShape(18.dp),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { store.setProvider(provider) },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                .testTag("default-provider-${provider.name}")
+                .selectable(selected = store.provider == provider, role = Role.RadioButton,
+                    onClick = { store.setProvider(provider) }),
         ) {
             Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = store.provider == provider,
-                    onClick = { store.setProvider(provider) },
+                    onClick = null,
                     colors = RadioButtonDefaults.colors(selectedColor = PanelAccent, unselectedColor = PanelMuted),
                 )
                 Text(provider.displayName, Modifier.padding(start = 8.dp), color = PanelText, fontSize = 17.sp)
             }
         }
+    }
     }
     Text("Your preference is saved on this device.", Modifier.padding(top = 8.dp), color = PanelMuted, fontSize = 13.sp)
 }

@@ -102,19 +102,19 @@ class HomeLayoutTest {
 
             // Search remains reachable even when the middle content is at its lower edge.
             compose.onNodeWithContentDescription("Search or enter address").performClick()
-            compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
+            compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
             compose.onNodeWithTag(SEARCH_INPUT).assertIsDisplayed().assertIsFocused()
             waitForKeyboard(true)
             compose.onNodeWithTag(SEARCH_INPUT).performTextInput("best beaches in Florida")
             compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals("best beaches in Florida")
             val keyboardSafe = safeArea(includeKeyboard = true)
             assertInside("Focused search input must remain above the real keyboard", bounds(SEARCH_INPUT), keyboardSafe)
-            assertInside("Search mode must resize above the keyboard", bounds(SEARCH_MODE), keyboardSafe)
+            compose.onNodeWithTag(HEADER).assertIsDisplayed()
             report.put("keyboardVisible", true).put("keyboardSafeArea", rectangle(keyboardSafe))
                 .put("searchInput", rectangle(bounds(SEARCH_INPUT)))
             capture("03-search-and-android-keyboard.png")
 
-            compose.onNodeWithContentDescription("Close search").assertIsDisplayed().performClick()
+            device.pressBack()
             compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
             waitForKeyboard(false)
             val restored = assertHomeLayout()
@@ -243,6 +243,6 @@ class HomeLayoutTest {
         private const val DISCOVERY = "home-discovery"
         private const val BOTTOM = "home-bottom-nav"
         private const val SEARCH_MODE = "search-input-mode"
-        private const val SEARCH_INPUT = "search-input"
+        private const val SEARCH_INPUT = "home-search-input"
     }
 }

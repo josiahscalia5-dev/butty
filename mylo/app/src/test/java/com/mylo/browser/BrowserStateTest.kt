@@ -117,6 +117,27 @@ class BrowserStateTest {
         }
     }
 
+    @Test fun restoredDefaultControlsHomeNavigationForAllSixProviders() {
+        val expected = mapOf(
+            SearchProvider.GOOGLE to "https://www.google.com/search?q=Facebook",
+            SearchProvider.BRAVE to "https://search.brave.com/search?q=Facebook",
+            SearchProvider.DUCKDUCKGO to "https://duckduckgo.com/?q=Facebook",
+            SearchProvider.BING to "https://www.bing.com/search?q=Facebook",
+            SearchProvider.YAHOO to "https://search.yahoo.com/search?p=Facebook",
+            SearchProvider.STARTPAGE to "https://www.startpage.com/sp/search?query=Facebook",
+        )
+        expected.forEach { (provider, url) ->
+            val context = TestBrowserContext()
+            BrowserStore(context).setProvider(provider)
+            val restored = BrowserStore(context)
+            val tab = restored.createTab("https://example.org")
+            assertEquals(url, restored.navigateInCurrentTab(tab.id, "Facebook")!!.url)
+            assertEquals("https://facebook.com", restored.navigateInCurrentTab(tab.id, "facebook.com")!!.url)
+            assertEquals(1, restored.tabs.size)
+            assertEquals(provider, restored.provider)
+        }
+    }
+
     @Test fun temporarySearchProviderLeavesSavedDefaultUnchanged() {
         val context = TestBrowserContext()
         val store = BrowserStore(context)

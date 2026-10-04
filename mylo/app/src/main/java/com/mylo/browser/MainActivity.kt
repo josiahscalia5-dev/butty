@@ -22,9 +22,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -60,7 +57,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -134,65 +130,52 @@ class MainActivity : ComponentActivity() {
     var home by rememberSaveable { mutableStateOf(true) }
     var query by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var searching by rememberSaveable { mutableStateOf(false) }
-    var searchProvider by rememberSaveable { mutableStateOf(store.provider) }
+    var searchRequest by rememberSaveable { mutableIntStateOf(0) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val vpn = rememberVpnStatus()
-    fun startSearch() { query = ""; searchProvider = store.provider; searching = true }
-    fun closeSearch() { searching = false; query = ""; focus.clearFocus(); keyboard?.hide() }
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    fun startSearch() { home = true; searchRequest++ }
+    fun closeSearch() { searchRequest = 0; query = ""; focus.clearFocus(); keyboard?.hide() }
     fun showHome() { closeSearch(); home = true }
-    fun open(input: String, usingProvider: SearchProvider = store.provider) {
-        val tab = store.navigateInCurrentTab(currentTab, input, searchProvider = usingProvider)
+    fun open(input: String) {
+        val tab = store.navigateInCurrentTab(currentTab, input, searchProvider = store.provider)
         if (tab == null) { error = "Enter a website address or search words."; return }
         // A Home submission is a navigation in the existing tab, never an implicit new tab.
         session.pendingNavigations[tab.id] = tab.url
         currentTab = tab.id
         home = false
-        searching = false
+        searchRequest = 0
         query = ""
         focus.clearFocus()
         keyboard?.hide()
     }
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let {
-            open(it, if (searching) searchProvider else store.provider)
+            open(it)
         }
     }
     val scan = rememberMyloScanner(
-        onResult = { open(it, if (searching) searchProvider else store.provider) },
+        onResult = { open(it) },
         onError = { error = it },
     )
     MyloViewport(edgeToEdgeHome = home || store.tabs.none { it.id == currentTab }) {
             Box(Modifier.weight(1f)) {
-                Box(Modifier.fillMaxSize().then(if (searching) Modifier.clearAndSetSemantics { } else Modifier)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
                 if (home || tab == null) {
                     HomeScreen(query, { query = it }, { open(query) }, {
                         runCatching { voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM).putExtra(RecognizerIntent.EXTRA_PROMPT, "Search with Mylo")) }
                             .onFailure { error = "Voice search isn't available on this device. You can type your search." }
-                    }, { panel = it }, { open(it) }, {
+                    }, { focus.clearFocus(); keyboard?.hide(); panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScanner = scan)
+                    }, vpn, searchRequest = searchRequest, onScanner = scan)
                 } else {
                     key(tab.id) {
-                        BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
-                    }
-                }
-                }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = searching, enter = fadeIn(tween(150)), exit = fadeOut(tween(100)),
-                ) {
-                    Box(Modifier.fillMaxSize().background(Night)
-                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-                        SearchInputScreen(query, { query = it }, searchProvider, { searchProvider = it },
-                            { open(query, searchProvider) }, ::closeSearch,
-                            defaultProvider = store.provider,
-                            onSetDefault = { store.setProvider(it); searchProvider = it })
+                        BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" })
                     }
                 }
             }
-            if (!searching) BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size,
+            if (!imeVisible) BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size,
                 ::showHome, ::startSearch, { panel = "tabs" }, { panel = "mylo" })
     }
     panel?.let { selected -> MyloPanel(selected, store, { panel = null }, { open(it) }, {

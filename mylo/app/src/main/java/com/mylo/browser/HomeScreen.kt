@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -145,7 +144,7 @@ private fun ApprovedArt(x: Int, y: Int, width: Int, height: Int, modifier: Modif
 fun HomeScreen(
     query: String = "", onQuery: (String) -> Unit = {}, onSearch: () -> Unit = {}, onVoice: () -> Unit = {},
     onPanel: (String) -> Unit = {}, onOpen: (String) -> Unit = {}, onPrivate: () -> Unit = {},
-    vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null,
+    vpnActive: Boolean = false, searchRequest: Int = 0,
     // Production has no known endpoint location. The Android reference render supplies Singapore.
     vpnLocation: String? = null,
     polish: HomePolish = HomePolish.REFERENCE,
@@ -160,7 +159,7 @@ fun HomeScreen(
         val metrics = polish.metrics()
         Column(Modifier.fillMaxSize()) {
             HomeHero(unit, onPanel)
-            HomeSearchBar(query, onQuery, onSearch, onVoice, requester, onActivateSearch,
+            HomeSearchBar(query, onQuery, onSearch, onVoice, requester,
                 onScanner = onScanner, unit = unit, metrics = metrics)
             Column(Modifier.weight(1f).fillMaxWidth().testTag("home-middle")
                 .verticalScroll(rememberScrollState()).padding(horizontal = unit * 20f)) {
@@ -226,7 +225,7 @@ private fun HomeHero(unit: Dp, onPanel: (String) -> Unit) {
 @Composable
 private fun HomeSearchBar(
     value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit,
-    requester: FocusRequester, onActivate: (() -> Unit)?, onScanner: () -> Unit, unit: Dp,
+    requester: FocusRequester, onScanner: () -> Unit, unit: Dp,
     metrics: HomePolishMetrics,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
@@ -239,19 +238,19 @@ private fun HomeSearchBar(
         .background(Brush.horizontalGradient(listOf(Color(0xFFECE9FF), Color(0xFFE7E4FA)))),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(unit * 89f).fillMaxHeight().homePressable(onClick = {
-            if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() }
+            requester.requestFocus(); keyboard?.show()
         }, rippleColor = HomeInk, pressedScale = .96f)
             .semantics { contentDescription = "Focus search" }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Search, null, tint = HomeInk, modifier = Modifier.size(unit * 42f))
         }
         BasicTextField(value, onValue, Modifier.weight(1f).fillMaxHeight().wrapContentHeight()
-            .focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }
+            .focusRequester(requester).testTag("home-search-input")
             .semantics { contentDescription = "Search or enter address" },
-            singleLine = true, readOnly = onActivate != null,
+            singleLine = true,
             textStyle = TextStyle(color = Color(0xFF535777), fontSize = (unit.value * 23f).sp),
             cursorBrush = Brush.verticalGradient(listOf(HomeInk, HomeInk)),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { onSubmit() }),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
             decorationBox = { inner -> Box {
                 if (value.isEmpty()) Text("Search or enter address", color = Color(0xFF555976),
                     fontSize = (unit.value * 23f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
