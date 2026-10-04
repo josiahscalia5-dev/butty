@@ -51,7 +51,7 @@ recording_pid="$("$adb_command" shell "screenrecord --time-limit 180 $remote_rec
   com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
   | tee "$artifact_dir/instrumentation.txt"
 
-if ! rg -q '^OK \(1 test\)' "$artifact_dir/instrumentation.txt"; then
+if ! grep -q '^OK (1 test)' "$artifact_dir/instrumentation.txt"; then
   echo "Live verification failed or was blocked. See $artifact_dir/instrumentation.txt and live-search-evidence.json." >&2
   exit 1
 fi

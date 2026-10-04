@@ -117,7 +117,7 @@ run_case() {
     com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
     | tee "$output/instrumentation.txt"; then
     status=failed
-  elif ! rg -q '^OK \(1 test\)' "$output/instrumentation.txt"; then
+  elif ! grep -Eq '^OK \(1 test\)' "$output/instrumentation.txt"; then
     status=failed
   fi
   "$adb_command" pull "$remote_artifacts/$case_name/." "$output/" >/dev/null 2>&1 || true
@@ -129,9 +129,9 @@ supported_modes=0
 for navigation in gestural threebutton; do
   overlay="com.android.internal.systemui.navbar.$navigation"
   # Only switch modes when we can restore the original navigation overlay.
-  if [[ -n "$original_navigation" ]] && printf '%s\n' "$original_overlays" | rg -qF "$overlay" && \
+  if [[ -n "$original_navigation" ]] && printf '%s\n' "$original_overlays" | grep -F "$overlay" >/dev/null && \
       "$adb_command" shell cmd overlay enable-exclusive --user current --category "$overlay" > "$evidence_dir/navigation-$navigation.txt" 2>&1 && \
-      "$adb_command" shell cmd overlay list --user current | tr -d '\r' | rg -qF "[x] $overlay"; then
+      "$adb_command" shell cmd overlay list --user current | tr -d '\r' | grep -Fx "[x] $overlay" >/dev/null; then
     supported_modes=$((supported_modes + 1))
     run_case "$navigation" 360 640 1.0
     run_case "$navigation" 393 851 1.0

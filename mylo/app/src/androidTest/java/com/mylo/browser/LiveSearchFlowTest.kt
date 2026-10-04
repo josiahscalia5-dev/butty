@@ -304,6 +304,10 @@ class LiveSearchFlowTest {
     private fun submitInput(value: String) {
         compose.onNodeWithTag(SEARCH_INPUT).performTextReplacement(value)
         compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
+        // Flush the state change that replaces native input with the WebView
+        // before polling Android views outside the Compose test clock.
+        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
+        compose.waitForIdle()
     }
 
     private fun chooseProvider(provider: SearchProvider, screenshot: String? = null) {
@@ -346,6 +350,7 @@ class LiveSearchFlowTest {
     private fun navigateAddress(value: String) {
         compose.onNodeWithContentDescription("Browser address").performClick().performTextReplacement(value)
         compose.onNodeWithContentDescription("Browser address").performImeAction()
+        compose.waitForIdle()
     }
 
     private fun selectTab(url: String, index: Int = 0) {
@@ -408,7 +413,11 @@ class LiveSearchFlowTest {
                         "confirm you're a human", "verify you are human", "access to this page has been denied").any(body::contains)
                 assertFalse("Real ${provider.displayName} results unavailable: provider consent, CAPTCHA, or network error. " +
                     "URL=$url; title=${latest.optString("title")}", blocked)
-                val queryMatches = listOf("q", "query").any { Uri.parse(url).getQueryParameter(it)?.equals(QUERY, true) == true }
+                val address = Uri.parse(url)
+                // A new WebView briefly reports about:blank, an opaque URI.
+                val queryMatches = address.isHierarchical && listOf("q", "query").any {
+                    address.getQueryParameter(it)?.equals(QUERY, true) == true
+                }
                 if ((host == expectedHost || host.endsWith(".$expectedHost")) && queryMatches &&
                     latest.optString("ready") == "complete" &&
                     ((latest.optInt("resultHeadings") > 0 && latest.optInt("externalLinks") > 0) ||

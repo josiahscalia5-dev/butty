@@ -35,7 +35,7 @@ run_device_test() {
     com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
     | tee "$evidence_dir/$output"; then
     failed=1
-  elif ! rg -q '^OK \(1 test\)' "$evidence_dir/$output"; then
+  elif ! grep -q '^OK (1 test)' "$evidence_dir/$output"; then
     failed=1
   fi
 }
