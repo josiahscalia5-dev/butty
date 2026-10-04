@@ -274,8 +274,7 @@ class LiveSearchFlowTest {
             waitForExampleDomain("example.com")
             // Tab rows show the exact current URL. At this point both tabs show
             // example.com, so select the first row by its position in the tab model.
-            compose.onNodeWithText("Tabs", useUnmergedTree = true).performClick()
-            compose.onAllNodesWithText(secondTabLastPage, useUnmergedTree = true)[0].performClick()
+            selectTab(secondTabLastPage)
             waitForExampleDomain("example.com")
             compose.onNodeWithContentDescription("Forward").assertIsEnabled().performClick()
             waitForExampleDomain("example.org")
@@ -356,6 +355,11 @@ class LiveSearchFlowTest {
     private fun selectTab(url: String, index: Int = 0) {
         compose.onNodeWithText("Tabs", useUnmergedTree = true).performClick()
         compose.onAllNodesWithText(url, useUnmergedTree = true)[index].performClick()
+        // Tab selection changes Compose state before replacing the native WebView.
+        // Drain that change before raw Android-view polling can observe the old tab.
+        compose.waitForIdle()
+        compose.onNodeWithText("Your tabs").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Browser address").assertIsDisplayed()
     }
 
     private fun captureFailure(name: String) {

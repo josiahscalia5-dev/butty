@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +38,8 @@ import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -47,15 +51,27 @@ internal val HomeNight = Color(0xFF071632)
 private val HomeMuted = Color(0xFFB8B9DB)
 private val HomeLavender = Color(0xFFD5C9FF)
 private val HomeInk = Color(0xFF283370)
+private val LocalHomeArtwork = staticCompositionLocalOf<ImageBitmap?> { null }
+
+@Composable
+private fun HomeArtwork(content: @Composable () -> Unit) {
+    val artwork = ImageBitmap.imageResource(R.drawable.approved_home)
+    CompositionLocalProvider(
+        LocalHomeArtwork provides artwork,
+        LocalTextStyle provides LocalTextStyle.current.copy(letterSpacing = 0.sp),
+        LocalContentColor provides Color(0xFFF6F4FF),
+        content = content,
+    )
+}
 
 /**
  * Coordinates refer to the user's 589 × 1280 approved artwork, never to a device.
- * Only the original illustrations are sampled: search, text, cards, VPN and navigation
+ * Original static artwork and lettering are sampled; search, cards, VPN and navigation
  * remain independent native controls. No status bar or complete UI screenshot is drawn.
  */
 @Composable
 private fun ApprovedArt(x: Int, y: Int, width: Int, height: Int, modifier: Modifier, description: String? = null) {
-    val source = ImageBitmap.imageResource(R.drawable.approved_home)
+    val source = LocalHomeArtwork.current ?: ImageBitmap.imageResource(R.drawable.approved_home)
     val painter = remember(source, x, y, width, height) {
         BitmapPainter(source, srcOffset = IntOffset(x, y), srcSize = IntSize(width, height))
     }
@@ -74,6 +90,7 @@ fun HomeScreen(
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(searchRequest) { if (searchRequest > 0) { requester.requestFocus(); keyboard?.show() } }
+    HomeArtwork {
     BoxWithConstraints(Modifier.fillMaxSize().background(HomeNight)) {
         val unit = maxWidth / 589f
         Column(Modifier.fillMaxSize()) {
@@ -106,32 +123,33 @@ fun HomeScreen(
             }
         }
     }
+    }
 }
 
 @Composable
 private fun HomeHero(unit: Dp, onPanel: (String) -> Unit) {
     val safeTop = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    Box(Modifier.fillMaxWidth().height(unit * 363f)
-        .background(Brush.verticalGradient(listOf(Color(0xFF0E1C42), Color(0xFF12234F), HomeNight)))) {
-        // Original stylized wordmark, subtitle, corgi, moon, star, mountains and lake.
-        // Split above the illustration so the reference's baked greeting/status icons are excluded.
-        ApprovedArt(0, 111, 589, 252, Modifier.fillMaxWidth().height(unit * 252f).align(Alignment.BottomCenter),
+    val headerTop = maxOf(unit * 55f, safeTop)
+    Box(Modifier.fillMaxWidth().height(unit * 363f)) {
+        // Preserve the uninterrupted original hero, including its fixed greeting and
+        // hand-lettered wordmark. The sample status bar is deliberately outside this crop.
+        // Extend its first sky row behind Android's real transparent status bar.
+        ApprovedArt(0, 36, 589, 1, Modifier.fillMaxWidth().height(unit * 36f))
+        ApprovedArt(0, 36, 589, 327, Modifier.offset(y = unit * 36f).fillMaxWidth().height(unit * 327f),
             "Mylo. A brighter web awaits. A corgi on the moon above a nighttime lake.")
-        ApprovedArt(300, 75, 212, 36, Modifier.offset(x = unit * 300f, y = unit * 75f).size(unit * 212f, unit * 36f))
-        Row(Modifier.offset(y = maxOf(unit * 55f, safeTop + 2.dp)).fillMaxWidth()
-            .padding(horizontal = unit * 24f).heightIn(min = unit * 58f).testTag("home-header"),
+        // Accessible native hit targets over the fixed header artwork. Their bounds
+        // remain below the actual cutout; the decorative sky can draw edge to edge.
+        Row(Modifier.offset(y = headerTop).fillMaxWidth()
+            .padding(horizontal = unit * 24f).height(48.dp).testTag("home-header"),
             verticalAlignment = Alignment.CenterVertically) {
-            ApprovedArt(24, 58, 51, 51, Modifier.size(unit * 51f).clip(CircleShape))
-            Column(Modifier.weight(1f).padding(start = unit * 9f)) {
-                Text("Good evening!", fontSize = (unit.value * 16f).sp, lineHeight = (unit.value * 19f).sp,
-                    color = Color.White, maxLines = 1)
-                Text("Have a brighter browse ☀️", fontSize = (unit.value * 14f).sp, lineHeight = (unit.value * 18f).sp,
-                    color = Color(0xFFD0D0E8), maxLines = 1)
+            Spacer(Modifier.width(unit * 51f))
+            Column(Modifier.weight(1f).align(Alignment.Top)
+                .padding(start = unit * 9f, top = (unit * 68f - headerTop).coerceAtLeast(0.dp))) {
+                Box(Modifier.fillMaxWidth().height(unit * 19f).semantics { text = AnnotatedString("Good evening!") })
+                Box(Modifier.fillMaxWidth().height(unit * 18f).semantics { text = AnnotatedString("Have a brighter browse ☀️") })
             }
             Box(Modifier.size(48.dp).clickable(role = Role.Button) { onPanel("settings") }
-                .semantics { contentDescription = "Settings" }, contentAlignment = Alignment.Center) {
-                ApprovedArt(515, 57, 51, 52, Modifier.size(unit * 51f).clip(CircleShape))
-            }
+                .semantics { contentDescription = "Settings" })
         }
     }
 }
@@ -252,6 +270,7 @@ private fun HomeDiscovery(unit: Dp, onClick: () -> Unit) {
 
 @Composable
 fun BottomBar(home: Boolean, tabs: Int, onHome: () -> Unit, onSearch: () -> Unit, onTabs: () -> Unit, onMylo: () -> Unit) {
+    HomeArtwork {
     BoxWithConstraints(Modifier.fillMaxWidth().background(HomeNight)) {
         val unit = maxWidth / 589f
         val shape = RoundedCornerShape(unit * 24f)
@@ -276,6 +295,7 @@ fun BottomBar(home: Boolean, tabs: Int, onHome: () -> Unit, onSearch: () -> Unit
                 ApprovedArt(486, 1154, 38, 38, Modifier.size(unit * 38f).clip(CircleShape))
             }
         }
+    }
     }
 }
 

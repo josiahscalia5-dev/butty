@@ -4,7 +4,7 @@ name: Mylo debug APK
 on:
   workflow_dispatch:
   push:
-    branches: ["mylo-development"]
+    branches: ["codex-development"]
     paths:
       - "mylo/**"
       - ".github/workflows/mylo-debug.yml"
