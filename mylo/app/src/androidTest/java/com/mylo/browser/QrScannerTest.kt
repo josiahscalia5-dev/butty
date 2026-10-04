@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.zxing.BarcodeFormat
+import com.google.zxing.DecodeHintType
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.client.android.Intents
 import com.google.zxing.qrcode.QRCodeWriter
@@ -26,7 +27,8 @@ class QrScannerTest {
         val pixels = IntArray(matrix.width * matrix.height) { index ->
             if (matrix[index % matrix.width, index / matrix.width]) 0xff000000.toInt() else 0xffffffff.toInt()
         }
-        val decoder = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE)).createDecoder(emptyMap())
+        val decoder = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
+            .createDecoder(emptyMap<DecodeHintType, Any>())
         val decoded = decoder.decode(RGBLuminanceSource(matrix.width, matrix.height, pixels))
         assertEquals(address, decoded.text)
 
