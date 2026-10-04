@@ -93,15 +93,17 @@ class ProviderFlowPreviewTest {
             capture("05-provider-chosen.png")
 
             // 5. The keyboard's Search action submits the exact typed text to the chosen provider.
-            // From here on nothing waits for Compose to be idle: a page's loading bar may still be animating.
+            // From here on frames are advanced explicitly instead of waiting for Compose to be idle,
+            // because a page's loading bar may keep animating.
             compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
             val page = waitForProviderPage(provider, waitForFullPage)
             evidence.put("page", page)
             if (waitForFullPage) {
-                SystemClock.sleep(2_500)
+                pump(2_500)
                 // Documented, not asserted: whether Mylo's loading bar is still shown after the page finished.
                 evidence.put("loadingBarStillShownAfterLoad", device.hasObject(By.clazz("android.widget.ProgressBar")))
             }
+            pump(300)
             screenshot("06-results.png")
 
             val expectedDefault = if (setDefault == true) provider else SearchProvider.GOOGLE
@@ -138,12 +140,18 @@ class ProviderFlowPreviewTest {
                     SearchProvider.entries.none { host == it.domain || host.endsWith(".${it.domain}") })
             }
             if ((host == provider.domain || host.endsWith(".${provider.domain}")) && query == QUERY && (!fullPage || progress == 100)) {
-                if (fullPage) SystemClock.sleep(1_500) // let the page paint before the screenshot
+                if (fullPage) pump(1_500) // let the page paint before the screenshot
                 return JSONObject().put("url", url).put("title", title).put("host", host).put("query", query).put("progress", progress)
             }
-            SystemClock.sleep(300)
+            pump(300)
         }
         throw AssertionError("${provider.displayName} results for \"$QUERY\" did not load; last URL=$url title=$title progress=$progress")
+    }
+
+    /** Lets real time pass while advancing Compose frames, without waiting for an idle UI. */
+    private fun pump(millis: Long) {
+        var left = millis
+        while (left > 0) { compose.mainClock.advanceTimeBy(50); SystemClock.sleep(50); left -= 50 }
     }
 
     private fun waitForKeyboard() {

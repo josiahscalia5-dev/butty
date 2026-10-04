@@ -209,18 +209,22 @@ jobs:
           python3 - <<'PY'
           import base64, glob, io, os
           from PIL import Image
-          for path in sorted(glob.glob("mylo/dist/preview/provider-flow/*/*")):
+          root = "mylo/dist/preview"
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png")):
               name = "/".join(path.split("/")[-2:])
-              if path.endswith(".json"):
-                  print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
-              elif path.endswith(".png"):
-                  im = Image.open(path).convert("RGB")
-                  im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
-                  buf = io.BytesIO(); im.save(buf, "JPEG", quality=70, optimize=True)
-                  data = base64.b64encode(buf.getvalue()).decode()
-                  print(f"-----BEGIN MYLO-IMAGE {name}-----")
-                  for i in range(0, len(data), 120): print(data[i:i + 120])
-                  print(f"-----END MYLO-IMAGE {name}-----")
+              im = Image.open(path).convert("RGB")
+              im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
+              buf = io.BytesIO(); im.save(buf, "JPEG", quality=70, optimize=True)
+              data = base64.b64encode(buf.getvalue()).decode()
+              print(f"-----BEGIN MYLO-IMAGE {name}-----")
+              for i in range(0, len(data), 4000): print(data[i:i + 4000])
+              print(f"-----END MYLO-IMAGE {name}-----")
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json")):
+              name = "/".join(path.split("/")[-2:])
+              print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
+          summary = f"{root}/provider-flow-test.txt"
+          if os.path.exists(summary):
+              print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
           PY
       - name: Link Android evidence
         if: always() && steps.preview.outputs.artifact-url != ''
