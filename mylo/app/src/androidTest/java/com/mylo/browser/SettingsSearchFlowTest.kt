@@ -172,8 +172,17 @@ class SettingsSearchFlowTest {
         return page
     }
 
-    private fun node(selector: androidx.test.uiautomator.BySelector): UiObject2 =
-        device.wait(Until.findObject(selector), 5_000) ?: throw AssertionError("Missing Android UI element: $selector")
+    private fun node(selector: androidx.test.uiautomator.BySelector): UiObject2 {
+        device.wait(Until.findObject(selector), 5_000)?.let { return it }
+        // Only dismiss this known emulator launcher failure. Never hide a Mylo
+        // crash/ANR, consent page, or search-provider challenge.
+        if (device.hasObject(By.text("Pixel Launcher isn't responding"))) {
+            capture(evidenceDir, "emulator-launcher-anr.png")
+            device.findObject(By.text("Close app"))?.click()
+            device.wait(Until.findObject(selector), 5_000)?.let { return it }
+        }
+        throw AssertionError("Missing Android UI element: $selector")
+    }
 
     private fun waitUntil(message: String, timeout: Long, condition: () -> Boolean) {
         val deadline = SystemClock.elapsedRealtime() + timeout

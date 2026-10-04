@@ -20,6 +20,9 @@ timeout 5s adb shell wm size 1080x2340
 timeout 5s adb shell wm density 440
 timeout 5s adb shell input keyevent KEYCODE_WAKEUP
 timeout 5s adb shell wm dismiss-keyguard
+# A freshly booted Google APIs image can leave Pixel Launcher ANRing over the app.
+# It is not used by this test: ActivityScenario launches Mylo directly.
+timeout 5s adb shell am force-stop com.google.android.apps.nexuslauncher
 # Each provider is attempted once. Website challenges are evidence, not retry triggers.
 # Yahoo runs last so the final invocation verifies persistence across process death.
 for method in google brave duckduckgo bing startpage domainOpensDirectly yahoo savedDefaultSurvivesProcessRestart; do
