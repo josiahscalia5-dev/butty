@@ -88,6 +88,7 @@ class SettingsSearchFlowTest {
         } catch (failure: Throwable) {
             report.put("failure", failure.message ?: failure.javaClass.simpleName)
             runCatching { capture(folder, "failure.png") }
+            runCatching { device.dumpWindowHierarchy(File(folder, "failure-ui.xml")) }
             throw failure
         } finally {
             File(folder, "evidence.json").writeText(report.toString(2))
@@ -111,8 +112,12 @@ class SettingsSearchFlowTest {
         // The original artwork and original field must both remain on screen.
         assertNotNull("Home corgi must remain visible while typing", device.findObject(By.descContains("A corgi on the moon")))
         assertTrue("Home input must be above the IME", field.visibleBounds.bottom <= device.displayHeight - imeBottom)
-        field.text = input
-        assertEquals(input, node(By.desc("Search or enter address")).text)
+        // The content-description node wraps the actual Compose editor, so
+        // ACTION_SET_TEXT on that wrapper is ignored. Type through Android's
+        // input dispatcher into the focused editor instead (fixed test data only).
+        require(input == "Facebook" || input == "example.com")
+        device.executeShellCommand("input text $input")
+        node(By.text(input).pkg("com.mylo.browser"))
         report.put("homeVisibleWithKeyboard", true).put("typedInHomeField", true)
         capture(folder, "03-home-query-keyboard.png")
         // Tap the real Android soft-keyboard Search key, not a synthetic app button.
