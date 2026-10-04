@@ -90,8 +90,10 @@ for flow_case in googleDefault yahooSetAsDefault bingOpensBingUrl braveJustThisS
   timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/provider-flow "$evidence_dir/" >/dev/null 2>&1 || true
 done
 kill "$flow_logcat_pid" 2>/dev/null || true
+# Error-level AndroidRuntime and system Watchdog lines only: every `am instrument` call logs
+# informational AndroidRuntime lines, and PackageWatchdog/keystore watchdog chatter is routine.
 { echo 'Crash, renderer and memory events during the flow:'
-  grep -E 'FATAL EXCEPTION|AndroidRuntime: |Render process|renderer.*(crash|gone)|lowmemorykiller|ANR in|Process com\.mylo\.browser.* has died|Watchdog' \
+  grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |Render process|renderer.*(crash|gone)|lowmemorykiller|ANR in|Process com\.mylo\.browser.* has died| [WEF] Watchdog: ' \
     "$evidence_dir/provider-flow-logcat.txt" | cut -c1-300 | tail -n 30 || echo '  none recorded'
 } >> "$flow_summary"
 if [[ "${MYLO_SCOPE:-full}" == "search-flow" ]]; then

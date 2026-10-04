@@ -280,8 +280,7 @@ class LiveSearchFlowTest {
             waitForExampleDomain("example.com")
             // Tab rows show the exact current URL. At this point both tabs show
             // example.com, so select the first row by its position in the tab model.
-            compose.onNodeWithText("Tabs", useUnmergedTree = true).performClick()
-            compose.onAllNodesWithText(secondTabLastPage, useUnmergedTree = true)[0].performClick()
+            selectTab(secondTabLastPage, index = 0)
             waitForExampleDomain("example.com")
             compose.onNodeWithContentDescription("Forward").assertIsEnabled().performClick()
             waitForExampleDomain("example.org")
@@ -364,6 +363,9 @@ class LiveSearchFlowTest {
     private fun selectTab(url: String, index: Int = 0) {
         compose.onNodeWithText("Tabs", useUnmergedTree = true).performClick()
         compose.onAllNodesWithText(url, useUnmergedTree = true)[index].performClick()
+        // The tab's WebView replaces the previous one only on the next composition; without
+        // this the WebView polls below keep reading the tab that was just left.
+        compose.waitForIdle()
     }
 
     private fun captureFailure(name: String) {
@@ -464,32 +466,44 @@ class LiveSearchFlowTest {
     private fun clickRealResultLink() {
         val view = currentWebView() ?: throw AssertionError("No WebView for Google's results")
         val completed = CountDownLatch(1)
-        val clicked = AtomicReference(false)
+        val outcome = AtomicReference("")
         instrumentation.runOnMainSync {
+            // Google's mobile results title links with <h3> or role="heading" depending on layout;
+            // fall back to any visible external link inside the results area. Video hosts are
+            // skipped so the opened page stays light enough for the CI emulator.
             view.evaluateJavascript("""
                 (() => {
-                  const anchors = Array.from(document.querySelectorAll('a[href]'));
-                  const result = anchors.find(a => {
-                    if (!a.querySelector('h3') && !a.matches('.result__a, .result__title a, .snippet-title, [data-testid="result-title-a"]')) return false;
+                  const target = a => {
+                    const u = new URL(a.href);
+                    return /(^|\.)google\.[a-z.]+${'$'}/.test(u.hostname) && u.pathname === '/url'
+                      ? new URL(u.searchParams.get('q') || u.searchParams.get('url')) : u;
+                  };
+                  const external = a => {
                     try {
-                      const u = new URL(a.href);
-                      const target = u.hostname.endsWith('google.com') && u.pathname === '/url'
-                        ? new URL(u.searchParams.get('q') || u.searchParams.get('url')) : u;
-                      return /^https?:${'$'}/.test(target.protocol) &&
-                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|startpage\.com)${'$'}/.test(target.hostname);
+                      const t = target(a);
+                      return /^https?:${'$'}/.test(t.protocol) &&
+                        !/(^|\.)(google\.[a-z.]+|gstatic\.com|googleusercontent\.com|youtube\.com|bing\.com|duckduckgo\.com|brave\.com|startpage\.com|yahoo\.com)${'$'}/.test(t.hostname);
                     } catch (_) { return false; }
-                  });
-                  if (!result) return false;
+                  };
+                  const visible = a => { const r = a.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+                  const anchors = Array.from(document.querySelectorAll('a[href]'));
+                  const candidates = anchors.filter(a => external(a) && visible(a));
+                  const titled = a => a.querySelector('h3, [role="heading"]') ||
+                    a.matches('.result__a, .result__title a, .snippet-title, [data-testid="result-title-a"]');
+                  const result = candidates.find(titled) ||
+                    candidates.find(a => a.closest('#rso, #search, #center_col, #main, #b_results, #links, main'));
+                  if (!result) return 'anchors=' + anchors.length + ', external visible=' + candidates.length;
+                  result.scrollIntoView({ block: 'center' });
                   result.click();
-                  return true;
+                  return 'clicked';
                 })()
             """.trimIndent()) { value ->
-                clicked.set(value == "true")
+                outcome.set(value.orEmpty().trim('"'))
                 completed.countDown()
             }
         }
         assertTrue("Provider page did not respond to result activation", completed.await(3, TimeUnit.SECONDS))
-        assertTrue("No real external result link found in the provider document", clicked.get())
+        assertEquals("No real external result link found in the provider document", "clicked", outcome.get())
     }
 
     private fun waitForExternalPage(): JSONObject {
