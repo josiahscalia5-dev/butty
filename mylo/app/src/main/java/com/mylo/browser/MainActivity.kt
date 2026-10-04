@@ -183,7 +183,8 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = searching, enter = fadeIn(tween(150)), exit = fadeOut(tween(100)),
                 ) {
-                    Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
+                    Box(Modifier.fillMaxSize().background(Night)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
                         SearchInputScreen(query, { query = it }, searchProvider, { searchProvider = it },
                             { open(query, searchProvider) }, ::closeSearch,
                             defaultProvider = store.provider,

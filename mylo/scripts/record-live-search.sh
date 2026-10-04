@@ -46,7 +46,7 @@ trap finish_capture EXIT
 
 # The PID is the specific recorder started here; other device sessions are untouched.
 recording_pid="$("$adb_command" shell "screenrecord --time-limit 180 $remote_recording >/dev/null 2>&1 & echo \$!" | tr -d '\r')"
-"$adb_command" shell am instrument -w -r \
+timeout 300s "$adb_command" shell am instrument -w -r \
   -e class 'com.mylo.browser.LiveSearchFlowTest#googleSearchLoadsRealResultsAndBackReturnsHome' \
   com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
   | tee "$artifact_dir/instrumentation.txt"

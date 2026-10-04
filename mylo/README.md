@@ -6,21 +6,21 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 
 Work continues only in `josiahscalia5-dev/butty` on `codex-development`, based on `mylo-development` at `e878f7e`. The `claude-ui` branch belongs to Claude and must not be modified by this work. No other repository is used.
 
-Earlier Home revisions built and rendered through Android Layoutlib in [run 37234373243](https://github.com/josiahscalia5-dev/butty/actions/runs/37234373243) and [run 37235247124](https://github.com/josiahscalia5-dev/butty/actions/runs/37235247124). These results do not validate the current provider picker, QR scanner or Home polish variants; this batch still needs build, test and native screenshot verification.
+Commit `3564ef7` built successfully in [CI run 37237562737](https://github.com/josiahscalia5-dev/butty/actions/runs/37237562737): all 17 unit tests and five Paparazzi cases passed, and the test APK built. Native Android verification passed all eight Home cases: 360×640, 393×851, 412×915 and 360×640 at 1.3 font scale, each with gesture and three-button navigation. Keyboard restoration passed. All three Home candidates passed the native 393×851 check with the full discovery banner visible and zero scrolling.
 
-The previous 16 resolver unit tests passed. Earlier real-provider checks verified Google, DuckDuckGo and Bing; Brave and Startpage presented CAPTCHA challenges. Yahoo and the expanded tests have not yet been verified in this batch. Full link-following and independent-tab checks remain under verification. No physical-camera scan has been verified.
+The browser verification job is still running; current-batch live provider, picker, link-following and independent-tab results remain pending. Earlier checks reached Google, DuckDuckGo and Bing; Brave and Startpage presented CAPTCHA challenges. No physical-camera scan has been verified.
 
-Completion requires review of actual Android captures and the user's choice of Home variant. Local SDK/Gradle limitations are documented in [BLOCKERS.md](BLOCKERS.md); verification steps are in [TESTING.md](TESTING.md).
+Actual Android captures of A/B/C have been presented for the user's choice. A remains the app default while that choice is pending. Local SDK/Gradle limitations are documented in [BLOCKERS.md](BLOCKERS.md); verification steps are in [TESTING.md](TESTING.md).
 
 ## Home polish candidates
 
 `HomeScreen.kt` follows the supplied `1-3751.jpg` reference, bundled as `drawable-nodpi/approved_home.jpg`. Runtime crops preserve its artwork alongside native interactive Compose controls, accessible header targets and edge-to-edge artwork. Three `HomePolish` candidates retain the same hero and wording:
 
-- `REFERENCE` — reference balance; remains the app default pending the user's choice.
-- `SEARCH_FOCUS` — a taller, more prominent search control with slightly smaller shortcuts.
-- `ROOMY_CARDS` — taller cards and larger card spacing with more compact shortcuts.
+- A — `REFERENCE`: reference balance; remains the app default pending the user's choice.
+- B — `SEARCH_FOCUS`: a taller, more prominent search control with slightly smaller shortcuts.
+- C — `ROOMY_CARDS`: taller cards and larger card spacing with more compact shortcuts.
 
-`HomePreviewTest` and `HomeVariationsRenderTest` prepare 393×851 dp previews of these candidates; new candidate renders remain pending. Layoutlib provides diagnostics, while native Android captures show system-bar and cutout behavior. The reference comparison test alone injects VPN-on/Singapore/one-tab sample data. Candidate tests use the default state (VPN off, zero tabs); the app reads the device VPN state and actual tab count.
+`HomePreviewTest` and `HomeVariationsRenderTest` rendered the 393×851 dp candidates successfully for `3564ef7`. Layoutlib provides diagnostics, while native Android captures show system-bar and cutout behavior. The reference comparison test alone injects VPN-on/Singapore/one-tab sample data. Candidate tests use the default state (VPN off, zero tabs); the app reads the device VPN state and actual tab count.
 
 ## Build and run
 

@@ -83,6 +83,16 @@ jobs:
             echo 'URL resolver tests passed. APK signature verification passed.'
             echo "Commit: $GITHUB_SHA"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-unit-test-reports
+          path: |
+            mylo/app/build/reports/tests/testDebugUnitTest/
+            mylo/app/build/test-results/testDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Build live search instrumentation APK
         id: test_apk_build
         run: gradle --no-daemon --stacktrace :app:assembleDebugAndroidTest
@@ -109,16 +119,7 @@ jobs:
           path: mylo/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
           retention-days: 7
-      - name: Upload unit test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mylo-unit-test-reports
-          path: |
-            mylo/app/build/reports/tests/testDebugUnitTest/
-            mylo/app/build/test-results/testDebugUnitTest/
-          if-no-files-found: ignore
-          retention-days: 7
+
 
   android-home:
     name: Verify portrait Home on a Pixel 5

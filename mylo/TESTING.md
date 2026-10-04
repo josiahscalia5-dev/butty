@@ -1,6 +1,10 @@
 # Verification for the current change
 
-This batch adds six-provider selection, a native QR scanner and three Home polish candidates on `codex-development`, based on `mylo-development` at `e878f7e`. Its build, expanded tests and new screenshots are pending. Earlier CI passes do not validate this batch, and no physical-camera scan is verified.
+This batch adds six-provider selection, a native QR scanner and three Home polish candidates on `codex-development`, based on `mylo-development` at `e878f7e`.
+
+Verified at `3564ef7` in [CI run 37237562737](https://github.com/josiahscalia5-dev/butty/actions/runs/37237562737): APK/test-APK builds, all 17 unit tests, five Paparazzi cases, all eight native Home portrait/font/navigation cases and keyboard restoration. The native matrix covered 360×640, 393×851, 412×915 and 360×640 at font scale 1.3 under both gesture and three-button navigation. Each A/B/C candidate showed the complete banner with zero scrolling at 393×851. Actual Android comparisons have been presented; A (`REFERENCE`) remains the default pending the user's choice.
+
+The browser verification job is still running. Live provider, picker, link-following, independent-tab and QR result-handling results remain pending. No physical-camera scan is verified.
 
 ## Build and native previews
 

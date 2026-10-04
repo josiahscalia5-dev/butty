@@ -29,12 +29,15 @@ trap collect_diagnostics EXIT
 run_device_test() {
   local method="$1"
   local output="$2"
+  local limit="${3:-180}"
   # Android's instrumentation runner can return exit 0 even when JUnit fails.
-  if ! adb shell am instrument -w -r \
+  if ! timeout "${limit}s" adb shell am instrument -w -r \
     -e class "com.mylo.browser.LiveSearchFlowTest#$method" \
     com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
     | tee "$evidence_dir/$output"; then
     failed=1
+    timeout 10s adb shell am force-stop "$app_package" || true
+    timeout 10s adb shell am force-stop "$app_package.test" || true
   elif ! grep -q '^OK (1 test)' "$evidence_dir/$output"; then
     failed=1
   fi
@@ -71,7 +74,7 @@ if [[ "${MYLO_SKIP_HOME_LAYOUT:-0}" != 1 ]]; then
   fi
 fi
 run_device_test searchInputFocusKeyboardAndProviderPersistence provider-selection-test.txt
-if ! adb shell am instrument -w -r \
+if ! timeout 90s adb shell am instrument -w -r \
   -e class com.mylo.browser.QrScannerTest \
   com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
   | tee "$evidence_dir/qr-scanner-test.txt"; then
@@ -83,10 +86,12 @@ fi
 if ! MYLO_APP_APK="$apk_path" MYLO_TEST_APK="$test_apk_path" \
   bash "$script_dir/record-live-search.sh" "$evidence_dir"; then
   failed=1
+  timeout 10s adb shell am force-stop "$app_package" || true
+  timeout 10s adb shell am force-stop "$app_package.test" || true
 fi
 run_device_test directUrlsBackForwardAndHomeReuseCurrentTab direct-url-navigation-test.txt
 run_device_test switchingTabsPreservesEachBackForwardHistory per-tab-navigation-test.txt
-run_device_test allRealSearchProvidersLoadInsideCurrentTab all-providers-test.txt
+run_device_test allRealSearchProvidersLoadInsideCurrentTab all-providers-test.txt 360
 
 if (( failed )); then
   echo 'One or more device checks failed or were blocked. See the recording, screenshots, test output, and JSON evidence.' >&2
