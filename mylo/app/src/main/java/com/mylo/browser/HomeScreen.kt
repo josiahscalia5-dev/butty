@@ -1,9 +1,14 @@
 package com.mylo.browser
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,16 +24,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -52,6 +61,59 @@ private val HomeMuted = Color(0xFFB8B9DB)
 private val HomeLavender = Color(0xFFD5C9FF)
 private val HomeInk = Color(0xFF283370)
 private val LocalHomeArtwork = staticCompositionLocalOf<ImageBitmap?> { null }
+
+/** Closely related native previews; the approved hero and wording stay identical. */
+enum class HomePolish(val displayName: String) {
+    REFERENCE("Reference balance"),
+    SEARCH_FOCUS("Search focus"),
+    ROOMY_CARDS("Roomier cards"),
+}
+
+private data class HomePolishMetrics(
+    val searchHeight: Float = 81f,
+    val searchInset: Float = 18f,
+    val searchElevation: Dp = 2.dp,
+    val searchToShortcuts: Float = 25f,
+    val shortcutDiameter: Float = 104f,
+    val shortcutsToCards: Float = 17f,
+    val cardHeight: Float = 110f,
+    val cardGap: Float = 14f,
+)
+
+// Every variant retains the reference's 1120-unit height through the banner;
+// small changes trade space between neighboring controls, never from the hero.
+private fun HomePolish.metrics(): HomePolishMetrics = when (this) {
+    HomePolish.REFERENCE -> HomePolishMetrics()
+    HomePolish.SEARCH_FOCUS -> HomePolishMetrics(
+        searchHeight = 90f, searchInset = 16f, searchElevation = 3.dp,
+        shortcutDiameter = 98f, shortcutsToCards = 14f,
+    )
+    HomePolish.ROOMY_CARDS -> HomePolishMetrics(
+        searchToShortcuts = 19f, shortcutDiameter = 96f, shortcutsToCards = 13f,
+        cardHeight = 118f, cardGap = 16f,
+    )
+}
+
+/** Native animation observes Compose's MotionDurationScale, including disabled animations. */
+@Composable
+private fun Modifier.homePressable(
+    onClick: () -> Unit,
+    shape: Shape? = null,
+    rippleColor: Color = HomeLavender,
+    pressedScale: Float = .985f,
+): Modifier {
+    val interactions = remember { MutableInteractionSource() }
+    val pressed by interactions.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "Home press feedback",
+    )
+    return graphicsLayer { scaleX = scale; scaleY = scale }
+        .then(if (shape != null) Modifier.clip(shape) else Modifier)
+        .clickable(interactionSource = interactions, indication = ripple(color = rippleColor),
+            role = Role.Button, onClick = onClick)
+}
 
 @Composable
 private fun HomeArtwork(content: @Composable () -> Unit) {
@@ -86,6 +148,8 @@ fun HomeScreen(
     vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null,
     // Production has no known endpoint location. The Android reference render supplies Singapore.
     vpnLocation: String? = null,
+    polish: HomePolish = HomePolish.REFERENCE,
+    onScanner: () -> Unit = { onPanel("tools") },
 ) {
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -93,28 +157,29 @@ fun HomeScreen(
     HomeArtwork {
     BoxWithConstraints(Modifier.fillMaxSize().background(HomeNight)) {
         val unit = maxWidth / 589f
+        val metrics = polish.metrics()
         Column(Modifier.fillMaxSize()) {
             HomeHero(unit, onPanel)
             HomeSearchBar(query, onQuery, onSearch, onVoice, requester, onActivateSearch,
-                onScanner = { onPanel("tools") }, unit = unit)
+                onScanner = onScanner, unit = unit, metrics = metrics)
             Column(Modifier.weight(1f).fillMaxWidth().testTag("home-middle")
                 .verticalScroll(rememberScrollState()).padding(horizontal = unit * 20f)) {
-                Spacer(Modifier.height(unit * 25f))
+                Spacer(Modifier.height(unit * metrics.searchToShortcuts))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    HomeShortcut("Explore", 39, 467, unit) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
-                    HomeShortcut("Videos", 175, 467, unit) { onOpen("https://m.youtube.com") }
-                    HomeShortcut("Shop", 310, 467, unit) { onOpen("https://www.amazon.com") }
-                    HomeShortcut("AI", 446, 467, unit) { onOpen("https://chatgpt.com") }
+                    HomeShortcut("Explore", 39, 467, unit, metrics) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
+                    HomeShortcut("Videos", 175, 467, unit, metrics) { onOpen("https://m.youtube.com") }
+                    HomeShortcut("Shop", 310, 467, unit, metrics) { onOpen("https://www.amazon.com") }
+                    HomeShortcut("AI", 446, 467, unit, metrics) { onOpen("https://chatgpt.com") }
                 }
-                Spacer(Modifier.height(unit * 17f))
+                Spacer(Modifier.height(unit * metrics.shortcutsToCards))
                 Row(horizontalArrangement = Arrangement.spacedBy(unit * 12f)) {
-                    HomeCard("Private", "Browse without\na trace", 39, 641, unit, Modifier.weight(1f), onPrivate)
-                    HomeCard("Bookmarks", "Save your\nfavorite places", 320, 641, unit, Modifier.weight(1f)) { onPanel("bookmarks") }
+                    HomeCard("Private", "Browse without\na trace", 39, 641, unit, metrics, Modifier.weight(1f), onPrivate)
+                    HomeCard("Bookmarks", "Save your\nfavorite places", 320, 641, unit, metrics, Modifier.weight(1f)) { onPanel("bookmarks") }
                 }
-                Spacer(Modifier.height(unit * 14f))
+                Spacer(Modifier.height(unit * metrics.cardGap))
                 Row(horizontalArrangement = Arrangement.spacedBy(unit * 12f)) {
-                    HomeCard("History", "Pick up where\nyou left off", 39, 765, unit, Modifier.weight(1f)) { onPanel("history") }
-                    HomeCard("Tools", "Useful tools\nfor your browsing", 320, 765, unit, Modifier.weight(1f)) { onPanel("tools") }
+                    HomeCard("History", "Pick up where\nyou left off", 39, 765, unit, metrics, Modifier.weight(1f)) { onPanel("history") }
+                    HomeCard("Tools", "Useful tools\nfor your browsing", 320, 765, unit, metrics, Modifier.weight(1f)) { onPanel("tools") }
                 }
                 Spacer(Modifier.height(unit * 14f))
                 HomeVpnStrip(vpnActive, vpnLocation, unit) { onPanel("vpn") }
@@ -152,7 +217,7 @@ private fun HomeHero(unit: Dp, onPanel: (String) -> Unit) {
                 Box(Modifier.fillMaxWidth().height(unit * 19f).semantics { text = AnnotatedString("Good evening!") })
                 Box(Modifier.fillMaxWidth().height(unit * 18f).semantics { text = AnnotatedString("Have a brighter browse ☀️") })
             }
-            Box(Modifier.size(48.dp).clickable(role = Role.Button) { onPanel("settings") }
+            Box(Modifier.size(48.dp).homePressable(onClick = { onPanel("settings") }, shape = CircleShape)
                 .semantics { contentDescription = "Settings" })
         }
     }
@@ -162,15 +227,21 @@ private fun HomeHero(unit: Dp, onPanel: (String) -> Unit) {
 private fun HomeSearchBar(
     value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit,
     requester: FocusRequester, onActivate: (() -> Unit)?, onScanner: () -> Unit, unit: Dp,
+    metrics: HomePolishMetrics,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
-    Row(Modifier.padding(horizontal = unit * 18f).fillMaxWidth().height(unit * 81f)
-        .testTag("home-search").clip(RoundedCornerShape(50))
+    val shape = RoundedCornerShape(50)
+    Row(Modifier.padding(horizontal = unit * metrics.searchInset).fillMaxWidth().height(unit * metrics.searchHeight)
+        .testTag("home-search")
+        .shadow(metrics.searchElevation, shape, clip = false,
+            ambientColor = Color.Black.copy(alpha = .14f), spotColor = Color.Black.copy(alpha = .20f))
+        .clip(shape)
         .background(Brush.horizontalGradient(listOf(Color(0xFFECE9FF), Color(0xFFE7E4FA)))),
         verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(unit * 89f).fillMaxHeight().clickable(role = Role.Button) {
+        Box(Modifier.width(unit * 89f).fillMaxHeight().homePressable(onClick = {
             if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() }
-        }.semantics { contentDescription = "Focus search" }, contentAlignment = Alignment.Center) {
+        }, rippleColor = HomeInk, pressedScale = .96f)
+            .semantics { contentDescription = "Focus search" }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Search, null, tint = HomeInk, modifier = Modifier.size(unit * 42f))
         }
         BasicTextField(value, onValue, Modifier.weight(1f).fillMaxHeight().wrapContentHeight()
@@ -187,12 +258,12 @@ private fun HomeSearchBar(
                 inner()
             } })
         Box(Modifier.width(1.dp).height(unit * 34f).background(Color(0xFFC8C5DF)))
-        Box(Modifier.width(unit * 76f).fillMaxHeight().clickable(role = Role.Button, onClick = onVoice)
+        Box(Modifier.width(unit * 76f).fillMaxHeight().homePressable(onVoice, rippleColor = HomeInk, pressedScale = .96f)
             .semantics { contentDescription = "Voice search" }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Mic, null, tint = HomeInk, modifier = Modifier.size(unit * 37f))
         }
-        Box(Modifier.width(unit * 76f).fillMaxHeight().clickable(role = Role.Button, onClick = onScanner)
-            .semantics { contentDescription = "Scanner tools" }, contentAlignment = Alignment.Center) {
+        Box(Modifier.width(unit * 76f).fillMaxHeight().homePressable(onScanner, rippleColor = HomeInk, pressedScale = .96f)
+            .semantics { contentDescription = "Scan QR code" }, contentAlignment = Alignment.Center) {
             ApprovedArt(508, 385, 37, 37, Modifier.size(unit * 37f))
         }
         Spacer(Modifier.width(unit * 1f))
@@ -200,21 +271,21 @@ private fun HomeSearchBar(
 }
 
 @Composable
-private fun HomeShortcut(label: String, x: Int, y: Int, unit: Dp, onClick: () -> Unit) {
-    Column(Modifier.width(unit * 137f).clip(RoundedCornerShape(16.dp)).clickable(role = Role.Button, onClick = onClick),
+private fun HomeShortcut(label: String, x: Int, y: Int, unit: Dp, metrics: HomePolishMetrics, onClick: () -> Unit) {
+    Column(Modifier.width(unit * 137f).homePressable(onClick, shape = RoundedCornerShape(16.dp)),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        ApprovedArt(x, y, 104, 104, Modifier.size(unit * 104f, unit * 104f).clip(CircleShape))
+        ApprovedArt(x, y, 104, 104, Modifier.size(unit * metrics.shortcutDiameter).clip(CircleShape))
         Text(label, fontSize = (unit.value * 18f).sp, lineHeight = (unit.value * 24f).sp,
             color = Color(0xFFF6F3FF), modifier = Modifier.padding(top = unit * 5f))
     }
 }
 
 @Composable
-private fun HomeCard(title: String, subtitle: String, x: Int, y: Int, unit: Dp, modifier: Modifier, onClick: () -> Unit) {
+private fun HomeCard(title: String, subtitle: String, x: Int, y: Int, unit: Dp, metrics: HomePolishMetrics, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(unit * 22f)
-    Row(modifier.heightIn(min = unit * 110f).clip(shape)
+    Row(modifier.heightIn(min = unit * metrics.cardHeight).homePressable(onClick, shape)
         .background(Brush.linearGradient(listOf(Color(0xFF162449), Color(0xFF111F40))))
-        .border(.7.dp, Color(0xFF27335B), shape).clickable(role = Role.Button, onClick = onClick)
+        .border(.7.dp, Color(0xFF27335B), shape)
         .padding(start = unit * 19f, end = unit * 11f, top = unit * 15f, bottom = unit * 15f),
         verticalAlignment = Alignment.CenterVertically) {
         ApprovedArt(x, y, 66, 67, Modifier.size(unit * 66f, unit * 67f).clip(RoundedCornerShape(unit * 21f)))
@@ -232,9 +303,9 @@ private fun HomeCard(title: String, subtitle: String, x: Int, y: Int, unit: Dp, 
 @Composable
 private fun HomeVpnStrip(active: Boolean, location: String?, unit: Dp, onClick: () -> Unit) {
     val shape = RoundedCornerShape(unit * 21f)
-    Row(Modifier.fillMaxWidth().heightIn(min = unit * 86f).clip(shape)
+    Row(Modifier.fillMaxWidth().heightIn(min = unit * 86f).homePressable(onClick, shape)
         .background(Brush.horizontalGradient(listOf(Color(0xFF10323F), Color(0xFF152443), Color(0xFF142140))))
-        .border(.7.dp, Color(0xFF2B455D), shape).clickable(role = Role.Button, onClick = onClick)
+        .border(.7.dp, Color(0xFF2B455D), shape)
         .padding(horizontal = unit * 19f, vertical = unit * 10f), verticalAlignment = Alignment.CenterVertically) {
         ApprovedArt(39, 884, 53, 59, Modifier.size(unit * 53f, unit * 59f))
         Column(Modifier.weight(1f).padding(start = unit * 15f, end = unit * 8f)) {
@@ -268,7 +339,7 @@ private fun HomeDiscovery(unit: Dp, onClick: () -> Unit) {
     // Preserve the original illustrated campaign lettering as well as the entire lake/cabin scene.
     ApprovedArt(20, 968, 550, 153,
         Modifier.fillMaxWidth().height(unit * 153f).testTag("home-discovery")
-            .clip(RoundedCornerShape(unit * 21f)).clickable(role = Role.Button, onClick = onClick),
+            .homePressable(onClick, shape = RoundedCornerShape(unit * 21f)),
         "A little more wonder. Explore today.")
 }
 
@@ -306,9 +377,13 @@ fun BottomBar(home: Boolean, tabs: Int, onHome: () -> Unit, onSearch: () -> Unit
 @Composable
 private fun HomeNavItem(label: String, selected: Boolean, unit: Dp, modifier: Modifier, onClick: () -> Unit,
     icon: @Composable () -> Unit) {
-    Column(modifier.heightIn(min = unit * 97f).clickable(role = Role.Button, onClick = onClick),
+    val selectionColor by animateColorAsState(
+        if (selected) HomeLavender else Color.Transparent,
+        animationSpec = tween(150), label = "Home navigation selection",
+    )
+    Column(modifier.heightIn(min = unit * 97f).homePressable(onClick),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.size(unit * 83f, unit * 49f).background(if (selected) HomeLavender else Color.Transparent, CircleShape),
+        Box(Modifier.size(unit * 83f, unit * 49f).background(selectionColor, CircleShape),
             contentAlignment = Alignment.Center) { icon() }
         Text(label, fontSize = (unit.value * 17f).sp, lineHeight = (unit.value * 24f).sp,
             color = if (selected) HomeLavender else Color(0xFFC9C8DF),

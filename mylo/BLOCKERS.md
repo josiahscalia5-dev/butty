@@ -1,9 +1,10 @@
 # Verification environment and remaining limits
 
-- CI builds the APK and test APK and renders the production Compose Home. The user authorized verification commits only to `butty/codex-development`; `claude-ui` is untouched.
-- Final Home acceptance requires the real Pixel 5 393×851 comparison and portrait/keyboard checks. Layoutlib does not execute `MainActivity.enableEdgeToEdge`, so its diagnostic system-bar composition is not the final device evidence.
+- Previous CI runs built the APK and test APK and rendered the production Compose Home. The current six-provider picker, QR scanner and three `HomePolish` candidates have no new verified build or test result yet. Work stays on `butty/codex-development`, based on `mylo-development` at `e878f7e`; `claude-ui` is untouched.
+- Home acceptance requires native 393×851 captures of all three candidates, portrait/keyboard checks and the user's selection. `REFERENCE` remains the app default meanwhile. Layoutlib does not execute `MainActivity.enableEdgeToEdge`, so its diagnostic system-bar composition is not final device evidence.
 - Local Gradle, Android SDK, emulator and adb are unavailable. The configured proxy fails with connection refused; earlier network permission requests were interrupted, not automatically rejected. Use the working GitHub Android runner rather than claiming a local build.
-- Previous Google, DuckDuckGo and Bing checks reached real provider pages. Brave and Startpage challenged the CI address. Link-following and per-tab navigation checks are still being verified; external challenges must remain visible rather than replaced with mock search results.
+- Previous Google, DuckDuckGo and Bing checks reached real provider pages. Brave and Startpage challenged the CI address. Yahoo, temporary selection versus saved defaults, link-following and per-tab navigation need verification for this batch. External challenges must remain visible rather than replaced with mock search results.
+- QR tests cover generated-code decoding and result handling, not a physical camera. New tests have not run yet. Camera preview, scanning a real code, runtime permission denial/retry and cancel behavior require a camera-equipped Android device; synthetic decoding must not be reported as camera verification.
 - Reference screenshot tests inject VPN-on/Singapore/one-tab sample data only for comparison. The actual app uses Android VPN connection detection and its real tab count.
 
-Continue the existing project and approved artwork. Do not add AI, VPN tunnel, privacy or custom search-results features during this work.
+Continue the existing project and approved artwork within the requested Home polish, provider selection and scanner scope. Do not add AI, VPN tunnel, privacy or custom search-results features during this work. See [TESTING.md](TESTING.md) for the remaining checks.

@@ -10,15 +10,17 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.view.ViewCompat
@@ -57,6 +59,8 @@ class LiveSearchFlowTest {
 
     @Test
     fun searchInputFocusKeyboardAndProviderPersistence() {
+        var originalDefault = SearchProvider.DUCKDUCKGO
+        compose.runOnIdle { originalDefault = store().provider }
         compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
         compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
         openSearch()
@@ -66,25 +70,45 @@ class LiveSearchFlowTest {
             compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
             assertKeyboardVisible()
             compose.runOnIdle {
-                assertEquals(provider, store().provider)
+                assertEquals("A temporary choice must not change the saved default", originalDefault, store().provider)
                 // This fresh model reads preferences instead of the live Compose state.
-                assertEquals(provider, BrowserStore(compose.activity.application).provider)
+                assertEquals(originalDefault, BrowserStore(compose.activity.application).provider)
                 assertTrue("Choosing a provider must not navigate", store().tabs.isEmpty())
             }
+        }
+        val temporary = SearchProvider.entries.first { it != originalDefault }
+        chooseProvider(temporary)
+        compose.activityRule.scenario.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
+        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
+        compose.onNodeWithContentDescription("Search provider: ${temporary.displayName}").assertIsDisplayed()
+        assertKeyboardVisible()
+        compose.runOnIdle {
+            assertEquals(originalDefault, store().provider)
+            assertEquals(originalDefault, BrowserStore(compose.activity.application).provider)
+        }
+
+        val savedDefault = SearchProvider.entries.first { it != originalDefault && it != temporary }
+        chooseProvider(savedDefault, setDefault = true)
+        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
+        compose.runOnIdle {
+            assertEquals(savedDefault, store().provider)
+            assertEquals(savedDefault, BrowserStore(compose.activity.application).provider)
         }
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
         compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
         compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-        compose.onNodeWithContentDescription("Search provider: ${SearchProvider.entries.last().displayName}")
-            .assertIsDisplayed()
+        compose.onNodeWithContentDescription("Search provider: ${savedDefault.displayName}").assertIsDisplayed()
         assertKeyboardVisible()
-        compose.runOnIdle {
-            assertEquals(SearchProvider.entries.last(), BrowserStore(compose.activity.application).provider)
-        }
+        compose.runOnIdle { assertEquals(savedDefault, BrowserStore(compose.activity.application).provider) }
         compose.onNodeWithContentDescription("Close search").performClick()
         compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
         compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
+        openSearch()
+        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals("")
+        compose.onNodeWithContentDescription("Search provider: ${savedDefault.displayName}").assertIsDisplayed()
     }
 
     @Test
@@ -97,7 +121,7 @@ class LiveSearchFlowTest {
             capture("01-home.png")
             openSearch()
             capture("02-search-input-and-keyboard.png")
-            chooseProvider(SearchProvider.GOOGLE, "03-provider-selector.png")
+            chooseProvider(SearchProvider.GOOGLE, "03-provider-selector.png", setDefault = true)
             compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
             capture("04-query-and-keyboard.png")
             compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
@@ -154,21 +178,24 @@ class LiveSearchFlowTest {
         val report = JSONArray()
         val failures = mutableListOf<String>()
         var currentTabId: Long? = null
+        var savedDefault = SearchProvider.DUCKDUCKGO
+        compose.runOnIdle { savedDefault = store().provider }
         SearchProvider.entries.forEach { provider ->
             val filename = "provider-${provider.name.lowercase()}"
             val evidence = JSONObject().put("provider", provider.displayName).put("query", QUERY)
-                .put("verified", false)
+                .put("verified", false).put("savedDefault", savedDefault.displayName)
+                .put("temporarySelection", true)
             File(artifacts, "$filename.png").delete()
             try {
                 // Recover to native Home after a denied provider; select through the same UI a user sees.
-                compose.onNodeWithText("Home", useUnmergedTree = true).performClick()
+                recoverToHome()
                 openSearch()
                 chooseProvider(provider)
                 submitInput(QUERY)
                 compose.waitUntil(5_000) { currentWebView() != null }
                 compose.runOnIdle {
-                    assertEquals(provider, store().provider)
-                    assertEquals(provider, BrowserStore(compose.activity.application).provider)
+                    assertEquals("Live search choice must not change the default", savedDefault, store().provider)
+                    assertEquals(savedDefault, BrowserStore(compose.activity.application).provider)
                     assertEquals("Changing search engines must reuse the current tab", 1, store().tabs.size)
                     val id = store().tabs.single().id
                     if (currentTabId == null) currentTabId = id else assertEquals(currentTabId, id)
@@ -176,7 +203,10 @@ class LiveSearchFlowTest {
                 val page = waitForRealProviderResults(provider, 30_000)
                 assertBrowserControls()
                 capture("$filename.png")
-                evidence.put("verified", true).put("document", page)
+                compose.runOnIdle {
+                    assertEquals(savedDefault, BrowserStore(compose.activity.application).provider)
+                }
+                evidence.put("verified", true).put("document", page).put("savedDefaultUnchanged", true)
                 compose.onNodeWithText("Home", useUnmergedTree = true).performClick()
                 compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
                 evidence.put("homeControlReturnedHome", true)
@@ -300,6 +330,22 @@ class LiveSearchFlowTest {
         assertKeyboardVisible()
     }
 
+    private fun recoverToHome() {
+        // A failed picker/input assertion can leave search mode open. Dismiss it
+        // before looking for Home so one UI failure cannot cascade into later engines.
+        if (compose.onAllNodesWithTag(PROVIDER_PICKER).fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithContentDescription("Close provider selector").performClick()
+            compose.waitForIdle()
+        }
+        if (compose.onAllNodesWithTag(SEARCH_MODE).fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithContentDescription("Close search").performClick()
+            compose.waitForIdle()
+        }
+        compose.onNodeWithText("Home", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
+    }
+
     private fun submitInput(value: String) {
         compose.onNodeWithTag(SEARCH_INPUT).performTextReplacement(value)
         compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
@@ -309,20 +355,33 @@ class LiveSearchFlowTest {
         compose.waitForIdle()
     }
 
-    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null) {
-        var current = SearchProvider.GOOGLE
-        compose.runOnIdle { current = store().provider }
-        compose.onNodeWithContentDescription("Search provider: ${current.displayName}").performClick()
+    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null, setDefault: Boolean = false) {
+        var priorDefault = SearchProvider.DUCKDUCKGO
+        compose.runOnIdle { priorDefault = store().provider }
+        // The current search engine can intentionally differ from the stored default.
+        compose.onNode(hasContentDescription("Search provider:", substring = true)).performClick()
         compose.onNodeWithTag(PROVIDER_PICKER).assertIsDisplayed()
         SearchProvider.entries.forEach {
             compose.onNode(hasText(it.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
-                .assertIsDisplayed()
+                .assertExists()
         }
         screenshot?.let(::capture)
         compose.onNode(hasText(provider.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
-            .performClick()
+            .performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag(PROVIDER_PICKER).assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals("Selecting a draft row must not save a default", priorDefault, store().provider)
+            assertEquals(priorDefault, BrowserStore(compose.activity.application).provider)
+        }
+        compose.onNodeWithText(if (setDefault) "Set as default" else "Use for this search").performClick()
+        compose.waitForIdle()
         compose.onNodeWithTag(PROVIDER_PICKER).assertDoesNotExist()
         compose.onNodeWithContentDescription("Search provider: ${provider.displayName}").assertIsDisplayed()
+        compose.runOnIdle {
+            val expectedDefault = if (setDefault) provider else priorDefault
+            assertEquals(expectedDefault, store().provider)
+            assertEquals(expectedDefault, BrowserStore(compose.activity.application).provider)
+        }
         compose.onNodeWithTag(SEARCH_INPUT).assertIsFocused()
         assertKeyboardVisible()
     }
@@ -354,7 +413,10 @@ class LiveSearchFlowTest {
 
     private fun selectTab(url: String, index: Int = 0) {
         compose.onNodeWithText("Tabs", useUnmergedTree = true).performClick()
-        compose.onAllNodesWithText(url, useUnmergedTree = true)[index].performClick()
+        // The address field behind the sheet may contain the same URL. Count only
+        // tab rows so duplicate URLs still select the intended tab by model order.
+        compose.onAllNodes(hasText(url) and hasAnyAncestor(hasTestTag("mylo-panel-tabs")),
+            useUnmergedTree = true)[index].performClick()
         // Tab selection changes Compose state before replacing the native WebView.
         // Drain that change before raw Android-view polling can observe the old tab.
         compose.waitForIdle()
@@ -399,7 +461,13 @@ class LiveSearchFlowTest {
             SearchProvider.BING -> "bing.com"
             SearchProvider.DUCKDUCKGO -> "duckduckgo.com"
             SearchProvider.BRAVE -> "search.brave.com"
+            SearchProvider.YAHOO -> "search.yahoo.com"
             SearchProvider.STARTPAGE -> "startpage.com"
+        }
+        val queryParameters = when (provider) {
+            SearchProvider.YAHOO -> listOf("p")
+            SearchProvider.STARTPAGE -> listOf("query", "q")
+            else -> listOf("q")
         }
         val deadline = SystemClock.elapsedRealtime() + timeout
         var latest = JSONObject()
@@ -419,7 +487,7 @@ class LiveSearchFlowTest {
                     "URL=$url; title=${latest.optString("title")}", blocked)
                 val address = Uri.parse(url)
                 // A new WebView briefly reports about:blank, an opaque URI.
-                val queryMatches = address.isHierarchical && listOf("q", "query").any {
+                val queryMatches = address.isHierarchical && queryParameters.any {
                     address.getQueryParameter(it)?.equals(QUERY, true) == true
                 }
                 if ((host == expectedHost || host.endsWith(".$expectedHost")) && queryMatches &&
@@ -459,32 +527,40 @@ class LiveSearchFlowTest {
     private fun clickRealResultLink() {
         val view = currentWebView() ?: throw AssertionError("No WebView for Google's results")
         val completed = CountDownLatch(1)
-        val clicked = AtomicReference(false)
+        val activated = AtomicReference<JSONObject?>()
         instrumentation.runOnMainSync {
             view.evaluateJavascript("""
                 (() => {
                   const anchors = Array.from(document.querySelectorAll('a[href]'));
-                  const result = anchors.find(a => {
-                    if (!a.querySelector('h3') && !a.matches('.result__a, .result__title a, .snippet-title, [data-testid="result-title-a"]')) return false;
+                  const external = anchors.filter(a => {
+                    if (a.closest('header, footer, nav, [role="navigation"]')) return false;
                     try {
                       const u = new URL(a.href);
                       const target = u.hostname.endsWith('google.com') && u.pathname === '/url'
                         ? new URL(u.searchParams.get('q') || u.searchParams.get('url')) : u;
                       return /^https?:${'$'}/.test(target.protocol) &&
-                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|startpage\.com)${'$'}/.test(target.hostname);
+                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|yahoo\.com|startpage\.com|gstatic\.com|googleusercontent\.com)${'$'}/.test(target.hostname);
                     } catch (_) { return false; }
                   });
-                  if (!result) return false;
+                  // Google mobile headings can be spans with role=heading or contain
+                  // the anchor, and AI overview citations can be descriptive links.
+                  // Activate only a link already supplied by the provider document.
+                  const result = external.find(a => a.querySelector('h2, h3, [role="heading"]') ||
+                    a.closest('h2, h3, [role="heading"]')) ||
+                    external.find(a => /florida|beach/i.test(a.textContent || a.getAttribute('aria-label') || ''));
+                  if (!result) return null;
+                  const evidence = { href: result.href, label: (result.textContent || result.getAttribute('aria-label') || '').trim().slice(0, 300) };
                   result.click();
-                  return true;
+                  return JSON.stringify(evidence);
                 })()
             """.trimIndent()) { value ->
-                clicked.set(value == "true")
+                activated.set(runCatching { JSONObject(JSONTokener(value).nextValue() as String) }.getOrNull())
                 completed.countDown()
             }
         }
         assertTrue("Provider page did not respond to result activation", completed.await(3, TimeUnit.SECONDS))
-        assertTrue("No real external result link found in the provider document", clicked.get())
+        assertTrue("No real external result link found in the provider document", activated.get() != null)
+        File(artifacts, "activated-provider-link.json").writeText(activated.get()!!.toString(2))
     }
 
     private fun waitForExternalPage(): JSONObject {
@@ -494,7 +570,7 @@ class LiveSearchFlowTest {
             currentWebView()?.let { readPage(it)?.let { page -> latest = page } }
             val url = Uri.parse(latest.optString("url"))
             val host = url.host.orEmpty()
-            val providerHost = listOf("google.com", "bing.com", "duckduckgo.com", "brave.com", "startpage.com")
+            val providerHost = listOf("google.com", "bing.com", "duckduckgo.com", "brave.com", "yahoo.com", "startpage.com")
                 .any { host == it || host.endsWith(".$it") }
             if (url.scheme in listOf("https", "http") && host.isNotEmpty() && !providerHost &&
                 latest.optString("ready") == "complete" && latest.optString("body").isNotBlank() &&
@@ -520,13 +596,13 @@ class LiveSearchFlowTest {
                   mobileViewport: window.innerWidth,
                   body: (document.body?.innerText || '').slice(0, 20000),
                   resultHeadings: document.querySelectorAll('h2, h3').length,
-                  resultLinks: document.querySelectorAll('.result__a, .result__title a, .snippet-title, [data-testid="result-title-a"], #b_results h2 a, article h2 a').length,
+                  resultLinks: document.querySelectorAll('.result__a, .result__title a, .snippet-title, [data-testid="result-title-a"], #b_results h2 a, article h2 a, #web h3 a, .compTitle h3 a, .algo h3 a').length,
                   externalLinks: Array.from(document.querySelectorAll('a[href]')).filter(a => {
                     try {
                       const u = new URL(a.href);
                       return /^https?:$/.test(u.protocol) &&
                         u.hostname !== location.hostname &&
-                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|startpage\.com)${'$'}/.test(u.hostname) &&
+                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|yahoo\.com|startpage\.com)${'$'}/.test(u.hostname) &&
                         !/(^|\.)(gstatic|googleusercontent)\.com${'$'}/.test(u.hostname);
                     } catch (_) { return false; }
                   }).length

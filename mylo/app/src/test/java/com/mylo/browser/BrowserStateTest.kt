@@ -22,12 +22,14 @@ class BrowserStateTest {
         assertEquals("https://www.google.com/search?q=night+sky+%26+stars", resolveInput("night sky & stars", SearchProvider.GOOGLE))
         assertEquals("https://duckduckgo.com/?q=mylo", resolveInput("mylo", SearchProvider.DUCKDUCKGO))
         assertEquals("https://www.bing.com/search?q=caf%C3%A9", resolveInput("café", SearchProvider.BING))
+        assertEquals("https://search.yahoo.com/search?p=caf%C3%A9+%26+beach+%2B+50%25+%23sun+%3F", resolveInput("café & beach + 50% #sun ?", SearchProvider.YAHOO))
     }
 
     @Test fun floridaSearchUsesEachRealProvider() {
         val expected = mapOf(
             SearchProvider.GOOGLE to "https://www.google.com/search?q=best+beaches+in+Florida",
             SearchProvider.BING to "https://www.bing.com/search?q=best+beaches+in+Florida",
+            SearchProvider.YAHOO to "https://search.yahoo.com/search?p=best+beaches+in+Florida",
             SearchProvider.DUCKDUCKGO to "https://duckduckgo.com/?q=best+beaches+in+Florida",
             SearchProvider.BRAVE to "https://search.brave.com/search?q=best+beaches+in+Florida",
             SearchProvider.STARTPAGE to "https://www.startpage.com/sp/search?query=best+beaches+in+Florida"
@@ -48,8 +50,13 @@ class BrowserStateTest {
 
     @Test fun colonPrefixedSearchQueriesUseSelectedProvider() {
         SearchProvider.entries.forEach { provider ->
-            listOf("site:florida.com beaches", "site:florida.com", "weather: London", "weather:London", "intitle:Mylo").forEach { query ->
-                assertEquals(provider.searchUrl(query), resolveInput(query, provider))
+            listOf(
+                "site:florida.com beaches", "site:florida.com",
+                "intitle:Mylo", "intitle:\"Florida beaches\"",
+                "filetype:pdf", "filetype:pdf Florida beaches",
+                "weather: London", "weather:London"
+            ).forEach { query ->
+                assertEquals("${provider.displayName}: $query", provider.searchUrl(query), resolveInput(query, provider))
             }
         }
     }
@@ -60,6 +67,8 @@ class BrowserStateTest {
             assertEquals("http://localhost:8080/test", resolveInput("http://localhost:8080/test", provider))
             assertEquals("https://example.com:8443/a", resolveInput("EXAMPLE.com:8443/a", provider))
             assertEquals("https://localhost:8080/test", resolveInput("LOCALHOST:8080/test", provider))
+            assertEquals("https://florida.com", resolveInput("florida.com", provider))
+            assertEquals(provider.searchUrl("florida.com beaches"), resolveInput("florida.com beaches", provider))
         }
     }
 
@@ -106,6 +115,27 @@ class BrowserStateTest {
             assertEquals(provider, BrowserStore(context).provider)
             assertEquals(provider.name, context.preferences.getString("provider", null))
         }
+    }
+
+    @Test fun temporarySearchProviderLeavesSavedDefaultUnchanged() {
+        val context = TestBrowserContext()
+        val store = BrowserStore(context)
+        store.setProvider(SearchProvider.BING)
+        val savedPreferences = context.preferences.getAll()
+        val tab = store.createTab("https://example.com")
+
+        val temporarySearch = store.navigateInCurrentTab(tab.id, "Florida beaches", SearchProvider.YAHOO)!!
+        assertEquals("https://search.yahoo.com/search?p=Florida+beaches", temporarySearch.url)
+        assertEquals(tab.id, temporarySearch.id)
+        assertEquals(1, store.tabs.size)
+        assertEquals(SearchProvider.BING, store.provider)
+        assertEquals(savedPreferences, context.preferences.getAll())
+        assertEquals(SearchProvider.BING, BrowserStore(context).provider)
+
+        val nextSearch = store.navigateInCurrentTab(tab.id, "Florida beaches")!!
+        assertEquals("https://www.bing.com/search?q=Florida+beaches", nextSearch.url)
+        assertEquals(tab.id, nextSearch.id)
+        assertEquals(savedPreferences, context.preferences.getAll())
     }
 
     @Test fun currentPopulatedTabIsReusedForSearchAndUrl() {

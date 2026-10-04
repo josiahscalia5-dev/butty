@@ -22,6 +22,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -132,14 +136,15 @@ class MainActivity : ComponentActivity() {
     var query by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var searching by rememberSaveable { mutableStateOf(false) }
+    var searchProvider by rememberSaveable { mutableStateOf(store.provider) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val vpn = rememberVpnStatus()
-    fun startSearch() { query = ""; searching = true }
+    fun startSearch() { query = ""; searchProvider = store.provider; searching = true }
     fun closeSearch() { searching = false; query = ""; focus.clearFocus(); keyboard?.hide() }
     fun showHome() { closeSearch(); home = true }
-    fun open(input: String) {
-        val tab = store.navigateInCurrentTab(currentTab, input)
+    fun open(input: String, usingProvider: SearchProvider = store.provider) {
+        val tab = store.navigateInCurrentTab(currentTab, input, searchProvider = usingProvider)
         if (tab == null) { error = "Enter a website address or search words."; return }
         // A Home submission is a navigation in the existing tab, never an implicit new tab.
         session.pendingNavigations[tab.id] = tab.url
@@ -151,9 +156,15 @@ class MainActivity : ComponentActivity() {
         keyboard?.hide()
     }
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { open(it) }
+        if (result.resultCode == Activity.RESULT_OK) result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let {
+            open(it, if (searching) searchProvider else store.provider)
+        }
     }
-    MyloViewport(edgeToEdgeHome = !searching && (home || store.tabs.none { it.id == currentTab })) {
+    val scan = rememberMyloScanner(
+        onResult = { open(it, if (searching) searchProvider else store.provider) },
+        onError = { error = it },
+    )
+    MyloViewport(edgeToEdgeHome = home || store.tabs.none { it.id == currentTab }) {
             Box(Modifier.weight(1f)) {
                 Box(Modifier.fillMaxSize().then(if (searching) Modifier.clearAndSetSemantics { } else Modifier)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
@@ -163,16 +174,20 @@ class MainActivity : ComponentActivity() {
                             .onFailure { error = "Voice search isn't available on this device. You can type your search." }
                     }, { panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, onActivateSearch = { if (!searching) startSearch() })
+                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScanner = scan)
                 } else {
                     key(tab.id) {
                         BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
                     }
                 }
                 }
-                if (searching) {
-                    SearchInputScreen(query, { query = it }, store.provider, store::setProvider,
-                        { open(query) }, ::closeSearch)
+                AnimatedVisibility(visible = searching, enter = fadeIn(tween(150)), exit = fadeOut(tween(100))) {
+                    Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
+                        SearchInputScreen(query, { query = it }, searchProvider, { searchProvider = it },
+                            { open(query, searchProvider) }, ::closeSearch,
+                            defaultProvider = store.provider,
+                            onSetDefault = { store.setProvider(it); searchProvider = it })
+                    }
                 }
             }
             if (!searching) BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size,

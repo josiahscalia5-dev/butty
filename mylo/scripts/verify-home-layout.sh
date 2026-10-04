@@ -70,9 +70,21 @@ for row in rows:
     if row['status'] == 'passed' and not row.get('evidence', {}).get('verified'):
         row['status'] = 'evidence-missing'
 tested = [row for row in rows if row['status'] != 'unsupported']
+unsupported = {row['navigation'] for row in rows if row['status'] == 'unsupported'}
+expected_modes = {'gestural', 'threebutton'} - unsupported
+if not expected_modes:
+    expected_modes = {'current'}
+expected_cases = {
+    f'{width}x{height}-{mode}-font{font}'
+    for mode in expected_modes
+    for width, height, font in ((360, 640, '1.0'), (393, 851, '1.0'), (412, 915, '1.0'), (360, 640, '1.3'))
+}
+complete = {row['case'] for row in tested} == expected_cases
 report = {
-    'verified': bool(tested) and all(row['status'] == 'passed' for row in tested),
-    'allNavigationModesVerified': bool(rows) and all(row['status'] == 'passed' for row in rows),
+    'verified': complete and all(row['status'] == 'passed' for row in tested),
+    'allNavigationModesVerified': complete and not unsupported and all(row['status'] == 'passed' for row in tested),
+    'completeMatrix': complete,
+    'missingCases': sorted(expected_cases - {row['case'] for row in tested}),
     'source': 'Android instrumentation and real emulator screenshots; no simulated UI',
     'cases': rows,
 }
@@ -100,10 +112,13 @@ run_case() {
   local case_name="${width}x${height}-${navigation}-font${font_scale}"
   local output="$evidence_dir/$case_name"
   mkdir -p "$output"
+  # Display reconfiguration can briefly take adb offline; wait before the next case.
+  timeout 30s "$adb_command" wait-for-device
   "$adb_command" shell am force-stop "$app_package"
   # Density 320 makes the requested physical size exactly 2 px per logical dp.
   "$adb_command" shell wm density 320
   "$adb_command" shell wm size "$((width * 2))x$((height * 2))"
+  timeout 30s "$adb_command" wait-for-device
   "$adb_command" shell settings put system font_scale "$font_scale"
   sleep 2
   "$adb_command" shell wm size > "$output/display-size.txt"
@@ -129,6 +144,15 @@ run_case() {
       | tee "$output/reference-instrumentation.txt"; then
       status=failed
     elif ! grep -Eq '^OK \(1 test\)' "$output/reference-instrumentation.txt"; then
+      status=failed
+    fi
+    if ! timeout 120s "$adb_command" shell am instrument -w -r \
+      -e class 'com.mylo.browser.HomeVariationsRenderTest#threePolishVariationsAt393x851' \
+      -e layoutCase "$case_name" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
+      | tee "$output/variations-instrumentation.txt"; then
+      status=failed
+    elif ! grep -Eq '^OK \(1 test\)' "$output/variations-instrumentation.txt"; then
       status=failed
     fi
   fi

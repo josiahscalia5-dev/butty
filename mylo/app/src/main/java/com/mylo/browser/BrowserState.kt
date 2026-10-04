@@ -16,6 +16,7 @@ enum class SearchProvider(val displayName: String, private val queryPrefix: Stri
     DUCKDUCKGO("DuckDuckGo", "https://duckduckgo.com/?q="),
     BING("Bing", "https://www.bing.com/search?q="),
     BRAVE("Brave Search", "https://search.brave.com/search?q="),
+    YAHOO("Yahoo", "https://search.yahoo.com/search?p="),
     STARTPAGE("Startpage", "https://www.startpage.com/sp/search?query=");
 
     fun searchUrl(query: String): String = queryPrefix + URLEncoder.encode(query, "UTF-8")
@@ -172,8 +173,12 @@ class BrowserStore(context: Context) {
     }
 
     /** Address-bar submissions navigate the active tab, including an existing webpage. */
-    fun navigateInCurrentTab(currentTabId: Long?, input: String): BrowserTab? {
-        val url = resolveInput(input, provider) ?: return null
+    fun navigateInCurrentTab(
+        currentTabId: Long?,
+        input: String,
+        searchProvider: SearchProvider = provider,
+    ): BrowserTab? {
+        val url = resolveInput(input, searchProvider) ?: return null
         val index = tabs.indexOfFirst { it.id == currentTabId }
         if (index < 0) return createTab(url)
         val tab = tabs[index].copy(url = url, title = url)

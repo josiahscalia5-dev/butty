@@ -71,6 +71,14 @@ if [[ "${MYLO_SKIP_HOME_LAYOUT:-0}" != 1 ]]; then
   fi
 fi
 run_device_test searchInputFocusKeyboardAndProviderPersistence provider-selection-test.txt
+if ! adb shell am instrument -w -r \
+  -e class com.mylo.browser.QrScannerTest \
+  com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner \
+  | tee "$evidence_dir/qr-scanner-test.txt"; then
+  failed=1
+elif ! grep -q '^OK (5 tests)' "$evidence_dir/qr-scanner-test.txt"; then
+  failed=1
+fi
 # This helper records the actual device during Home → input/keyboard → picker → live results.
 if ! MYLO_APP_APK="$apk_path" MYLO_TEST_APK="$test_apk_path" \
   bash "$script_dir/record-live-search.sh" "$evidence_dir"; then
@@ -84,4 +92,4 @@ if (( failed )); then
   echo 'One or more device checks failed or were blocked. See the recording, screenshots, test output, and JSON evidence.' >&2
   exit 1
 fi
-echo 'Verified search input, Android keyboard, all five live providers, direct URLs, Back/Forward, and independent tab history.'
+echo 'Verified search input, Android keyboard, all six live providers, QR decoding/contracts, direct URLs, Back/Forward, and independent tab history.'

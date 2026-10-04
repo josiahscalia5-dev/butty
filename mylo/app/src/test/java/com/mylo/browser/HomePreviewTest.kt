@@ -47,6 +47,24 @@ class HomePreviewTest {
             }
         }
     }
+
+    // Layoutlib diagnostics only: native HomeVariationsRenderTest screenshots decide the appearance.
+    @Test fun variationAReference() = renderVariation("variation_a_reference", HomePolish.REFERENCE)
+
+    @Test fun variationBSearchFocus() = renderVariation("variation_b_search", HomePolish.SEARCH_FOCUS)
+
+    @Test fun variationCRoomyCards() = renderVariation("variation_c_roomy_cards", HomePolish.ROOMY_CARDS)
+
+    private fun renderVariation(name: String, polish: HomePolish) {
+        paparazzi.snapshot(name = "mylo_home_${name}_393x851") {
+            MyloTheme {
+                MyloViewport(edgeToEdgeHome = true) {
+                    Box(Modifier.weight(1f)) { HomeScreen(polish = polish) }
+                    BottomBar(true, 0, {}, {}, {}, {})
+                }
+            }
+        }
+    }
 }
 
 /** Compact portrait rendering of the same production composables, including its scroll viewport. */
