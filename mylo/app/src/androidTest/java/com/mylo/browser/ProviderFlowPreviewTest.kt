@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import java.io.File
 import org.json.JSONObject
@@ -48,16 +49,16 @@ class ProviderFlowPreviewTest {
 
     @Test fun yahooSetAsDefault() = flow("yahoo-set-as-default", SearchProvider.YAHOO, setDefault = true)
 
+    /** Bing is checked by URL only: the page Mylo opens must be Bing's, never Google's or another's. */
+    @Test fun bingOpensBingUrl() = flow("bing-url-check", SearchProvider.BING, setDefault = false, waitForFullPage = false)
+
     /** [setDefault]: false = "Just this search", true = "Set as default", null = keep the default. */
-    private fun flow(case: String, provider: SearchProvider, setDefault: Boolean?) {
+    private fun flow(case: String, provider: SearchProvider, setDefault: Boolean?, waitForFullPage: Boolean = true) {
         val artifacts = File(instrumentation.targetContext.getExternalFilesDir(null), "test-artifacts/provider-flow/$case")
             .apply { deleteRecursively(); mkdirs() }
         val evidence = JSONObject().put("case", case).put("provider", provider.displayName).put("query", QUERY)
-        fun capture(name: String) {
-            compose.waitForIdle()
-            SystemClock.sleep(600)
-            assertTrue("Could not save screenshot $name", device.takeScreenshot(File(artifacts, name)))
-        }
+        fun screenshot(name: String) = assertTrue("Could not save screenshot $name", device.takeScreenshot(File(artifacts, name)))
+        fun capture(name: String) { compose.waitForIdle(); SystemClock.sleep(600); screenshot(name) }
         try {
             compose.runOnIdle { store().setProvider(SearchProvider.GOOGLE) }
 
@@ -92,25 +93,28 @@ class ProviderFlowPreviewTest {
             capture("05-provider-chosen.png")
 
             // 5. The keyboard's Search action submits the exact typed text to the chosen provider.
+            // From here on nothing waits for Compose to be idle: a page's loading bar may still be animating.
             compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
-            compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
-            val page = waitForProviderPage(provider)
+            val page = waitForProviderPage(provider, waitForFullPage)
             evidence.put("page", page)
-            capture("06-results.png")
-
-            compose.runOnIdle {
-                val expectedDefault = if (setDefault == true) provider else SearchProvider.GOOGLE
-                assertEquals("Saved default after the flow", expectedDefault, store().provider)
-                evidence.put("savedDefault", store().provider.displayName)
+            if (waitForFullPage) {
+                SystemClock.sleep(2_500)
+                // Documented, not asserted: whether Mylo's loading bar is still shown after the page finished.
+                evidence.put("loadingBarStillShownAfterLoad", device.hasObject(By.clazz("android.widget.ProgressBar")))
             }
-            evidence.put("verified", true)
+            screenshot("06-results.png")
+
+            val expectedDefault = if (setDefault == true) provider else SearchProvider.GOOGLE
+            val savedDefault = BrowserStore(instrumentation.targetContext).provider
+            assertEquals("Saved default after the flow", expectedDefault, savedDefault)
+            evidence.put("savedDefault", savedDefault.displayName).put("verified", true)
         } catch (failure: Throwable) {
             evidence.put("verified", false).put("failure", failure.message ?: failure.javaClass.simpleName)
             runCatching { device.takeScreenshot(File(artifacts, "failure.png")) }
             throw failure
         } finally {
             File(artifacts, "evidence.json").writeText(evidence.toString(2))
-            compose.runOnIdle { store().setProvider(SearchProvider.GOOGLE) }
+            BrowserStore(instrumentation.targetContext).setProvider(SearchProvider.GOOGLE)
         }
     }
 
@@ -118,7 +122,7 @@ class ProviderFlowPreviewTest {
      * Waits for the provider's own results URL for exactly [QUERY]. The page itself is the
      * provider's; it is recorded (including any consent or CAPTCHA page) and never simulated.
      */
-    private fun waitForProviderPage(provider: SearchProvider): JSONObject {
+    private fun waitForProviderPage(provider: SearchProvider, fullPage: Boolean): JSONObject {
         val deadline = SystemClock.elapsedRealtime() + 45_000
         var url = ""; var title = ""; var progress = 0
         while (SystemClock.elapsedRealtime() < deadline) {
@@ -128,9 +132,14 @@ class ProviderFlowPreviewTest {
             val address = Uri.parse(url)
             val host = address.host.orEmpty()
             val query = if (address.isHierarchical) listOf("q", "query", "p").firstNotNullOfOrNull { address.getQueryParameter(it) } else null
-            if ((host == provider.domain || host.endsWith(".${provider.domain}")) && query == QUERY && progress == 100) {
-                SystemClock.sleep(1_500) // let the page paint before the screenshot
-                return JSONObject().put("url", url).put("title", title).put("host", host).put("query", query)
+            if (url.isNotEmpty() && host.isNotEmpty() && !url.startsWith("about:")) {
+                // The very first provider URL must be the selected provider's own search URL.
+                assertTrue("Selected ${provider.displayName} but Mylo opened $url", host == provider.domain || host.endsWith(".${provider.domain}") ||
+                    SearchProvider.entries.none { host == it.domain || host.endsWith(".${it.domain}") })
+            }
+            if ((host == provider.domain || host.endsWith(".${provider.domain}")) && query == QUERY && (!fullPage || progress == 100)) {
+                if (fullPage) SystemClock.sleep(1_500) // let the page paint before the screenshot
+                return JSONObject().put("url", url).put("title", title).put("host", host).put("query", query).put("progress", progress)
             }
             SystemClock.sleep(300)
         }

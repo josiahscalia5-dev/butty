@@ -66,14 +66,19 @@ fi
 
 # Keep layout and live-network results independent so either failure retains the other evidence.
 # The exact user flow, one screenshot per step: Home → tap search → type → choose provider →
-# keyboard Search → the provider's real results page (Brave once, Google default, Yahoo as default).
-if ! adb shell am instrument -w -r -e class com.mylo.browser.ProviderFlowPreviewTest \
-  com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner | tee "$evidence_dir/provider-flow-test.txt"; then
-  failed=1
-elif ! grep -q '^OK (3 tests)' "$evidence_dir/provider-flow-test.txt"; then
-  failed=1
-fi
+# keyboard Search → the provider's real results page (Brave once, Google default, Yahoo as default,
+# Bing URL check). Bounded so a provider page can never stall the job.
+flow_status=0
+timeout 480 adb shell am instrument -w -r -e class com.mylo.browser.ProviderFlowPreviewTest \
+  com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner | tee "$evidence_dir/provider-flow-test.txt" || flow_status=1
+grep -q '^OK (4 tests)' "$evidence_dir/provider-flow-test.txt" || flow_status=1
 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/provider-flow "$evidence_dir/" >/dev/null 2>&1 || true
+if [[ "${MYLO_SCOPE:-full}" == "search-flow" ]]; then
+  if (( flow_status )); then echo 'Search-flow verification failed or was blocked. See provider-flow evidence.' >&2; exit 1; fi
+  echo 'Verified Home → search → provider → real results for Brave, Google and Yahoo, and the Bing URL check.'
+  exit 0
+fi
+(( flow_status )) && failed=1
 
 if ! bash "$script_dir/verify-home-layout.sh" "$apk_path" "$evidence_dir/home-layout" "$test_apk_path"; then
   failed=1

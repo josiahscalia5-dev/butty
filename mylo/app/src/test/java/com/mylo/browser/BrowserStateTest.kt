@@ -193,4 +193,19 @@ private class InMemoryPreferences : SharedPreferences {
             pending.forEach { (key, value) -> if (value == null) values.remove(key) else values[key] = value }
         }
     }
+
+    @Test
+    fun everyProviderSearchesOnItsOwnHost() {
+        val query = "best hotels in Miami"
+        val hosts = SearchProvider.entries.map { provider ->
+            val url = java.net.URI(resolveInput(query, provider)!!)
+            assertTrue("${provider.displayName} must search on ${provider.domain}: $url",
+                url.host == provider.domain || url.host.endsWith(".${provider.domain}"))
+            val decoded = url.rawQuery.split("&").map { it.split("=", limit = 2) }
+                .associate { it[0] to java.net.URLDecoder.decode(it.getOrElse(1) { "" }, "UTF-8") }
+            assertTrue("${provider.displayName} must send the exact query: $url", query in decoded.values)
+            url.host
+        }
+        assertEquals("No two providers may share a results host", hosts.size, hosts.toSet().size)
+    }
 }

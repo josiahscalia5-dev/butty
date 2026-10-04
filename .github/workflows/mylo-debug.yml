@@ -3,6 +3,12 @@ name: Mylo debug APK
 # This workflow belongs at the repository root. The Android project is in mylo/.
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: "full = every device check; search-flow = only Home → search → provider → real results"
+        type: choice
+        options: [full, search-flow]
+        default: full
   push:
     branches: ["mylo-development"]
     paths:
@@ -124,7 +130,7 @@ jobs:
     name: Verify the APK on a Pixel emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: ${{ inputs.scope == 'search-flow' && 12 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -164,6 +170,8 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
+        env:
+          MYLO_SCOPE: ${{ inputs.scope || 'full' }}
       - name: Upload portrait Home screenshots and measurements
         if: always()
         id: home_portraits
