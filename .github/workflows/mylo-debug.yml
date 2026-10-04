@@ -108,7 +108,7 @@ jobs:
     name: Verify the APK on a Pixel emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -138,7 +138,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify keyboard, provider selection, live results, and tab navigation
+      - name: Verify portrait Home, keyboard, providers, and tab navigation
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -148,6 +148,18 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
+      - name: Upload portrait Home screenshots and measurements
+        if: always()
+        id: home_portraits
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-Home-portraits
+          path: |
+            mylo/dist/preview/home-layout/**/*.png
+            mylo/dist/preview/home-layout/**/*.json
+            mylo/dist/preview/home-layout/matrix.tsv
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload Android screenshot and smoke-test evidence
         if: always()
         id: preview
@@ -161,5 +173,9 @@ jobs:
         if: always() && steps.preview.outputs.artifact-url != ''
         env:
           PREVIEW_ARTIFACT_URL: ${{ steps.preview.outputs.artifact-url }}
+          HOME_ARTIFACT_URL: ${{ steps.home_portraits.outputs.artifact-url }}
         run: |
           echo "[Download real emulator recording, screenshots, and test evidence]($PREVIEW_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -n "$HOME_ARTIFACT_URL" ]]; then
+            echo "[Download portrait Home screenshots and measurements]($HOME_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          fi

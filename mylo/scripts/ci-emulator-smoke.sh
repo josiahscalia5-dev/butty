@@ -64,6 +64,10 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
   exit 1
 fi
 
+# Keep layout and live-network results independent so either failure retains the other evidence.
+if ! bash "$script_dir/verify-home-layout.sh" "$apk_path" "$evidence_dir/home-layout" "$test_apk_path"; then
+  failed=1
+fi
 run_device_test searchInputFocusKeyboardAndProviderPersistence provider-selection-test.txt
 # This helper records the actual device during Home → input/keyboard → picker → live results.
 if ! MYLO_APP_APK="$apk_path" MYLO_TEST_APK="$test_apk_path" \

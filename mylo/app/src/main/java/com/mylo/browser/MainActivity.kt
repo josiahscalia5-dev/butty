@@ -11,10 +11,12 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
+import android.os.Build
 import android.speech.RecognizerIntent
 import android.webkit.*
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -51,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
@@ -105,7 +108,14 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         val session = ViewModelProvider(this)[BrowserSession::class.java]
         setContent { MyloTheme { MyloApp(session) } }
     }
@@ -200,14 +210,14 @@ class MainActivity : ComponentActivity() {
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(searchRequest) { if (searchRequest > 0) { requester.requestFocus(); keyboard?.show() } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val keyboardCompact = maxHeight < 440.dp
-        val heroHeight = if (maxHeight < 660.dp) 146.dp else 178.dp
+        // Match the artwork's 2:1 aspect ratio so the moon and mascot stay intact.
+        // The middle content scrolls on short portraits instead of hiding the header.
+        val heroHeight = maxWidth / 2f
         val brandWidth = maxWidth * .47f
         // The wordmark is decorative branding; supporting copy still follows font scale.
         val brandSize = with(LocalDensity.current) { (maxWidth * .145f).coerceAtMost(60.dp).toSp() }
         Column(Modifier.fillMaxSize()) {
-            if (!keyboardCompact) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().testTag("home-header").padding(horizontal = 20.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(34.dp).background(Color(0xFF1A2951), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.WbSunny, null, tint = Color(0xFFFFD264), modifier = Modifier.size(20.dp)) }
                     Column(Modifier.weight(1f).padding(start = 10.dp)) {
                         Text("Good evening!", fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -224,21 +234,20 @@ class MainActivity : ComponentActivity() {
                         Text("A brighter web awaits", fontSize = 12.sp, color = Color(0xFFD2CEED), fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
-            }
-            SearchBar(query, onQuery, onSearch, onVoice, requester, Modifier.padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 20.dp), onActivateSearch)
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            SearchBar(query, onQuery, onSearch, onVoice, requester, Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 20.dp).testTag("home-search"), onActivateSearch)
+            Column(Modifier.weight(1f).testTag("home-middle").verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                    Shortcut("Explore", Icons.Rounded.Explore, Color(0xFF5DAAFF)) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
-                    Shortcut("Videos", Icons.Rounded.PlayArrow, Color(0xFFFF6D98)) { onOpen("https://m.youtube.com") }
-                    Shortcut("Shop", Icons.Rounded.ShoppingBag, Color(0xFF4CD9B5)) { onOpen("https://www.amazon.com") }
-                    Shortcut("AI", Icons.Rounded.AutoAwesome, Color(0xFFFFCB67)) { onOpen("https://chatgpt.com") }
+                    Shortcut("Explore", Icons.Rounded.Explore, Color(0xFF5DAAFF), Modifier.weight(1f)) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
+                    Shortcut("Videos", Icons.Rounded.PlayArrow, Color(0xFFFF6D98), Modifier.weight(1f)) { onOpen("https://m.youtube.com") }
+                    Shortcut("Shop", Icons.Rounded.ShoppingBag, Color(0xFF4CD9B5), Modifier.weight(1f)) { onOpen("https://www.amazon.com") }
+                    Shortcut("AI", Icons.Rounded.AutoAwesome, Color(0xFFFFCB67), Modifier.weight(1f)) { onOpen("https://chatgpt.com") }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         UtilityCard("Private", "Browse without\na trace", Icons.Rounded.Masks, Color(0xFF9475FF), Modifier.weight(1f), onPrivate)
                         UtilityCard("Bookmarks", "Your favorite\nplaces", Icons.Rounded.Bookmark, Color(0xFF559EF5), Modifier.weight(1f)) { onPanel("bookmarks") }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         UtilityCard("History", "Pick up where\nyou left off", Icons.Rounded.History, Color(0xFF50CCB6), Modifier.weight(1f)) { onPanel("history") }
                         UtilityCard("Tools", "A little more\npossibility", Icons.Rounded.GridView, Color(0xFFEAC16D), Modifier.weight(1f)) { onPanel("tools") }
                     }
@@ -264,12 +273,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun Shortcut(label: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
-    Column(Modifier.widthIn(min = 66.dp).clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(vertical = 3.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Box(Modifier.size(46.dp).background(Brush.linearGradient(listOf(color.copy(alpha = .18f), Color(0xFF18223E))), CircleShape).border(1.dp, color.copy(alpha = .17f), CircleShape), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(32.dp).background(Brush.linearGradient(listOf(color, color.copy(alpha = .6f))), CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
+@Composable private fun Shortcut(label: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(modifier.widthIn(min = 48.dp).clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(vertical = 3.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(44.dp).background(Brush.linearGradient(listOf(color.copy(alpha = .18f), Color(0xFF18223E))), CircleShape).border(1.dp, color.copy(alpha = .17f), CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(30.dp).background(Brush.linearGradient(listOf(color, color.copy(alpha = .6f))), CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp)) }
         }
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFFEEEAF9))
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFFEEEAF9), maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
@@ -286,8 +295,8 @@ class MainActivity : ComponentActivity() {
 @Composable private fun VpnStrip(active: Boolean, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 70.dp).clip(RoundedCornerShape(17.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF14303D), Panel))).border(1.dp, Color(0xFF2B435C), RoundedCornerShape(17.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Rounded.VerifiedUser, null, tint = Color(0xFF65D7B9), modifier = Modifier.size(29.dp))
-        Column(Modifier.weight(1f).padding(start = 10.dp)) {
-            Text(if (active) "VPN active" else "VPN protection", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
+        Column(Modifier.weight(1f).padding(start = 10.dp, end = 8.dp)) {
+            Text(if (active) "VPN active" else "VPN protection", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Text(if (active) "Connected on this device" else "Manage connection", color = Muted, fontSize = 10.sp)
         }
         Box(Modifier.height(28.dp).width(1.dp).background(Line))
@@ -306,7 +315,7 @@ class MainActivity : ComponentActivity() {
     val landscape = remember(reference) {
         BitmapPainter(reference, srcOffset = IntOffset(242, 968), srcSize = IntSize(328, 152))
     }
-    Box(Modifier.fillMaxWidth().heightIn(min = 88.dp).clip(RoundedCornerShape(18.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF263366), Color(0xFF182445)))).border(1.dp, Line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
+    Box(Modifier.fillMaxWidth().heightIn(min = 88.dp).testTag("home-discovery").clip(RoundedCornerShape(18.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF263366), Color(0xFF182445)))).border(1.dp, Line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
         Image(landscape, null, modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop, alignment = Alignment.CenterEnd, alpha = .92f)
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(Color(0xFF1B2858), Color(0xFF192651).copy(alpha = .25f)))))
         Column(Modifier.padding(horizontal = 18.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -320,7 +329,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable fun BottomBar(home: Boolean, tabs: Int, onHome: () -> Unit, onSearch: () -> Unit, onTabs: () -> Unit, onMylo: () -> Unit) {
-    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 66.dp).clip(RoundedCornerShape(21.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1A274A), Color(0xFF14203D)))).border(1.dp, Line.copy(alpha = .7f), RoundedCornerShape(21.dp)), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 66.dp).testTag("home-bottom-nav").clip(RoundedCornerShape(21.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1A274A), Color(0xFF14203D)))).border(1.dp, Line.copy(alpha = .7f), RoundedCornerShape(21.dp)), verticalAlignment = Alignment.CenterVertically) {
         NavItem("Home", Icons.Rounded.Home, home, Modifier.weight(1f), onHome)
         NavItem("Search", Icons.Rounded.Search, false, Modifier.weight(1f), onSearch)
         Column(Modifier.weight(1f).heightIn(min = 66.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onTabs).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
