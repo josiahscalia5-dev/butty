@@ -8,11 +8,16 @@ The committed version `2e3bcf3edd80c52c3cf7cf1538825f5f388bc1b2` built in [CI ru
 
 The latest working-tree visual correction has **not been compiled or rendered**. Earlier test results do not validate this correction. Local Gradle/Android SDK setup remains blocked; see [BLOCKERS.md](BLOCKERS.md). The user has authorized verification commits on `mylo-development` so GitHub can produce the Android renders. The visual correction remains under verification until the side-by-side review is complete.
 
-## Current visual correction
+## Current visual correction (claude-ui)
 
-`HomeScreen.kt` follows the supplied `1-3751.jpg` reference, bundled as `drawable-nodpi/approved_home.jpg`. It preserves the supplied artwork through runtime crops alongside native interactive Compose controls and an edge-to-edge native header. Existing browser behavior is unchanged; no additional features are planned.
+`HomeScreen.kt` is matched side by side against the approved reference (`drawable-nodpi/approved_design.jpg`) at 393 × 851 dp. Existing browser and search behavior is unchanged.
 
-`HomePreviewTest` is ready to render the actual Compose UI through Android Layoutlib/Paparazzi at 393×851 dp. It covers the default production state (VPN off, zero tabs) and a reference-only sample state (VPN on, Singapore, one tab). The sample values apply only to the test; production reads the device VPN state and actual tab count. These updated previews have not run.
+- Hero: the bundled high-resolution corgi illustration (`mylo_night_hero.png`) is drawn at the crop registered against the reference, edge to edge behind the status bar. Greeting and settings sit over the art. The Mylo wordmark is a vector traced from the reference, and the star is vector too (`HomeArt.kt`), so the hero stays sharp at every density.
+- Search bar: search icon, placeholder, divider, microphone and code scanner. The scanner uses Google Play services' code scanner; a scanned link or text opens like typed input.
+- Shortcuts, cards (approved wording and chevrons), VPN strip and bottom navigation (Mylo face icon) use the reference's measured sizes, spacing and colours.
+- Discovery banner: the approved lake/cabin/moon scene, with baked-in text removed and upscaled 3× (`mylo_discovery_night.webp`). The title uses bundled Nunito Black (OFL, `third_party/nunito/OFL.txt`).
+- Greeting and search stay pinned. On short screens only the middle content scrolls; on tall screens spare height is shared between sections.
+- VPN: "VPN protected" appears only when Android reports an active VPN. The Singapore/ON sample exists only in reference renders that pass `vpnLocation`.
 
 ## Build and run
 
@@ -33,7 +38,7 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 - Home uses native Compose elements with the approved dark palette, corgi hero, prominent search, shortcuts, browser cards, VPN strip, discovery area, and bottom navigation.
 - URLs open in Android WebView; words search DuckDuckGo, Google, Bing, Brave Search or Startpage according to the saved preference. Only HTTP(S) navigation is accepted.
 - Bookmarks and normal browsing history persist locally. Tabs can be created, selected and closed; per-tab WebView navigation state is retained while the app process lives and through rotation. Tabs are not restored after process death.
-- Voice search uses the installed Android speech recognizer when available. The optional QR scanner from the mockup is not implemented in this focused build.
+- Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
 - Private browsing runs in a separate process and WebView data directory, blocks cookies, disables persistent web storage and disk caching, clears private website data when opened/closed, and does not write Mylo history. It is not network anonymity; some websites need cookies.
 - VPN status reads Android's real network state. The strip opens VPN settings; Mylo has no VPN server or tunnel implementation and never displays a fabricated Singapore connection.
 - Tools open search preferences, Android downloads, VPN settings and app settings. Mylo opens a local about/preferences panel.

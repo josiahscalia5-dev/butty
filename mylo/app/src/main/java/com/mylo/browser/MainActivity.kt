@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 
 val Night = Color(0xFF09142E)
 private val Lavender = Color(0xFFCEC5FF)
@@ -163,7 +164,15 @@ class MainActivity : ComponentActivity() {
                             .onFailure { error = "Voice search isn't available on this device. You can type your search." }
                     }, { panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, onActivateSearch = { if (!searching) startSearch() })
+                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScan = {
+                        // Google's code scanner supplies its own camera UI; a scanned link or text opens like typed input.
+                        val unavailable = "The code scanner isn't available on this device. You can type the address instead."
+                        runCatching {
+                            GmsBarcodeScanning.getClient(context).startScan()
+                                .addOnSuccessListener { code -> code.rawValue?.takeIf { it.isNotBlank() }?.let { open(it) } }
+                                .addOnFailureListener { error = unavailable }
+                        }.onFailure { error = unavailable }
+                    })
                 } else {
                     key(tab.id) {
                         BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
