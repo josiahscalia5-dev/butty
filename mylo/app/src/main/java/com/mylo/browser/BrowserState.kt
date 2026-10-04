@@ -11,12 +11,13 @@ import java.net.URLEncoder
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class SearchProvider(val displayName: String, private val queryPrefix: String) {
-    GOOGLE("Google", "https://www.google.com/search?q="),
-    DUCKDUCKGO("DuckDuckGo", "https://duckduckgo.com/?q="),
-    BING("Bing", "https://www.bing.com/search?q="),
-    BRAVE("Brave Search", "https://search.brave.com/search?q="),
-    STARTPAGE("Startpage", "https://www.startpage.com/sp/search?query=");
+enum class SearchProvider(val displayName: String, val domain: String, private val queryPrefix: String) {
+    GOOGLE("Google", "google.com", "https://www.google.com/search?q="),
+    BRAVE("Brave", "search.brave.com", "https://search.brave.com/search?q="),
+    DUCKDUCKGO("DuckDuckGo", "duckduckgo.com", "https://duckduckgo.com/?q="),
+    BING("Bing", "bing.com", "https://www.bing.com/search?q="),
+    YAHOO("Yahoo", "search.yahoo.com", "https://search.yahoo.com/search?p="),
+    STARTPAGE("Startpage", "startpage.com", "https://www.startpage.com/sp/search?query=");
 
     fun searchUrl(query: String): String = queryPrefix + URLEncoder.encode(query, "UTF-8")
 }
@@ -172,8 +173,9 @@ class BrowserStore(context: Context) {
     }
 
     /** Address-bar submissions navigate the active tab, including an existing webpage. */
-    fun navigateInCurrentTab(currentTabId: Long?, input: String): BrowserTab? {
-        val url = resolveInput(input, provider) ?: return null
+    /** [searchWith] lets one search use another provider without changing the saved default. */
+    fun navigateInCurrentTab(currentTabId: Long?, input: String, searchWith: SearchProvider = provider): BrowserTab? {
+        val url = resolveInput(input, searchWith) ?: return null
         val index = tabs.indexOfFirst { it.id == currentTabId }
         if (index < 0) return createTab(url)
         val tab = tabs[index].copy(url = url, title = url)

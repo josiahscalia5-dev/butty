@@ -133,15 +133,18 @@ class MainActivity : ComponentActivity() {
     var query by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var searching by rememberSaveable { mutableStateOf(false) }
+    // A provider picked with "Just this search"; null means the saved default.
+    var searchOnce by rememberSaveable { mutableStateOf<SearchProvider?>(null) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val vpn = rememberVpnStatus()
-    fun startSearch() { query = ""; searching = true }
-    fun closeSearch() { searching = false; query = ""; focus.clearFocus(); keyboard?.hide() }
+    fun startSearch() { query = ""; searchOnce = null; searching = true }
+    fun closeSearch() { searching = false; query = ""; searchOnce = null; focus.clearFocus(); keyboard?.hide() }
     fun showHome() { closeSearch(); home = true }
     fun open(input: String) {
-        val tab = store.navigateInCurrentTab(currentTab, input)
+        val tab = store.navigateInCurrentTab(currentTab, input, searchOnce ?: store.provider)
         if (tab == null) { error = "Enter a website address or search words."; return }
+        searchOnce = null
         // A Home submission is a navigation in the existing tab, never an implicit new tab.
         session.pendingNavigations[tab.id] = tab.url
         currentTab = tab.id
@@ -154,25 +157,28 @@ class MainActivity : ComponentActivity() {
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { open(it) }
     }
-    MyloViewport(edgeToEdgeHome = !searching && (home || store.tabs.none { it.id == currentTab })) {
+    val voiceSearch: () -> Unit = {
+        runCatching { voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM).putExtra(RecognizerIntent.EXTRA_PROMPT, "Search with Mylo")) }
+            .onFailure { error = "Voice search isn't available on this device. You can type your search." }
+    }
+    val scanCode: () -> Unit = {
+        // Google's code scanner supplies its own camera UI; a scanned link or text opens like typed input.
+        val unavailable = "The code scanner isn't available on this device. You can type the address instead."
+        runCatching {
+            GmsBarcodeScanning.getClient(context).startScan()
+                .addOnSuccessListener { code -> code.rawValue?.takeIf { it.isNotBlank() }?.let { open(it) } }
+                .addOnFailureListener { error = unavailable }
+        }.onFailure { error = unavailable }
+    }
+    // Home and focused search draw their artwork behind the status bar; browser pages do not.
+    MyloViewport(edgeToEdgeHome = searching || home || store.tabs.none { it.id == currentTab }) {
             Box(Modifier.weight(1f)) {
                 Box(Modifier.fillMaxSize().then(if (searching) Modifier.clearAndSetSemantics { } else Modifier)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
                 if (home || tab == null) {
-                    HomeScreen(query, { query = it }, { open(query) }, {
-                        runCatching { voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM).putExtra(RecognizerIntent.EXTRA_PROMPT, "Search with Mylo")) }
-                            .onFailure { error = "Voice search isn't available on this device. You can type your search." }
-                    }, { panel = it }, { open(it) }, {
+                    HomeScreen(query, { query = it }, { open(query) }, voiceSearch, { panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScan = {
-                        // Google's code scanner supplies its own camera UI; a scanned link or text opens like typed input.
-                        val unavailable = "The code scanner isn't available on this device. You can type the address instead."
-                        runCatching {
-                            GmsBarcodeScanning.getClient(context).startScan()
-                                .addOnSuccessListener { code -> code.rawValue?.takeIf { it.isNotBlank() }?.let { open(it) } }
-                                .addOnFailureListener { error = unavailable }
-                        }.onFailure { error = unavailable }
-                    })
+                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScan = scanCode)
                 } else {
                     key(tab.id) {
                         BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
@@ -180,8 +186,10 @@ class MainActivity : ComponentActivity() {
                 }
                 }
                 if (searching) {
-                    SearchInputScreen(query, { query = it }, store.provider, store::setProvider,
-                        { open(query) }, ::closeSearch)
+                    SearchInputScreen(query, { query = it }, provider = searchOnce ?: store.provider, defaultProvider = store.provider,
+                        onUseOnce = { searchOnce = it.takeIf { choice -> choice != store.provider } },
+                        onSetDefault = { store.setProvider(it); searchOnce = null },
+                        onSubmit = { open(query) }, onClose = ::closeSearch, onVoice = voiceSearch, onScan = scanCode)
                 }
             }
             if (!searching) BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size,

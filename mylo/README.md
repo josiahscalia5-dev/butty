@@ -18,6 +18,8 @@ The latest working-tree visual correction has **not been compiled or rendered**.
 - Discovery banner: the approved lake/cabin/moon scene, with baked-in text removed and upscaled 3× (`mylo_discovery_night.webp`). The title uses bundled Nunito Black (OFL, `third_party/nunito/OFL.txt`).
 - Greeting and search stay pinned. On short screens only the middle content scrolls; on tall screens spare height is shared between sections.
 - VPN: "VPN protected" appears only when Android reports an active VPN. The Singapore/ON sample exists only in reference renders that pass `vpnLocation`.
+- Polish (B + C): a taller search pill with a soft lavender glow, a slightly shorter hero, 16 dp card corners with top-lit edges, more even spacing and a compact banner. Shortcut rings keep the approved size. Taps get a subtle press-in, and the selected tab pill animates.
+- Focused search: tapping search keeps the hero visible but dimmed, focuses the field in place and opens the keyboard. A compact "Search with …" control opens a rounded sheet listing Google, Brave, DuckDuckGo, Bing, Yahoo and Startpage. The sheet marks the selected provider and the saved default. **Just this search** applies to one search; **Set as default** is saved locally. Providers appear as brand-coloured letter badges, because official logos are trademark-restricted.
 
 ## Build and run
 
@@ -36,7 +38,7 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 ## Implemented behavior
 
 - Home uses native Compose elements with the approved dark palette, corgi hero, prominent search, shortcuts, browser cards, VPN strip, discovery area, and bottom navigation.
-- URLs open in Android WebView; words search DuckDuckGo, Google, Bing, Brave Search or Startpage according to the saved preference. Only HTTP(S) navigation is accepted.
+- URLs open in Android WebView; words open the real results page of Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage: the saved default, or a provider chosen for one search. Only HTTP(S) navigation is accepted.
 - Bookmarks and normal browsing history persist locally. Tabs can be created, selected and closed; per-tab WebView navigation state is retained while the app process lives and through rotation. Tabs are not restored after process death.
 - Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
 - Private browsing runs in a separate process and WebView data directory, blocks cookies, disables persistent web storage and disk caching, clears private website data when opened/closed, and does not write Mylo history. It is not network anonymity; some websites need cookies.

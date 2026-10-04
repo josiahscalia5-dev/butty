@@ -2,11 +2,17 @@ package com.mylo.browser
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -81,6 +87,8 @@ private val HomeInk = Color(0xFFF5F4FF)
 private val HomeMuted = Color(0xFFAEB7DA)
 private val SearchInk = Color(0xFF23286A)
 private val CardBorder = Color(0xFF1E2C50)
+/** Top-lit card edge: a faint highlight that fades into the card. */
+private val CardEdge = Brush.verticalGradient(listOf(Color(0xFF34457A), Color(0xFF15213F)))
 private val NavInk = Color(0xFFD2D6EE)
 
 /** Width of the approved reference, in dp. Hero artwork scales from it; controls keep their dp sizes. */
@@ -115,7 +123,7 @@ private const val REFERENCE_WIDTH = 392.7f
                     val viewport = maxHeight
                     Column(Modifier.fillMaxSize().testTag("home-middle").verticalScroll(rememberScrollState())) {
                         Column(Modifier.fillMaxWidth().heightIn(min = viewport).padding(bottom = 5.dp)) {
-                            Spacer(Modifier.height(17.dp)); Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.height(21.dp)); Spacer(Modifier.weight(1f))
                             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceAround) {
                                 Shortcut("Explore", Color(0xFF172A5A), { onOpen("https://en.wikipedia.org/wiki/Special:Random") }) {
                                     ShortcutDisk(Color(0xFF6AADF7), Color(0xFF2763C4)) { Icon(HomeArt.Compass, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
@@ -130,7 +138,7 @@ private const val REFERENCE_WIDTH = 392.7f
                                     ShortcutDisk(Color(0xFFFFD86A), Color(0xFFF6A23F)) { Icon(HomeArt.Sparkle, null, tint = Color.White, modifier = Modifier.size(23.dp)) }
                                 }
                             }
-                            Spacer(Modifier.height(14.dp)); Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.height(16.dp)); Spacer(Modifier.weight(1f))
                             Column(Modifier.padding(horizontal = 13.5.dp), verticalArrangement = Arrangement.spacedBy(8.5.dp)) {
                                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                     UtilityCard("Private", "Browse without\na trace", Color(0xFF8A7BFA), Color(0xFF5A48E2), Modifier.weight(1f), narrow, onPrivate) {
@@ -149,9 +157,9 @@ private const val REFERENCE_WIDTH = 392.7f
                                     }
                                 }
                             }
-                            Spacer(Modifier.height(11.dp)); Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.height(13.dp)); Spacer(Modifier.weight(1f))
                             VpnStrip(vpnActive, vpnLocation, Modifier.padding(horizontal = 13.5.dp)) { onPanel("vpn") }
-                            Spacer(Modifier.height(9.dp)); Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.height(13.dp)); Spacer(Modifier.weight(1f))
                             DiscoveryBanner(Modifier.padding(horizontal = 13.5.dp).testTag("home-discovery")) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
                         }
                     }
@@ -169,12 +177,17 @@ private const val REFERENCE_WIDTH = 392.7f
     )
 }
 
-/** Greeting, wordmark and Mylo on the moon, composed exactly as in the approved reference. */
-@Composable private fun HomeHero(width: Dp, statusBar: Dp, onSettings: () -> Unit) {
+/** Height of the hero (art, greeting and wordmark) above the search field. */
+internal fun heroBottom(width: Dp, statusBar: Dp): Dp = statusBar + 202.dp * (width.value / REFERENCE_WIDTH)
+
+/**
+ * Mylo on the moon with the wordmark, composed exactly as in the approved reference.
+ * Focused search reuses it with [dim] so the hero stays visible behind the search panel.
+ */
+@Composable internal fun HeroBackdrop(width: Dp, statusBar: Dp, dim: Float = 0f, content: @Composable BoxScope.() -> Unit = {}) {
     val art = ImageBitmap.imageResource(R.drawable.mylo_night_hero)
     val k = width.value / REFERENCE_WIDTH
-    val heroBottom = statusBar + 211.5.dp * k
-    Box(Modifier.fillMaxWidth().height(heroBottom).drawBehind {
+    Box(Modifier.fillMaxWidth().height(heroBottom(width, statusBar)).drawBehind {
         // Registered against the reference: the art is 1.3825 screen widths wide, shifted left by 0.292 widths.
         val w = size.width
         val artWidth = w * 1.3825f
@@ -193,6 +206,19 @@ private const val REFERENCE_WIDTH = 392.7f
             .background(Brush.radialGradient(0f to Color(0x66FFD978), .5f to Color(0x24FFD978), 1f to Color(0x00FFD978))), contentAlignment = Alignment.Center) {
             Image(rememberVectorPainter(HomeArt.Star), null, Modifier.size(28.dp * k).graphicsLayer { rotationZ = -6f })
         }
+        Image(rememberVectorPainter(HomeArt.Wordmark), "Mylo",
+            Modifier.offset(x = width * .0925f, y = statusBar + 70.4.dp * k).width(width * .391f).aspectRatio(HomeArt.WORDMARK_ASPECT))
+        Text("A brighter web awaits", fontSize = 15.sp * k, fontWeight = FontWeight.Medium, color = Color(0xFFDCDDF6), maxLines = 1,
+            style = TextStyle(shadow = Shadow(Color(0x80040A24), Offset(0f, 2f), 8f)),
+            modifier = Modifier.offset(x = width * .107f, y = statusBar + 136.5.dp * k))
+        if (dim > 0f) Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(HomeNight.copy(alpha = dim), HomeNight.copy(alpha = dim * .8f)))))
+        content()
+    }
+}
+
+/** Greeting and settings over the hero. */
+@Composable private fun HomeHero(width: Dp, statusBar: Dp, onSettings: () -> Unit) {
+    HeroBackdrop(width, statusBar) {
         Row(Modifier.padding(top = statusBar + 2.dp, start = 16.dp, end = 8.5.dp).fillMaxWidth().height(46.dp).testTag("home-header"), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(33.dp).background(Color(0xD91E2D5D), CircleShape).border(1.dp, Color(0x12FFFFFF), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.WbSunny, null, tint = Color(0xFFFFD45E), modifier = Modifier.size(21.dp))
@@ -211,22 +237,26 @@ private const val REFERENCE_WIDTH = 392.7f
                 }
             }
         }
-        Image(rememberVectorPainter(HomeArt.Wordmark), "Mylo",
-            Modifier.offset(x = width * .0925f, y = statusBar + 70.4.dp * k).width(width * .391f).aspectRatio(HomeArt.WORDMARK_ASPECT))
-        Text("A brighter web awaits", fontSize = 15.sp * k, fontWeight = FontWeight.Medium, color = Color(0xFFDCDDF6), maxLines = 1,
-            style = TextStyle(shadow = Shadow(Color(0x80040A24), Offset(0f, 2f), 8f)),
-            modifier = Modifier.offset(x = width * .107f, y = statusBar + 136.5.dp * k))
     }
 }
 
+internal val SearchTextStyle = TextStyle(color = Color(0xFF1E2150), fontSize = 15.5.sp)
+internal val SearchPlaceholderStyle = TextStyle(color = Color(0xFF4A4E7E), fontSize = 15.5.sp, letterSpacing = .1.sp)
+
+/** The large rounded search pill with a soft lavender glow; brighter edge while focused. */
+internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp)
+    .shadow(if (focused) 22.dp else 16.dp, CircleShape, ambientColor = Color(0xFF8E7CFF), spotColor = Color(0xFF8E7CFF))
+    .clip(CircleShape).background(Brush.verticalGradient(listOf(Color(0xFFF0F0FE), Color(0xFFE4E5FB))))
+    .border(if (focused) 1.5.dp else 1.dp, if (focused) Color(0xFFB4A8FF) else Color(0x66FFFFFF), CircleShape)
+
 @Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, onScan: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier, onActivate: (() -> Unit)? = null) {
     val keyboard = LocalSoftwareKeyboardController.current
-    Row(modifier.fillMaxWidth().height(54.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(Color(0xFFEBECFD), Color(0xFFE4E5FB)))).padding(start = 5.5.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.searchPill(focused = false).padding(start = 5.5.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() } }) { Icon(Icons.Rounded.Search, "Focus search", tint = SearchInk, modifier = Modifier.size(31.dp)) }
         BasicTextField(value, onValue, Modifier.weight(1f).padding(start = 8.dp).focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }.semantics { contentDescription = "Search or enter address" }, singleLine = true, readOnly = onActivate != null,
-            textStyle = TextStyle(color = Color(0xFF252750), fontSize = 14.75.sp), cursorBrush = SolidColor(Color(0xFF493B96)),
+            textStyle = SearchTextStyle, cursorBrush = SolidColor(Color(0xFF493B96)),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { onSubmit() }),
-            decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { if (value.isEmpty()) Text("Search or enter address", color = Color(0xFF4D5180), fontSize = 14.75.sp, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
+            decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { if (value.isEmpty()) Text("Search or enter address", style = SearchPlaceholderStyle, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
         if (value.isNotBlank()) IconButton(onClick = onSubmit) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Go", tint = SearchInk) }
         Box(Modifier.width(1.dp).height(23.dp).background(Color(0xFFBFC1E0)))
         Spacer(Modifier.width(5.dp))
@@ -236,7 +266,8 @@ private const val REFERENCE_WIDTH = 392.7f
 }
 
 @Composable private fun Shortcut(label: String, ring: Color, onClick: () -> Unit, glyph: @Composable () -> Unit) {
-    Column(Modifier.width(80.dp).clip(RoundedCornerShape(18.dp)).clickable(role = Role.Button, onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+    val source = remember { MutableInteractionSource() }
+    Column(Modifier.width(80.dp).pressScale(source).clip(RoundedCornerShape(18.dp)).clickable(source, LocalIndication.current, role = Role.Button, onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(67.dp).background(Brush.radialGradient(listOf(ring, ring.copy(alpha = .92f).compositeOver(HomeNight))), CircleShape)
             .border(1.dp, Color(0x10FFFFFF), CircleShape), contentAlignment = Alignment.Center) { glyph() }
         Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = Color(0xFFEDEBF8), maxLines = 1, modifier = Modifier.padding(top = 3.dp))
@@ -250,11 +281,12 @@ private const val REFERENCE_WIDTH = 392.7f
 @Composable private fun UtilityCard(title: String, subtitle: String, light: Color, deep: Color, modifier: Modifier, narrow: Boolean, onClick: () -> Unit, glyph: @Composable () -> Unit) {
     // Narrow phones give the two-line subtitles a little more room beside the icon.
     val textGap = if (narrow) 11.dp else 16.dp
-    val shape = RoundedCornerShape(12.dp)
-    Row(modifier.fillMaxHeight().heightIn(min = 74.dp).clip(shape).background(Brush.linearGradient(listOf(Color(0xFF1A2850), Color(0xFF101F41), Color(0xFF0F1E40))))
-        .border(1.dp, CardBorder, shape).clickable(role = Role.Button, onClick = onClick).padding(start = 12.5.dp, end = 8.5.dp, top = 10.dp, bottom = 10.dp),
+    val shape = RoundedCornerShape(16.dp)
+    val source = remember { MutableInteractionSource() }
+    Row(modifier.pressScale(source).fillMaxHeight().heightIn(min = 74.dp).clip(shape).background(Brush.linearGradient(listOf(Color(0xFF1A2850), Color(0xFF101F41), Color(0xFF0F1E40))))
+        .border(1.dp, CardEdge, shape).clickable(source, LocalIndication.current, role = Role.Button, onClick = onClick).padding(start = 12.5.dp, end = 8.5.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(43.dp).background(Brush.linearGradient(listOf(light, deep)), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) { glyph() }
+        Box(Modifier.size(44.dp).background(Brush.linearGradient(listOf(light, deep)), RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) { glyph() }
         Column(Modifier.weight(1f).padding(start = textGap, top = 9.dp)) {
             Text(title, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = HomeInk, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(subtitle, fontSize = 10.25.sp, lineHeight = 13.sp, color = HomeMuted, modifier = Modifier.padding(top = 2.dp))
@@ -268,7 +300,7 @@ private const val REFERENCE_WIDTH = 392.7f
 @Composable private fun VpnStrip(active: Boolean, location: String?, modifier: Modifier, onClick: () -> Unit) {
     // Live status is never simulated: "protected" appears only when Android reports an active VPN.
     val on = active
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(16.dp)
     Row(modifier.fillMaxWidth().heightIn(min = 58.dp).clip(shape)
         .background(Brush.horizontalGradient(0f to Color(0xFF123049), .42f to Color(0xFF111F42), 1f to Color(0xFF14223F)))
         .border(1.dp, Color(0xFF1B3352), shape).clickable(role = Role.Button, onClick = onClick).padding(start = 5.5.dp, end = 16.dp, top = 5.dp, bottom = 5.dp),
@@ -308,11 +340,12 @@ private const val REFERENCE_WIDTH = 392.7f
 }
 
 @Composable private fun DiscoveryBanner(modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
-    Box(modifier.fillMaxWidth().height(101.dp).clip(shape).background(Color(0xFF14245C)).clickable(role = Role.Button, onClick = onClick)) {
+    val shape = RoundedCornerShape(18.dp)
+    val source = remember { MutableInteractionSource() }
+    Box(modifier.pressScale(source).fillMaxWidth().height(92.dp).clip(shape).background(Color(0xFF14245C)).clickable(source, LocalIndication.current, role = Role.Button, onClick = onClick)) {
         Image(painterResource(R.drawable.mylo_discovery_night), null, Modifier.matchParentSize(), contentScale = ContentScale.FillBounds)
         Box(Modifier.matchParentSize().border(1.dp, Color(0x33A9B7FF), shape))
-        Column(Modifier.padding(start = 22.dp, top = 13.dp)) {
+        Column(Modifier.padding(start = 22.dp, top = 10.dp)) {
             Text("A little more\nwonder", fontFamily = MyloRounded, fontWeight = FontWeight.Black, fontSize = 19.5.sp, lineHeight = 20.5.sp, color = Color(0xFFF6F4FF),
                 style = TextStyle(shadow = Shadow(Color(0x66050B2A), Offset(0f, 2f), 6f)))
             Row(Modifier.padding(top = 2.5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -345,12 +378,20 @@ private const val REFERENCE_WIDTH = 392.7f
 @Composable private fun NavItem(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit, icon: @Composable (Color) -> Unit) {
     Column(modifier.fillMaxHeight().clip(RoundedCornerShape(16.dp)).selectable(selected, role = Role.Tab, onClick = onClick).padding(top = 6.5.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(54.5.dp, 31.5.dp).background(if (selected) Color(0xFFCFC9FB) else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) {
+        val pill by animateColorAsState(if (selected) Color(0xFFCFC9FB) else Color(0x00CFC9FB), tween(220), label = "nav")
+        Box(Modifier.size(54.5.dp, 31.5.dp).background(pill, CircleShape), contentAlignment = Alignment.Center) {
             icon(if (selected) Color(0xFF2E2B7E) else NavInk)
         }
         Text(label, fontSize = 10.75.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             color = if (selected) Color(0xFFC4BDFF) else Color(0xFFCDD0E6), modifier = Modifier.padding(top = 2.3.dp))
     }
+}
+
+/** A very slight press-in for Home's tappable surfaces, alongside the ripple. */
+@Composable private fun Modifier.pressScale(source: InteractionSource): Modifier {
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) .97f else 1f, tween(120), label = "press")
+    return graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
 /** Paints the content in [brush], keeping its shape (used for the gradient VPN shield). */

@@ -82,6 +82,12 @@ class LiveSearchFlowTest {
         compose.runOnIdle {
             assertEquals(SearchProvider.entries.last(), BrowserStore(compose.activity.application).provider)
         }
+        // A one-off provider applies to this search only and never replaces the saved default.
+        chooseProvider(SearchProvider.entries.first(), setDefault = false)
+        compose.runOnIdle {
+            assertEquals(SearchProvider.entries.last(), store().provider)
+            assertEquals(SearchProvider.entries.last(), BrowserStore(compose.activity.application).provider)
+        }
         compose.onNodeWithContentDescription("Close search").performClick()
         compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
         compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
@@ -310,7 +316,7 @@ class LiveSearchFlowTest {
         compose.waitForIdle()
     }
 
-    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null) {
+    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null, setDefault: Boolean = true) {
         var current = SearchProvider.GOOGLE
         compose.runOnIdle { current = store().provider }
         compose.onNodeWithContentDescription("Search provider: ${current.displayName}").performClick()
@@ -321,6 +327,8 @@ class LiveSearchFlowTest {
         }
         screenshot?.let(::capture)
         compose.onNode(hasText(provider.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
+            .performClick()
+        compose.onNode(hasText(if (setDefault) "Set as default" else "Just this search") and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
             .performClick()
         compose.onNodeWithTag(PROVIDER_PICKER).assertDoesNotExist()
         compose.onNodeWithContentDescription("Search provider: ${provider.displayName}").assertIsDisplayed()
@@ -395,6 +403,7 @@ class LiveSearchFlowTest {
             SearchProvider.BING -> "bing.com"
             SearchProvider.DUCKDUCKGO -> "duckduckgo.com"
             SearchProvider.BRAVE -> "search.brave.com"
+            SearchProvider.YAHOO -> "search.yahoo.com"
             SearchProvider.STARTPAGE -> "startpage.com"
         }
         val deadline = SystemClock.elapsedRealtime() + timeout
@@ -415,7 +424,7 @@ class LiveSearchFlowTest {
                     "URL=$url; title=${latest.optString("title")}", blocked)
                 val address = Uri.parse(url)
                 // A new WebView briefly reports about:blank, an opaque URI.
-                val queryMatches = address.isHierarchical && listOf("q", "query").any {
+                val queryMatches = address.isHierarchical && listOf("q", "query", "p").any {
                     address.getQueryParameter(it)?.equals(QUERY, true) == true
                 }
                 if ((host == expectedHost || host.endsWith(".$expectedHost")) && queryMatches &&
@@ -522,7 +531,7 @@ class LiveSearchFlowTest {
                       const u = new URL(a.href);
                       return /^https?:$/.test(u.protocol) &&
                         u.hostname !== location.hostname &&
-                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|startpage\.com)${'$'}/.test(u.hostname) &&
+                        !/(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|brave\.com|startpage\.com|yahoo\.com)${'$'}/.test(u.hostname) &&
                         !/(^|\.)(gstatic|googleusercontent)\.com${'$'}/.test(u.hostname);
                     } catch (_) { return false; }
                   }).length

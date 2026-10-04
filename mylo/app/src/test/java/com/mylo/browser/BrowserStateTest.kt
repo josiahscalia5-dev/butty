@@ -30,6 +30,7 @@ class BrowserStateTest {
             SearchProvider.BING to "https://www.bing.com/search?q=best+beaches+in+Florida",
             SearchProvider.DUCKDUCKGO to "https://duckduckgo.com/?q=best+beaches+in+Florida",
             SearchProvider.BRAVE to "https://search.brave.com/search?q=best+beaches+in+Florida",
+            SearchProvider.YAHOO to "https://search.yahoo.com/search?p=best+beaches+in+Florida",
             SearchProvider.STARTPAGE to "https://www.startpage.com/sp/search?query=best+beaches+in+Florida"
         )
         assertEquals(SearchProvider.entries.toSet(), expected.keys)
