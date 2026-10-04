@@ -120,8 +120,65 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  android-home:
+    name: Verify portrait Home on a Pixel 5
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Download the exact APK published above
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-debug
+          path: mylo/dist
+      - name: Download Home test APK
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-debug-tests
+          path: mylo/dist/tests
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify Home portrait sizes, navigation modes, and keyboard
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash mylo/scripts/verify-home-layout.sh mylo/dist/Mylo-debug.apk mylo/dist/home-layout mylo/dist/tests/app-debug-androidTest.apk
+      - name: Upload portrait Home screenshots, measurements, and logs
+        if: always()
+        id: home_portraits
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-Home-portraits
+          path: mylo/dist/home-layout/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Link Home evidence
+        if: always() && steps.home_portraits.outputs.artifact-url != ''
+        env:
+          HOME_ARTIFACT_URL: ${{ steps.home_portraits.outputs.artifact-url }}
+        run: echo "[Download real Home screenshots, measurements, and logs]($HOME_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+
   android-preview:
-    name: Verify the APK on a Pixel emulator
+    name: Verify browser navigation and real search providers
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -154,28 +211,18 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify portrait Home, keyboard, providers, and tab navigation
+      - name: Verify keyboard, providers, and tab navigation
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MYLO_SKIP_HOME_LAYOUT: "1"
         with:
           api-level: 35
           arch: x86_64
           target: google_apis
-          profile: pixel_6
+          profile: pixel_5
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
-      - name: Upload portrait Home screenshots and measurements
-        if: always()
-        id: home_portraits
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mylo-Home-portraits
-          path: |
-            mylo/dist/preview/home-layout/**/*.png
-            mylo/dist/preview/home-layout/**/*.json
-            mylo/dist/preview/home-layout/matrix.tsv
-          if-no-files-found: warn
-          retention-days: 14
       - name: Upload Android screenshot and smoke-test evidence
         if: always()
         id: preview
@@ -189,9 +236,5 @@ jobs:
         if: always() && steps.preview.outputs.artifact-url != ''
         env:
           PREVIEW_ARTIFACT_URL: ${{ steps.preview.outputs.artifact-url }}
-          HOME_ARTIFACT_URL: ${{ steps.home_portraits.outputs.artifact-url }}
         run: |
           echo "[Download real emulator recording, screenshots, and test evidence]($PREVIEW_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -n "$HOME_ARTIFACT_URL" ]]; then
-            echo "[Download portrait Home screenshots and measurements]($HOME_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
-          fi

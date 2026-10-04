@@ -2,17 +2,21 @@
 
 Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Home/Search screen. Reference artwork is bundled locally; no remotely loaded fonts or artwork are required at runtime.
 
-## Current verification status
+## Repository and verification status
 
-The committed version `2e3bcf3edd80c52c3cf7cf1538825f5f388bc1b2` built in [CI run 37232720149](https://github.com/josiahscalia5-dev/butty/actions/runs/37232720149), producing a debug APK. All 16 URL resolver unit tests and all eight Home test cases passed before the latest visual correction. Real search results were verified for Google, DuckDuckGo and Bing; Brave Search and Startpage presented CAPTCHAs. Google result-link selection and tab-test synchronization issues leave full browser verification incomplete.
+Work continues only in `josiahscalia5-dev/butty` on `codex-development`, based on `mylo-development` at `e878f7e`. The `claude-ui` branch belongs to Claude and must not be modified by this work. No other repository is used.
 
-The latest working-tree visual correction has **not been compiled or rendered**. Earlier test results do not validate this correction. Local Gradle/Android SDK setup remains blocked; see [BLOCKERS.md](BLOCKERS.md). The user has authorized verification commits on `mylo-development` so GitHub can produce the Android renders. The visual correction remains under verification until the side-by-side review is complete.
+The corrected Home has built successfully and rendered through Android Layoutlib. The first real-device comparison in [run 37234373243](https://github.com/josiahscalia5-dev/butty/actions/runs/37234373243) exposed a hero seam, excessive letter spacing, a dark VPN title and 4 dp of discovery-banner clipping at 393×851; seven other portrait/keyboard cases passed. The second visual pass compiled and rendered in [run 37235247124](https://github.com/josiahscalia5-dev/butty/actions/runs/37235247124). The current sky/border correction still requires the final Pixel 5 capture and comparison.
+
+All 16 resolver unit tests passed. Earlier real-provider checks verified Google, DuckDuckGo and Bing; Brave and Startpage presented CAPTCHA challenges. Full link-following and independent-tab checks are still under verification. The current change adjusts the tab test's synchronization, not production browsing behavior.
+
+The user authorized CI verification commits on `codex-development`; completion requires review of the actual Android capture against the approved reference. Local SDK/Gradle limitations are documented in [BLOCKERS.md](BLOCKERS.md).
 
 ## Current visual correction
 
-`HomeScreen.kt` follows the supplied `1-3751.jpg` reference, bundled as `drawable-nodpi/approved_home.jpg`. It preserves the supplied artwork through runtime crops alongside native interactive Compose controls and an edge-to-edge native header. Existing browser behavior is unchanged; no additional features are planned.
+`HomeScreen.kt` follows the supplied `1-3751.jpg` reference, bundled as `drawable-nodpi/approved_home.jpg`. It preserves the supplied artwork through runtime crops alongside native interactive Compose controls, accessible header targets and edge-to-edge artwork. Existing browser behavior is unchanged; no additional features are planned.
 
-`HomePreviewTest` is ready to render the actual Compose UI through Android Layoutlib/Paparazzi at 393×851 dp. It covers the default production state (VPN off, zero tabs) and a reference-only sample state (VPN on, Singapore, one tab). The sample values apply only to the test; production reads the device VPN state and actual tab count. These updated previews have not run.
+`HomePreviewTest` is ready to render the actual Compose UI through Android Layoutlib/Paparazzi at 393×851 dp. It covers the default production state (VPN off, zero tabs) and a reference-only sample state (VPN on, Singapore, one tab). The sample values apply only to the test; production reads the device VPN state and actual tab count. The 393×851 Layoutlib previews have run; real-device screenshots remain authoritative for Android system-bar and cutout handling.
 
 ## Build and run
 

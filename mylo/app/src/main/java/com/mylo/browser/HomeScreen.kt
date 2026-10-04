@@ -133,9 +133,13 @@ private fun HomeHero(unit: Dp, onPanel: (String) -> Unit) {
     Box(Modifier.fillMaxWidth().height(unit * 363f)) {
         // Preserve the uninterrupted original hero, including its fixed greeting and
         // hand-lettered wordmark. The sample status bar is deliberately outside this crop.
-        // Extend its first sky row behind Android's real transparent status bar.
-        ApprovedArt(0, 36, 589, 1, Modifier.fillMaxWidth().height(unit * 36f))
-        ApprovedArt(0, 36, 589, 327, Modifier.offset(y = unit * 36f).fillMaxWidth().height(unit * 327f),
+        // Match the clear sky behind Android's real status bar without stretching
+        // a bitmap row or retaining JPEG traces of the reference's status icons.
+        Box(Modifier.fillMaxWidth().height(unit * 44f).background(Brush.horizontalGradient(listOf(
+            Color(0xFF0D1B40), Color(0xFF0B193E), Color(0xFF0A1A3E), Color(0xFF0C1D46),
+            Color(0xFF0F204C), Color(0xFF101F4A), Color(0xFF09173A),
+        ))))
+        ApprovedArt(0, 44, 589, 319, Modifier.offset(y = unit * 44f).fillMaxWidth().height(unit * 319f),
             "Mylo. A brighter web awaits. A corgi on the moon above a nighttime lake.")
         // Accessible native hit targets over the fixed header artwork. Their bounds
         // remain below the actual cutout; the decorative sky can draw edge to edge.
@@ -210,7 +214,7 @@ private fun HomeCard(title: String, subtitle: String, x: Int, y: Int, unit: Dp, 
     val shape = RoundedCornerShape(unit * 22f)
     Row(modifier.heightIn(min = unit * 110f).clip(shape)
         .background(Brush.linearGradient(listOf(Color(0xFF162449), Color(0xFF111F40))))
-        .border(.7.dp, Color(0xFF34415F), shape).clickable(role = Role.Button, onClick = onClick)
+        .border(.7.dp, Color(0xFF27335B), shape).clickable(role = Role.Button, onClick = onClick)
         .padding(start = unit * 19f, end = unit * 11f, top = unit * 15f, bottom = unit * 15f),
         verticalAlignment = Alignment.CenterVertically) {
         ApprovedArt(x, y, 66, 67, Modifier.size(unit * 66f, unit * 67f).clip(RoundedCornerShape(unit * 21f)))
