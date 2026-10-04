@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -53,6 +54,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -98,7 +100,6 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
     val store = BrowserStore(application)
     val tabStates = mutableMapOf<Long, Bundle>()
     val pendingNavigations = mutableMapOf<Long, String>()
-    val homeHistoryBoundaries = mutableMapOf<Long, Int>()
 }
 
 class MainActivity : ComponentActivity() {
@@ -118,10 +119,13 @@ class MainActivity : ComponentActivity() {
     var home by rememberSaveable { mutableStateOf(true) }
     var query by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var focusSearch by remember { mutableIntStateOf(0) }
+    var searching by rememberSaveable { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val vpn = rememberVpnStatus()
+    fun startSearch() { query = ""; searching = true }
+    fun closeSearch() { searching = false; query = ""; focus.clearFocus(); keyboard?.hide() }
+    fun showHome() { closeSearch(); home = true }
     fun open(input: String) {
         val tab = store.navigateInCurrentTab(currentTab, input)
         if (tab == null) { error = "Enter a website address or search words."; return }
@@ -129,7 +133,7 @@ class MainActivity : ComponentActivity() {
         session.pendingNavigations[tab.id] = tab.url
         currentTab = tab.id
         home = false
-        focusSearch = 0
+        searching = false
         query = ""
         focus.clearFocus()
         keyboard?.hide()
@@ -139,6 +143,7 @@ class MainActivity : ComponentActivity() {
     }
     MyloViewport {
             Box(Modifier.weight(1f)) {
+                Box(Modifier.fillMaxSize().then(if (searching) Modifier.clearAndSetSemantics { } else Modifier)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
                 if (home || tab == null) {
                     HomeScreen(query, { query = it }, { open(query) }, {
@@ -146,20 +151,24 @@ class MainActivity : ComponentActivity() {
                             .onFailure { error = "Voice search isn't available on this device. You can type your search." }
                     }, { panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, focusSearch)
+                    }, vpn, onActivateSearch = { if (!searching) startSearch() })
                 } else {
-                    BrowserScreen(tab, session, {
-                        home = true; focusSearch = 0; focus.clearFocus(); keyboard?.hide()
-                    }, { panel = "bookmarks" })
+                    key(tab.id) {
+                        BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
+                    }
+                }
+                }
+                if (searching) {
+                    SearchInputScreen(query, { query = it }, store.provider, store::setProvider,
+                        { open(query) }, ::closeSearch)
                 }
             }
-            BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size, {
-                home = true; focusSearch = 0; focus.clearFocus(); keyboard?.hide()
-            }, { home = true; focusSearch++ }, { panel = "tabs" }, { panel = "mylo" })
+            if (!searching) BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size,
+                ::showHome, ::startSearch, { panel = "tabs" }, { panel = "mylo" })
     }
     panel?.let { selected -> MyloPanel(selected, store, { panel = null }, { open(it) }, {
-        currentTab = it.id; home = it.url.isBlank()
-    }, { currentTab = store.createTab().id; home = true; focusSearch++ }) }
+        closeSearch(); currentTab = it.id; home = it.url.isBlank()
+    }, { currentTab = store.createTab().id; home = true; startSearch() }) }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null }, title = { Text("Mylo") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
 }
 
@@ -185,7 +194,7 @@ class MainActivity : ComponentActivity() {
 @Composable fun HomeScreen(
     query: String = "", onQuery: (String) -> Unit = {}, onSearch: () -> Unit = {}, onVoice: () -> Unit = {},
     onPanel: (String) -> Unit = {}, onOpen: (String) -> Unit = {}, onPrivate: () -> Unit = {},
-    vpnActive: Boolean = false, searchRequest: Int = 0
+    vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null
 ) {
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -216,7 +225,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            SearchBar(query, onQuery, onSearch, onVoice, requester, Modifier.padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 20.dp))
+            SearchBar(query, onQuery, onSearch, onVoice, requester, Modifier.padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 20.dp), onActivateSearch)
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                     Shortcut("Explore", Icons.Rounded.Explore, Color(0xFF5DAAFF)) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
@@ -241,11 +250,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier) {
+@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier, onActivate: (() -> Unit)? = null) {
     val keyboard = LocalSoftwareKeyboardController.current
     Row(modifier.fillMaxWidth().heightIn(min = 58.dp).clip(RoundedCornerShape(30.dp)).background(Brush.horizontalGradient(listOf(Color(0xFFF6F3FF), Color(0xFFE3DFFF)))).padding(start = 7.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { requester.requestFocus(); keyboard?.show() }) { Icon(Icons.Rounded.Search, "Focus search", tint = Color(0xFF302B70), modifier = Modifier.size(27.dp)) }
-        BasicTextField(value, onValue, Modifier.weight(1f).focusRequester(requester).semantics { contentDescription = "Search or enter address" }.padding(vertical = 16.dp), singleLine = true,
+        IconButton(onClick = { if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() } }) { Icon(Icons.Rounded.Search, "Focus search", tint = Color(0xFF302B70), modifier = Modifier.size(27.dp)) }
+        BasicTextField(value, onValue, Modifier.weight(1f).focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }.semantics { contentDescription = "Search or enter address" }.padding(vertical = 16.dp), singleLine = true, readOnly = onActivate != null,
             textStyle = TextStyle(color = Color(0xFF252750), fontSize = 15.sp), cursorBrush = Brush.verticalGradient(listOf(Color(0xFF493B96), Color(0xFF493B96))),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { onSubmit() }),
             decorationBox = { inner -> Box { if (value.isEmpty()) Text("Search or enter address", color = Color(0xFF626487), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
@@ -329,32 +338,29 @@ class MainActivity : ComponentActivity() {
 }
 
 @SuppressLint("SetJavaScriptEnabled")
-@Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit) {
+@Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit, handleBack: Boolean = true) {
     val store = session.store
     var address by remember(tab.id) { mutableStateOf(tab.url) }
+    var editingAddress by remember(tab.id) { mutableStateOf(false) }
     var webView by remember(tab.id) { mutableStateOf<WebView?>(null) }
     var loading by remember(tab.id) { mutableStateOf(false) }
     var pageError by remember(tab.id) { mutableStateOf<String?>(null) }
     var canForward by remember(tab.id) { mutableStateOf(false) }
-    var awaitingHomeLanding by remember(tab.id) { mutableStateOf(session.pendingNavigations.containsKey(tab.id)) }
     var active by remember(tab.id) { mutableStateOf(true) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val latestOnHome by rememberUpdatedState(onHome)
 
     fun back() {
+        focus.clearFocus(); keyboard?.hide()
         val view = webView
-        val index = view?.copyBackForwardList()?.currentIndex ?: -1
-        val boundary = session.homeHistoryBoundaries[tab.id] ?: -1
-        // Home is a native entry in this tab: Back from its submitted page returns Home.
-        if (awaitingHomeLanding || index <= boundary || view?.canGoBack() != true) {
-            latestOnHome()
-        } else view.goBack()
+        if (view?.canGoBack() == true) view.goBack() else latestOnHome()
     }
     fun submitAddress() {
         val url = resolveInput(address, store.provider)
         if (url == null) { pageError = "Enter a website address or search words."; return }
         webView?.stopLoading()
+        address = url
         store.updateTab(tab.id, url, url)
         webView?.loadUrl(url)
         focus.clearFocus(); keyboard?.hide()
@@ -363,7 +369,7 @@ class MainActivity : ComponentActivity() {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
             IconButton(onClick = { webView?.goForward() }, enabled = canForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
-            OutlinedTextField(address, { address = it }, Modifier.weight(1f).padding(vertical = 5.dp).semantics { contentDescription = "Browser address" }, textStyle = TextStyle(fontSize = 13.sp), singleLine = true, shape = RoundedCornerShape(20.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { submitAddress() }))
+            OutlinedTextField(address, { address = it }, Modifier.weight(1f).padding(vertical = 5.dp).onFocusChanged { editingAddress = it.isFocused }.semantics { contentDescription = "Browser address" }, textStyle = TextStyle(fontSize = 13.sp), singleLine = true, shape = RoundedCornerShape(20.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { submitAddress() }))
             IconButton(onClick = { webView?.reload() }) { Icon(Icons.Rounded.Refresh, "Reload") }
             IconButton(onClick = { webView?.let { store.addBookmark(it.url.orEmpty(), it.title.orEmpty()) }; onBookmarks() }) { Icon(Icons.Rounded.BookmarkAdd, "Bookmark this page") }
         }
@@ -394,11 +400,8 @@ class MainActivity : ComponentActivity() {
                         }
                         override fun onPageFinished(view: WebView, url: String) {
                             if (!active || url != view.url) return
-                            loading = false; address = url; canForward = view.canGoForward()
-                            if (awaitingHomeLanding) {
-                                session.homeHistoryBoundaries[tab.id] = view.copyBackForwardList().currentIndex
-                                awaitingHomeLanding = false
-                            }
+                            loading = false; canForward = view.canGoForward()
+                            if (!editingAddress) address = url
                             store.updateTab(tab.id, url, view.title.orEmpty())
                             if (pageError == null) store.recordVisit(url, view.title.orEmpty())
                         }
@@ -419,20 +422,27 @@ class MainActivity : ComponentActivity() {
                     val requested = session.pendingNavigations.remove(tab.id)
                     val restored = session.tabStates[tab.id]?.let { restoreState(it) }
                     if (requested != null) {
-                        awaitingHomeLanding = true
                         loadUrl(requested)
                     } else if (restored == null) loadUrl(tab.url)
                     canForward = canGoForward()
                 }
+            }, update = { view ->
+                // Search mode overlays an existing WebView. Consume a submission
+                // once, without recreating the view or losing its navigation list.
+                session.pendingNavigations.remove(tab.id)?.let { url ->
+                    view.stopLoading()
+                    address = url
+                    view.loadUrl(url)
+                }
             }, modifier = Modifier.weight(1f).fillMaxWidth())
         }
     }
-    BackHandler { back() }
+    BackHandler(enabled = handleBack) { back() }
     DisposableEffect(tab.id) { onDispose {
         active = false
         webView?.apply {
             if (store.tabs.any { it.id == tab.id }) session.tabStates[tab.id] = Bundle().also { saveState(it) }
-            else { session.tabStates.remove(tab.id); session.homeHistoryBoundaries.remove(tab.id); session.pendingNavigations.remove(tab.id) }
+            else { session.tabStates.remove(tab.id); session.pendingNavigations.remove(tab.id) }
             stopLoading(); destroy()
         }
         webView = null

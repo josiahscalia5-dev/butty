@@ -29,8 +29,8 @@ fun resolveInput(input: String, provider: SearchProvider = SearchProvider.DUCKDU
     val value = input.trim()
     if (value.isEmpty() || value.any { it.code < 32 || it.code == 127 }) return null
 
-    // A dotted host with a port must not be confused with a URI scheme.
-    val hostWithPort = Regex("^(?:[^\\s/:]+\\.[^\\s/:]+|localhost):[0-9]+(?:[/\\?#].*)?$")
+    // A host with a port must not be confused with a URI scheme.
+    val hostWithPort = Regex("^(?:[^\\s/:]+[.。．｡][^\\s/:]+|localhost):[0-9]+(?:[/\\?#].*)?$", RegexOption.IGNORE_CASE)
         .matches(value)
     val scheme = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):").find(value)?.groupValues?.get(1)
     if (scheme != null && !hostWithPort) {
@@ -43,8 +43,7 @@ fun resolveInput(input: String, provider: SearchProvider = SearchProvider.DUCKDU
             "mmsto", "geo", "market", "android-app", "chrome", "chrome-extension",
             "view-source"
         )
-        if (scheme.lowercase() in blockedSchemes || value.substringAfter(':').startsWith("//") ||
-            !value.any(Char::isWhitespace)) return null
+        if (scheme.lowercase() in blockedSchemes || value.substringAfter(':').startsWith("//")) return null
         return provider.searchUrl(value)
     }
 
@@ -52,7 +51,7 @@ fun resolveInput(input: String, provider: SearchProvider = SearchProvider.DUCKDU
         val authority = value.substringBefore('/').substringBefore('?').substringBefore('#')
         val host = authority.substringBefore(':')
         val looksLikeHost = !authority.contains('@') &&
-            (host == "localhost" || host.contains('.'))
+            (host.equals("localhost", true) || host.any { it in ".。．｡" } || authority.startsWith('['))
         if (looksLikeHost) {
             normalizeWebUrl("https://$value")?.let { return it }
         }
@@ -71,6 +70,9 @@ private fun normalizeWebUrl(value: String): String? = runCatching {
     // preserving the user's encoded path, query, and fragment verbatim.
     val normalizedAuthority = if (authority.startsWith("[")) {
         if (uri.host == null) return null
+        val portSuffix = authority.substringAfter(']', "")
+        if (portSuffix.isNotEmpty() &&
+            (!portSuffix.startsWith(':') || portSuffix.drop(1).toIntOrNull()?.let { it in 1..65535 } != true)) return null
         authority.lowercase()
     } else {
         val host = authority.substringBefore(':')

@@ -48,8 +48,9 @@ class BrowserStateTest {
 
     @Test fun colonPrefixedSearchQueriesUseSelectedProvider() {
         SearchProvider.entries.forEach { provider ->
-            assertEquals(provider.searchUrl("site:florida.com beaches"), resolveInput("site:florida.com beaches", provider))
-            assertEquals(provider.searchUrl("weather: London"), resolveInput("weather: London", provider))
+            listOf("site:florida.com beaches", "site:florida.com", "weather: London", "weather:London", "intitle:Mylo").forEach { query ->
+                assertEquals(provider.searchUrl(query), resolveInput(query, provider))
+            }
         }
     }
 
@@ -58,6 +59,7 @@ class BrowserStateTest {
             assertEquals("https://example.com/a?q=one%20two#top", resolveInput("example.com/a?q=one%20two#top", provider))
             assertEquals("http://localhost:8080/test", resolveInput("http://localhost:8080/test", provider))
             assertEquals("https://example.com:8443/a", resolveInput("EXAMPLE.com:8443/a", provider))
+            assertEquals("https://localhost:8080/test", resolveInput("LOCALHOST:8080/test", provider))
         }
     }
 
@@ -67,7 +69,8 @@ class BrowserStateTest {
             "intent://test", "data:text/html,hello", "data: text/html,hello",
             "content://private/document", "about: blank", "ftp://example.com",
             "unknown://example.com", "unknown://example.com with spaces",
-            "https://", "https://good.example@evil.example", "https://example.com:99999"
+            "https://", "https://good.example@evil.example", "https://example.com:99999",
+            "https://[::1]:99999", "https://[::1]:0", "https://[::1]:", "https://[not-an-ipv6-address]"
         ).forEach { input ->
             SearchProvider.entries.forEach { provider -> assertNull(input, resolveInput(input, provider)) }
         }
@@ -83,6 +86,17 @@ class BrowserStateTest {
 
     @Test fun internationalizedDomainUsesAsciiHostname() {
         assertEquals("https://xn--bcher-kva.de/lesen", resolveInput("bücher.de/lesen"))
+        assertEquals("https://xn--bcher-kva.de:8443/lesen", resolveInput("bücher。de:8443/lesen"))
+        assertEquals("https://xn--bcher-kva.de/lesen?q=caf%C3%A9", resolveInput("HTTPS://bücher.de/lesen?q=café"))
+    }
+
+    @Test fun ipAddressesOpenDirectlyForEveryProvider() {
+        SearchProvider.entries.forEach { provider ->
+            assertEquals("https://192.168.1.1:8443/a", resolveInput("192.168.1.1:8443/a", provider))
+            assertEquals("https://[2001:db8::1]/a?q=two", resolveInput("[2001:db8::1]/a?q=two", provider))
+            assertEquals("https://[::1]:8443/a", resolveInput("[::1]:8443/a", provider))
+            assertEquals("http://[::1]:8080/a", resolveInput("HTTP://[::1]:8080/a", provider))
+        }
     }
 
     @Test fun selectedProviderSurvivesStoreRecreation() {

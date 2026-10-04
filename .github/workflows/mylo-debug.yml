@@ -4,7 +4,7 @@ name: Mylo debug APK
 on:
   workflow_dispatch:
   push:
-    branches: ["codex/mylo-apk-*"]
+    branches: ["mylo-development"]
     paths:
       - "mylo/**"
       - ".github/workflows/mylo-debug.yml"
@@ -30,7 +30,6 @@ jobs:
         working-directory: mylo
     outputs:
       apk-url: ${{ steps.apk.outputs.artifact-url }}
-      test-apk-ready: ${{ steps.test_apk_build.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Java 17
@@ -82,7 +81,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Build live search instrumentation APK
         id: test_apk_build
-        continue-on-error: true
         run: gradle --no-daemon --stacktrace :app:assembleDebugAndroidTest
       - name: Upload instrumentation APK
         if: steps.test_apk_build.outcome == 'success'
@@ -107,9 +105,9 @@ jobs:
     name: Verify the APK on a Pixel emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # The download remains available if the emulator or a public search provider is unavailable.
-    continue-on-error: true
+    timeout-minutes: 15
+    # APK download remains available in the build job even if live verification fails.
+    # A provider denial must remain a visible failure, never a claimed verification.
     steps:
       - uses: actions/checkout@v4
       - name: Set up Java 17
@@ -125,7 +123,6 @@ jobs:
           name: Mylo-debug
           path: mylo/dist
       - name: Download live search test APK
-        if: needs.build.outputs.test-apk-ready == 'true'
         uses: actions/download-artifact@v4
         with:
           name: Mylo-debug-tests
@@ -135,7 +132,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Launch Home and verify live search
+      - name: Verify keyboard, provider selection, live results, and tab navigation
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -159,4 +156,4 @@ jobs:
         env:
           PREVIEW_ARTIFACT_URL: ${{ steps.preview.outputs.artifact-url }}
         run: |
-          echo "[Download real emulator screenshots and test evidence]($PREVIEW_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Download real emulator recording, screenshots, and test evidence]($PREVIEW_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
