@@ -177,8 +177,14 @@ private const val REFERENCE_WIDTH = 392.7f
     )
 }
 
+/**
+ * The approved composition assumes a 30 dp status bar. Taller bars (cutouts) push the greeting down
+ * but move the artwork only beyond 42 dp, so the page below never loses room to a camera notch.
+ */
+private fun heroAnchor(statusBar: Dp): Dp = maxOf(30.dp, statusBar - 12.dp)
+
 /** Height of the hero (art, greeting and wordmark) above the search field. */
-internal fun heroBottom(width: Dp, statusBar: Dp): Dp = statusBar + 202.dp * (width.value / REFERENCE_WIDTH)
+internal fun heroBottom(width: Dp, statusBar: Dp): Dp = heroAnchor(statusBar) + 202.dp * (width.value / REFERENCE_WIDTH)
 
 /**
  * Mylo on the moon with the wordmark, composed exactly as in the approved reference.
@@ -187,12 +193,13 @@ internal fun heroBottom(width: Dp, statusBar: Dp): Dp = statusBar + 202.dp * (wi
 @Composable internal fun HeroBackdrop(width: Dp, statusBar: Dp, dim: Float = 0f, content: @Composable BoxScope.() -> Unit = {}) {
     val art = ImageBitmap.imageResource(R.drawable.mylo_night_hero)
     val k = width.value / REFERENCE_WIDTH
+    val anchor = heroAnchor(statusBar)
     Box(Modifier.fillMaxWidth().height(heroBottom(width, statusBar)).drawBehind {
         // Registered against the reference: the art is 1.3825 screen widths wide, shifted left by 0.292 widths.
         val w = size.width
         val artWidth = w * 1.3825f
         val artHeight = artWidth * art.height / art.width
-        val top = (statusBar.toPx() - w * .0959f).coerceAtMost(0f)
+        val top = (anchor.toPx() - w * .0959f).coerceAtMost(0f)
         drawImage(art, dstOffset = IntOffset((-w * .292f).roundToInt(), top.roundToInt()),
             dstSize = IntSize(artWidth.roundToInt(), artHeight.roundToInt()), filterQuality = FilterQuality.High)
         // Let the bottom edge of the art melt into the page behind the search bar.
@@ -202,15 +209,15 @@ internal fun heroBottom(width: Dp, statusBar: Dp): Dp = statusBar + 202.dp * (wi
     }) {
         Box(Modifier.matchParentSize().clearAndSetSemantics { contentDescription = "Mylo, a cheerful corgi sitting on the moon above a moonlit lake" })
         // Glowing star beside Mylo.
-        Box(Modifier.offset(x = width * .5959f - 24.dp * k, y = statusBar + 52.dp * k - 24.dp * k).size(48.dp * k)
+        Box(Modifier.offset(x = width * .5959f - 24.dp * k, y = anchor + 52.dp * k - 24.dp * k).size(48.dp * k)
             .background(Brush.radialGradient(0f to Color(0x66FFD978), .5f to Color(0x24FFD978), 1f to Color(0x00FFD978))), contentAlignment = Alignment.Center) {
             Image(rememberVectorPainter(HomeArt.Star), null, Modifier.size(28.dp * k).graphicsLayer { rotationZ = -6f })
         }
         Image(rememberVectorPainter(HomeArt.Wordmark), "Mylo",
-            Modifier.offset(x = width * .0925f, y = statusBar + 70.4.dp * k).width(width * .391f).aspectRatio(HomeArt.WORDMARK_ASPECT))
+            Modifier.offset(x = width * .0925f, y = anchor + 70.4.dp * k).width(width * .391f).aspectRatio(HomeArt.WORDMARK_ASPECT))
         Text("A brighter web awaits", fontSize = 15.sp * k, fontWeight = FontWeight.Medium, color = Color(0xFFDCDDF6), maxLines = 1,
             style = TextStyle(shadow = Shadow(Color(0x80040A24), Offset(0f, 2f), 8f)),
-            modifier = Modifier.offset(x = width * .107f, y = statusBar + 136.5.dp * k))
+            modifier = Modifier.offset(x = width * .107f, y = anchor + 136.5.dp * k))
         if (dim > 0f) Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(HomeNight.copy(alpha = dim), HomeNight.copy(alpha = dim * .8f)))))
         content()
     }
