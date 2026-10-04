@@ -130,7 +130,7 @@ jobs:
     name: Verify the APK on a Pixel emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.scope == 'search-flow' && 12 || 25 }}
+    timeout-minutes: ${{ inputs.scope == 'search-flow' && 15 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:

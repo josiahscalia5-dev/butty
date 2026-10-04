@@ -15,13 +15,14 @@ original_ime_setting=""
 failed=0
 
 collect_diagnostics() {
-  adb logcat -d -v threadtime > "$evidence_dir/logcat.txt" 2>&1 || true
-  adb shell dumpsys activity activities > "$evidence_dir/activities.txt" 2>&1 || true
-  adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/. "$evidence_dir/" >/dev/null 2>&1 || true
+  # Bounded, so an unresponsive emulator cannot hold the job until its time limit.
+  timeout 30 adb logcat -d -v threadtime > "$evidence_dir/logcat.txt" 2>&1 || true
+  timeout 30 adb shell dumpsys activity activities > "$evidence_dir/activities.txt" 2>&1 || true
+  timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/. "$evidence_dir/" >/dev/null 2>&1 || true
   if [[ "$original_ime_setting" == "null" ]]; then
-    adb shell settings delete secure show_ime_with_hard_keyboard >/dev/null 2>&1 || true
+    timeout 15 adb shell settings delete secure show_ime_with_hard_keyboard >/dev/null 2>&1 || true
   elif [[ -n "$original_ime_setting" ]]; then
-    adb shell settings put secure show_ime_with_hard_keyboard "$original_ime_setting" >/dev/null 2>&1 || true
+    timeout 15 adb shell settings put secure show_ime_with_hard_keyboard "$original_ime_setting" >/dev/null 2>&1 || true
   fi
 }
 trap collect_diagnostics EXIT
@@ -66,13 +67,33 @@ fi
 
 # Keep layout and live-network results independent so either failure retains the other evidence.
 # The exact user flow, one screenshot per step: Home → tap search → type → choose provider →
-# keyboard Search → the provider's real results page (Brave once, Google default, Yahoo as default,
-# Bing URL check). Bounded so a provider page can never stall the job.
+# keyboard Search → the provider's real results page (Google default, Yahoo as default, Bing URL
+# check, Brave once). Each case runs alone with its own time limit and its evidence is pulled
+# straight away, so one stalled provider page cannot hide the other cases' results.
 flow_status=0
-timeout 480 adb shell am instrument -w -r -e class com.mylo.browser.ProviderFlowPreviewTest \
-  com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner | tee "$evidence_dir/provider-flow-test.txt" || flow_status=1
-grep -q '^OK (4 tests)' "$evidence_dir/provider-flow-test.txt" || flow_status=1
-adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/provider-flow "$evidence_dir/" >/dev/null 2>&1 || true
+flow_summary="$evidence_dir/provider-flow-test.txt"
+: > "$flow_summary"
+adb logcat -c || true
+adb logcat -v threadtime > "$evidence_dir/provider-flow-logcat.txt" 2>&1 &
+flow_logcat_pid=$!
+for flow_case in googleDefault yahooSetAsDefault bingOpensBingUrl braveJustThisSearch; do
+  if ! timeout 15 adb shell true >/dev/null 2>&1; then
+    echo "$flow_case: not run (emulator stopped responding)" | tee -a "$flow_summary"; flow_status=1; continue
+  fi
+  case_output="$evidence_dir/provider-flow-$flow_case.txt"
+  timeout 130 adb shell am instrument -w -r -e class "com.mylo.browser.ProviderFlowPreviewTest#$flow_case" \
+    com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$case_output" 2>&1 || true
+  if grep -q '^OK (1 test)' "$case_output"; then flow_result=passed; else flow_result='failed or blocked'; flow_status=1; fi
+  echo "$flow_case: $flow_result" | tee -a "$flow_summary"
+  [[ "$flow_result" == passed ]] || grep -E '^(INSTRUMENTATION_(STATUS: stack|RESULT|CODE|ABORTED)|java\.|junit\.|Process crashed)' "$case_output" \
+    | cut -c1-400 | head -n 8 | sed 's/^/    /' >> "$flow_summary" || true
+  timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/provider-flow "$evidence_dir/" >/dev/null 2>&1 || true
+done
+kill "$flow_logcat_pid" 2>/dev/null || true
+{ echo 'Crash, renderer and memory events during the flow:'
+  grep -E 'FATAL EXCEPTION|AndroidRuntime: |Render process|renderer.*(crash|gone)|lowmemorykiller|ANR in|Process com\.mylo\.browser.* has died|Watchdog' \
+    "$evidence_dir/provider-flow-logcat.txt" | cut -c1-300 | tail -n 30 || echo '  none recorded'
+} >> "$flow_summary"
 if [[ "${MYLO_SCOPE:-full}" == "search-flow" ]]; then
   if (( flow_status )); then echo 'Search-flow verification failed or was blocked. See provider-flow evidence.' >&2; exit 1; fi
   echo 'Verified Home → search → provider → real results for Brave, Google and Yahoo, and the Bing URL check.'
