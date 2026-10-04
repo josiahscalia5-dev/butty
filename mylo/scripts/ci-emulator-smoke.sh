@@ -65,6 +65,16 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
 fi
 
 # Keep layout and live-network results independent so either failure retains the other evidence.
+# The exact user flow, one screenshot per step: Home → tap search → type → choose provider →
+# keyboard Search → the provider's real results page (Brave once, Google default, Yahoo as default).
+if ! adb shell am instrument -w -r -e class com.mylo.browser.ProviderFlowPreviewTest \
+  com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner | tee "$evidence_dir/provider-flow-test.txt"; then
+  failed=1
+elif ! grep -q '^OK (3 tests)' "$evidence_dir/provider-flow-test.txt"; then
+  failed=1
+fi
+adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/provider-flow "$evidence_dir/" >/dev/null 2>&1 || true
+
 if ! bash "$script_dir/verify-home-layout.sh" "$apk_path" "$evidence_dir/home-layout" "$test_apk_path"; then
   failed=1
 fi

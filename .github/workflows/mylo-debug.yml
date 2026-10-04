@@ -185,6 +185,35 @@ jobs:
           path: mylo/dist/preview/
           if-no-files-found: warn
           retention-days: 14
+      - name: Upload search-provider flow screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-search-provider-flow
+          path: mylo/dist/preview/provider-flow/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Print search-provider flow screenshots into the log
+        # Compact JPEG copies (base64) so reviewers without artifact access can inspect the real device screens.
+        if: always()
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import base64, glob, io, os
+          from PIL import Image
+          for path in sorted(glob.glob("mylo/dist/preview/provider-flow/*/*")):
+              name = "/".join(path.split("/")[-2:])
+              if path.endswith(".json"):
+                  print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
+              elif path.endswith(".png"):
+                  im = Image.open(path).convert("RGB")
+                  im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
+                  buf = io.BytesIO(); im.save(buf, "JPEG", quality=70, optimize=True)
+                  data = base64.b64encode(buf.getvalue()).decode()
+                  print(f"-----BEGIN MYLO-IMAGE {name}-----")
+                  for i in range(0, len(data), 120): print(data[i:i + 120])
+                  print(f"-----END MYLO-IMAGE {name}-----")
+          PY
       - name: Link Android evidence
         if: always() && steps.preview.outputs.artifact-url != ''
         env:
