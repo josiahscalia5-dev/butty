@@ -50,7 +50,7 @@ fun SearchInputScreen(
     BackHandler { if (choosingProvider) choosingProvider = false else onClose() }
 
     Surface(color = Night, modifier = Modifier.fillMaxSize().testTag("search-input-mode")) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.fillMaxSize().topSafeArea().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Close search")

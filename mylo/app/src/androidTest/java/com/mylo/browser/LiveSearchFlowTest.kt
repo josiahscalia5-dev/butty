@@ -302,7 +302,9 @@ class LiveSearchFlowTest {
     }
 
     private fun submitInput(value: String) {
-        compose.onNodeWithTag(SEARCH_INPUT).performTextReplacement(value).performImeAction()
+        val input = compose.onNodeWithTag(SEARCH_INPUT)
+        input.performTextReplacement(value)
+        input.performImeAction()
     }
 
     private fun chooseProvider(provider: SearchProvider, screenshot: String? = null) {

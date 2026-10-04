@@ -20,8 +20,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -30,7 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,56 +42,81 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import kotlin.math.roundToInt
 
-val Night = Color(0xFF09142E)
+val Night = Color(0xFF071530)
 private val Lavender = Color(0xFFCEC5FF)
 private val Muted = Color(0xFFAEB9DB)
 private val Panel = Color(0xFF162345)
 private val Line = Color(0xFF303F67)
+private val MyloRounded = FontFamily(Font(R.font.nunito_black, FontWeight.Black))
 
 @Composable fun MyloTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = darkColorScheme(primary = Lavender, onPrimary = Color(0xFF252058), background = Night,
         surface = Panel, onSurface = Color(0xFFF6F4FF), secondary = Color(0xFF67D9C2)), content = content)
 }
 
-/** Shared by the activity and the native portrait preview. Insets belong to the shell. */
+/**
+ * Shared by the activity and the native portrait preview. Insets belong to the shell, except the
+ * top inset: Home draws its artwork behind the transparent status bar, other screens pad for it.
+ */
 @Composable fun MyloViewport(content: @Composable ColumnScope.() -> Unit) {
     Surface(color = Night, modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .imePadding(),
             content = content,
         )
     }
 }
+
+/** Top safe-area padding for screens that don't draw behind the status bar. */
+fun Modifier.topSafeArea() = windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
 
 class MyloApplication : Application() {
     override fun onCreate() {
@@ -151,7 +180,15 @@ class MainActivity : ComponentActivity() {
                             .onFailure { error = "Voice search isn't available on this device. You can type your search." }
                     }, { panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, onActivateSearch = { if (!searching) startSearch() })
+                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScan = {
+                        // Google's code scanner supplies its own camera UI; a scanned link or text opens like typed input.
+                        val unavailable = "The code scanner isn't available on this device. You can type the address instead."
+                        runCatching {
+                            GmsBarcodeScanning.getClient(context).startScan()
+                                .addOnSuccessListener { code -> code.rawValue?.takeIf { it.isNotBlank() }?.let { open(it) } }
+                                .addOnFailureListener { error = unavailable }
+                        }.onFailure { error = unavailable }
+                    })
                 } else {
                     key(tab.id) {
                         BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
@@ -190,152 +227,284 @@ class MainActivity : ComponentActivity() {
     return active
 }
 
-/** Native responsive layout. Only the middle content scrolls; search and navigation stay usable. */
+/** Design-comparison only: renders the approved mock VPN location. Live status never uses this. */
+class VpnDesignPreview(val location: String, val badge: @Composable () -> Unit)
+
+// Approved Home palette, sampled from the approved reference.
+private val HomeInk = Color(0xFFF5F4FF)
+private val HomeMuted = Color(0xFFAEB7DA)
+private val SearchInk = Color(0xFF23286A)
+private val CardBorder = Color(0xFF1E2C50)
+private val NavInk = Color(0xFFD2D6EE)
+
+/** Width of the approved reference, in dp. Hero artwork scales from it; controls keep their dp sizes. */
+private const val REFERENCE_WIDTH = 392.7f
+
+/**
+ * Approved Home screen. Dimensions follow the approved 393 × 851 dp reference. The artwork sits
+ * behind the transparent status bar; on short screens the page scrolls above the fixed navigation,
+ * and on tall screens the spare height is shared between the sections.
+ */
 @Composable fun HomeScreen(
     query: String = "", onQuery: (String) -> Unit = {}, onSearch: () -> Unit = {}, onVoice: () -> Unit = {},
     onPanel: (String) -> Unit = {}, onOpen: (String) -> Unit = {}, onPrivate: () -> Unit = {},
-    vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null
+    vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null,
+    onScan: () -> Unit = {}, vpnDesignPreview: VpnDesignPreview? = null, statusBarInset: Dp? = null,
 ) {
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(searchRequest) { if (searchRequest > 0) { requester.requestFocus(); keyboard?.show() } }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val keyboardCompact = maxHeight < 440.dp
-        val heroHeight = if (maxHeight < 660.dp) 146.dp else 178.dp
-        val brandWidth = maxWidth * .47f
-        // The wordmark is decorative branding; supporting copy still follows font scale.
-        val brandSize = with(LocalDensity.current) { (maxWidth * .145f).coerceAtMost(60.dp).toSp() }
-        Column(Modifier.fillMaxSize()) {
-            if (!keyboardCompact) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(34.dp).background(Color(0xFF1A2951), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.WbSunny, null, tint = Color(0xFFFFD264), modifier = Modifier.size(20.dp)) }
-                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text("Good evening!", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        Text("A little wonder awaits", fontSize = 10.sp, color = Muted)
+    val statusBar = statusBarInset ?: WindowInsets.safeDrawing.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding()
+    val scroll = rememberScrollState()
+    HomeTextStyle {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val viewport = maxHeight
+            val width = maxWidth
+            val keyboardCompact = viewport < 440.dp
+            val narrow = width < 380.dp
+            Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+                Column(Modifier.fillMaxWidth().heightIn(min = viewport).padding(bottom = 5.dp)) {
+                    if (keyboardCompact) Spacer(Modifier.height(statusBar + 8.dp))
+                    else HomeHero(width, statusBar) { onPanel("settings") }
+                    SearchBar(query, onQuery, onSearch, onVoice, onScan, requester, Modifier.padding(horizontal = 12.dp), onActivateSearch)
+                    Spacer(Modifier.height(17.dp)); Spacer(Modifier.weight(1f))
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                        Shortcut("Explore", Color(0xFF172A5A), { onOpen("https://en.wikipedia.org/wiki/Special:Random") }) {
+                            ShortcutDisk(Color(0xFF6AADF7), Color(0xFF2763C4)) { Icon(HomeArt.Compass, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
+                        }
+                        Shortcut("Videos", Color(0xFF25274D), { onOpen("https://m.youtube.com") }) {
+                            ShortcutDisk(Color(0xFFFF7A93), Color(0xFFE0436C)) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(30.dp)) }
+                        }
+                        Shortcut("Shop", Color(0xFF17304E), { onOpen("https://www.amazon.com") }) {
+                            Image(rememberVectorPainter(HomeArt.ShopBag), null, Modifier.size(50.dp))
+                        }
+                        Shortcut("AI", Color(0xFF292F3F), { onOpen("https://chatgpt.com") }) {
+                            ShortcutDisk(Color(0xFFFFD86A), Color(0xFFF6A23F)) { Icon(HomeArt.Sparkle, null, tint = Color.White, modifier = Modifier.size(23.dp)) }
+                        }
                     }
-                    IconButton(onClick = { onPanel("settings") }) { Icon(Icons.Rounded.Settings, "Settings", tint = Color(0xFFDBD7F7), modifier = Modifier.size(23.dp)) }
-                }
-                Box(Modifier.fillMaxWidth().height(heroHeight)) {
-                    Image(painterResource(R.drawable.mylo_night_hero), "Mylo, a cheerful corgi by a moonlit lake", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Night.copy(alpha = .05f), Color.Transparent, Night.copy(alpha = .55f)))))
-                    Column(Modifier.align(Alignment.CenterStart).padding(start = 24.dp, bottom = 16.dp).width(brandWidth)) {
-                        Text("Mylo", fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = brandSize, letterSpacing = (-2).sp, maxLines = 1,
-                            style = TextStyle(brush = Brush.horizontalGradient(listOf(Color.White, Color(0xFFB5A4FF)))))
-                        Text("A brighter web awaits", fontSize = 12.sp, color = Color(0xFFD2CEED), fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(14.dp)); Spacer(Modifier.weight(1f))
+                    Column(Modifier.padding(horizontal = 13.5.dp), verticalArrangement = Arrangement.spacedBy(8.5.dp)) {
+                        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            UtilityCard("Private", "Browse without\na trace", Color(0xFF8A7BFA), Color(0xFF5A48E2), Modifier.weight(1f), narrow, onPrivate) {
+                                Icon(HomeArt.Incognito, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                            }
+                            UtilityCard("Bookmarks", "Save your\nfavorite places", Color(0xFF55A6FB), Color(0xFF2C6DE8), Modifier.weight(1f), narrow, { onPanel("bookmarks") }) {
+                                Icon(Icons.Rounded.Bookmark, null, tint = Color.White, modifier = Modifier.size(30.dp))
+                            }
+                        }
+                        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            UtilityCard("History", "Pick up where\nyou left off", Color(0xFF5ADDB0), Color(0xFF26B48C), Modifier.weight(1f), narrow, { onPanel("history") }) {
+                                Icon(HomeArt.Clock, null, tint = Color.White, modifier = Modifier.size(30.dp))
+                            }
+                            UtilityCard("Tools", "Useful tools\nfor your browsing", Color(0xFFFFDC80), Color(0xFFF5B850), Modifier.weight(1f), narrow, { onPanel("tools") }) {
+                                Icon(Icons.Rounded.GridView, null, tint = Color(0xFF2D3474), modifier = Modifier.size(28.dp))
+                            }
+                        }
                     }
+                    Spacer(Modifier.height(11.dp)); Spacer(Modifier.weight(1f))
+                    VpnStrip(vpnActive, vpnDesignPreview, Modifier.padding(horizontal = 13.5.dp)) { onPanel("vpn") }
+                    Spacer(Modifier.height(9.dp)); Spacer(Modifier.weight(1f))
+                    DiscoveryBanner(Modifier.padding(horizontal = 13.5.dp)) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
                 }
             }
-            SearchBar(query, onQuery, onSearch, onVoice, requester, Modifier.padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 20.dp), onActivateSearch)
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                    Shortcut("Explore", Icons.Rounded.Explore, Color(0xFF5DAAFF)) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
-                    Shortcut("Videos", Icons.Rounded.PlayArrow, Color(0xFFFF6D98)) { onOpen("https://m.youtube.com") }
-                    Shortcut("Shop", Icons.Rounded.ShoppingBag, Color(0xFF4CD9B5)) { onOpen("https://www.amazon.com") }
-                    Shortcut("AI", Icons.Rounded.AutoAwesome, Color(0xFFFFCB67)) { onOpen("https://chatgpt.com") }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        UtilityCard("Private", "Browse without\na trace", Icons.Rounded.Masks, Color(0xFF9475FF), Modifier.weight(1f), onPrivate)
-                        UtilityCard("Bookmarks", "Your favorite\nplaces", Icons.Rounded.Bookmark, Color(0xFF559EF5), Modifier.weight(1f)) { onPanel("bookmarks") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        UtilityCard("History", "Pick up where\nyou left off", Icons.Rounded.History, Color(0xFF50CCB6), Modifier.weight(1f)) { onPanel("history") }
-                        UtilityCard("Tools", "A little more\npossibility", Icons.Rounded.GridView, Color(0xFFEAC16D), Modifier.weight(1f)) { onPanel("tools") }
-                    }
-                }
-                VpnStrip(vpnActive) { onPanel("vpn") }
-                DiscoveryBanner { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
-            }
+            // Once the page scrolls, keep the status bar legible over the content beneath it.
+            val scrim by remember { derivedStateOf { (scroll.value / 120f).coerceIn(0f, 1f) } }
+            Box(Modifier.fillMaxWidth().height(statusBar).graphicsLayer { alpha = scrim * .94f }.background(Night))
         }
     }
 }
 
-@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier, onActivate: (() -> Unit)? = null) {
+/** Home typography: no Material body tracking or 24 sp leading, so small labels sit like the reference. */
+@Composable private fun HomeTextStyle(content: @Composable () -> Unit) {
+    CompositionLocalProvider(
+        LocalTextStyle provides LocalTextStyle.current.copy(letterSpacing = 0.sp, lineHeight = TextUnit.Unspecified),
+        content = content,
+    )
+}
+
+/** Greeting, wordmark and Mylo on the moon, composed exactly as in the approved reference. */
+@Composable private fun HomeHero(width: Dp, statusBar: Dp, onSettings: () -> Unit) {
+    val art = ImageBitmap.imageResource(R.drawable.mylo_night_hero)
+    val k = width.value / REFERENCE_WIDTH
+    val heroBottom = statusBar + 211.5.dp * k
+    Box(Modifier.fillMaxWidth().height(heroBottom).drawBehind {
+        // Registered against the reference: the art is 1.3825 screen widths wide, shifted left by 0.292 widths.
+        val w = size.width
+        val artWidth = w * 1.3825f
+        val artHeight = artWidth * art.height / art.width
+        val top = (statusBar.toPx() - w * .0959f).coerceAtMost(0f)
+        drawImage(art, dstOffset = IntOffset((-w * .292f).roundToInt(), top.roundToInt()),
+            dstSize = IntSize(artWidth.roundToInt(), artHeight.roundToInt()), filterQuality = FilterQuality.High)
+        // Let the bottom edge of the art melt into the page behind the search bar.
+        val fadeEnd = top + artHeight
+        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Night), startY = fadeEnd - 34.dp.toPx(), endY = fadeEnd),
+            topLeft = Offset(0f, fadeEnd - 34.dp.toPx()), size = Size(w, 34.dp.toPx()))
+    }) {
+        Box(Modifier.matchParentSize().clearAndSetSemantics { contentDescription = "Mylo, a cheerful corgi sitting on the moon above a moonlit lake" })
+        // Glowing star beside Mylo.
+        Box(Modifier.offset(x = width * .5959f - 24.dp * k, y = statusBar + 52.dp * k - 24.dp * k).size(48.dp * k)
+            .background(Brush.radialGradient(0f to Color(0x66FFD978), .5f to Color(0x24FFD978), 1f to Color(0x00FFD978))), contentAlignment = Alignment.Center) {
+            Image(rememberVectorPainter(HomeArt.Star), null, Modifier.size(28.dp * k).graphicsLayer { rotationZ = -6f })
+        }
+        Row(Modifier.padding(top = statusBar + 2.dp, start = 16.dp, end = 8.5.dp).fillMaxWidth().height(46.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(33.dp).background(Color(0xD91E2D5D), CircleShape).border(1.dp, Color(0x12FFFFFF), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.WbSunny, null, tint = Color(0xFFFFD45E), modifier = Modifier.size(21.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 7.dp)) {
+                Text("Good evening!", fontSize = 10.2.sp, fontWeight = FontWeight.Medium, color = HomeInk, maxLines = 1)
+                Text("Have a brighter browse 🌟", fontSize = 8.8.sp, color = Color(0xFFCBCDEB), maxLines = 1, modifier = Modifier.padding(top = 1.dp))
+            }
+            Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "Open settings", onClick = onSettings), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(33.dp).background(Color(0xD92A3469), CircleShape).border(1.dp, Color(0x12FFFFFF), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Settings, "Settings", tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        Image(rememberVectorPainter(HomeArt.Wordmark), "Mylo",
+            Modifier.offset(x = width * .0925f, y = statusBar + 70.4.dp * k).width(width * .391f).aspectRatio(HomeArt.WORDMARK_ASPECT))
+        Text("A brighter web awaits", fontSize = 15.sp * k, fontWeight = FontWeight.Medium, color = Color(0xFFDCDDF6), maxLines = 1,
+            style = TextStyle(shadow = Shadow(Color(0x80040A24), Offset(0f, 2f), 8f)),
+            modifier = Modifier.offset(x = width * .107f, y = statusBar + 136.5.dp * k))
+    }
+}
+
+@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, onScan: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier, onActivate: (() -> Unit)? = null) {
     val keyboard = LocalSoftwareKeyboardController.current
-    Row(modifier.fillMaxWidth().heightIn(min = 58.dp).clip(RoundedCornerShape(30.dp)).background(Brush.horizontalGradient(listOf(Color(0xFFF6F3FF), Color(0xFFE3DFFF)))).padding(start = 7.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() } }) { Icon(Icons.Rounded.Search, "Focus search", tint = Color(0xFF302B70), modifier = Modifier.size(27.dp)) }
-        BasicTextField(value, onValue, Modifier.weight(1f).focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }.semantics { contentDescription = "Search or enter address" }.padding(vertical = 16.dp), singleLine = true, readOnly = onActivate != null,
-            textStyle = TextStyle(color = Color(0xFF252750), fontSize = 15.sp), cursorBrush = Brush.verticalGradient(listOf(Color(0xFF493B96), Color(0xFF493B96))),
+    Row(modifier.fillMaxWidth().height(54.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(Color(0xFFEBECFD), Color(0xFFE4E5FB)))).padding(start = 5.5.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() } }) { Icon(Icons.Rounded.Search, "Focus search", tint = SearchInk, modifier = Modifier.size(31.dp)) }
+        BasicTextField(value, onValue, Modifier.weight(1f).padding(start = 8.dp).focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }.semantics { contentDescription = "Search or enter address" }, singleLine = true, readOnly = onActivate != null,
+            textStyle = TextStyle(color = Color(0xFF252750), fontSize = 14.75.sp), cursorBrush = SolidColor(Color(0xFF493B96)),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { onSubmit() }),
-            decorationBox = { inner -> Box { if (value.isEmpty()) Text("Search or enter address", color = Color(0xFF626487), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
-        Box(Modifier.width(1.dp).height(24.dp).background(Color(0xFFC8C4E6)))
-        IconButton(onClick = onVoice) { Icon(Icons.Rounded.Mic, "Voice search", tint = Color(0xFF302B70), modifier = Modifier.size(24.dp)) }
-        if (value.isNotBlank()) IconButton(onClick = onSubmit) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Go", tint = Color(0xFF302B70)) }
+            decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { if (value.isEmpty()) Text("Search or enter address", color = Color(0xFF4D5180), fontSize = 14.75.sp, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
+        if (value.isNotBlank()) IconButton(onClick = onSubmit) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Go", tint = SearchInk) }
+        Box(Modifier.width(1.dp).height(23.dp).background(Color(0xFFBFC1E0)))
+        Spacer(Modifier.width(5.dp))
+        IconButton(onClick = onVoice, modifier = Modifier.size(44.dp)) { Icon(Icons.Rounded.Mic, "Voice search", tint = SearchInk, modifier = Modifier.size(26.dp)) }
+        IconButton(onClick = onScan, modifier = Modifier.size(44.dp)) { Icon(HomeArt.Scanner, "Scan a code", tint = SearchInk, modifier = Modifier.size(26.dp)) }
     }
 }
 
-@Composable private fun Shortcut(label: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
-    Column(Modifier.widthIn(min = 66.dp).clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(vertical = 3.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Box(Modifier.size(46.dp).background(Brush.linearGradient(listOf(color.copy(alpha = .18f), Color(0xFF18223E))), CircleShape).border(1.dp, color.copy(alpha = .17f), CircleShape), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(32.dp).background(Brush.linearGradient(listOf(color, color.copy(alpha = .6f))), CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
-        }
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFFEEEAF9))
+@Composable private fun Shortcut(label: String, ring: Color, onClick: () -> Unit, glyph: @Composable () -> Unit) {
+    Column(Modifier.width(80.dp).clip(RoundedCornerShape(18.dp)).clickable(role = Role.Button, onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(67.dp).background(Brush.radialGradient(listOf(ring, ring.copy(alpha = .92f).compositeOver(Night))), CircleShape)
+            .border(1.dp, Color(0x10FFFFFF), CircleShape), contentAlignment = Alignment.Center) { glyph() }
+        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = Color(0xFFEDEBF8), maxLines = 1, modifier = Modifier.padding(top = 3.dp))
     }
 }
 
-@Composable private fun UtilityCard(title: String, subtitle: String, icon: ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.heightIn(min = 82.dp).clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(color.copy(alpha = .13f), Panel))).border(1.dp, Line.copy(alpha = .8f), RoundedCornerShape(17.dp)).clickable(onClick = onClick).padding(horizontal = 11.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(35.dp).background(Brush.linearGradient(listOf(color, color.copy(alpha = .65f))), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
-        Column(Modifier.padding(start = 10.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, fontSize = 11.sp, lineHeight = 14.sp, color = Muted)
+@Composable private fun ShortcutDisk(light: Color, deep: Color, glyph: @Composable () -> Unit) {
+    Box(Modifier.size(40.dp).background(Brush.linearGradient(listOf(light, deep)), CircleShape), contentAlignment = Alignment.Center) { glyph() }
+}
+
+@Composable private fun UtilityCard(title: String, subtitle: String, light: Color, deep: Color, modifier: Modifier, narrow: Boolean, onClick: () -> Unit, glyph: @Composable () -> Unit) {
+    // Narrow phones give the two-line subtitles a little more room beside the icon.
+    val textGap = if (narrow) 11.dp else 16.dp
+    val shape = RoundedCornerShape(12.dp)
+    Row(modifier.fillMaxHeight().heightIn(min = 74.dp).clip(shape).background(Brush.linearGradient(listOf(Color(0xFF1A2850), Color(0xFF101F41), Color(0xFF0F1E40))))
+        .border(1.dp, CardBorder, shape).clickable(role = Role.Button, onClick = onClick).padding(start = 12.5.dp, end = 8.5.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(43.dp).background(Brush.linearGradient(listOf(light, deep)), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) { glyph() }
+        Column(Modifier.weight(1f).padding(start = textGap, top = 9.dp)) {
+            Text(title, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = HomeInk, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, fontSize = 10.25.sp, lineHeight = 13.sp, color = HomeMuted, modifier = Modifier.padding(top = 2.dp))
+        }
+        Box(Modifier.width(12.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color(0xFFB9BFDE), modifier = Modifier.requiredSize(20.dp))
         }
     }
 }
 
-@Composable private fun VpnStrip(active: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 70.dp).clip(RoundedCornerShape(17.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF14303D), Panel))).border(1.dp, Color(0xFF2B435C), RoundedCornerShape(17.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Rounded.VerifiedUser, null, tint = Color(0xFF65D7B9), modifier = Modifier.size(29.dp))
-        Column(Modifier.weight(1f).padding(start = 10.dp)) {
-            Text(if (active) "VPN active" else "VPN protection", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
-            Text(if (active) "Connected on this device" else "Manage connection", color = Muted, fontSize = 10.sp)
+@Composable private fun VpnStrip(active: Boolean, preview: VpnDesignPreview?, modifier: Modifier, onClick: () -> Unit) {
+    // Live status is never simulated: "protected" appears only for a real VPN (or the design preview).
+    val on = preview != null || active
+    val shape = RoundedCornerShape(12.dp)
+    Row(modifier.fillMaxWidth().heightIn(min = 58.dp).clip(shape)
+        .background(Brush.horizontalGradient(0f to Color(0xFF123049), .42f to Color(0xFF111F42), 1f to Color(0xFF14223F)))
+        .border(1.dp, Color(0xFF1B3352), shape).clickable(role = Role.Button, onClick = onClick).padding(start = 5.5.dp, end = 16.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Shield, null, tint = Color.White, modifier = Modifier.size(48.dp).brushTint(Brush.verticalGradient(listOf(Color(0xFF4FD0A8), Color(0xFF22B087)))))
+            Icon(Icons.Rounded.Lock, null, tint = Color.White, modifier = Modifier.padding(bottom = 1.dp).size(15.dp))
         }
-        Box(Modifier.height(28.dp).width(1.dp).background(Line))
-        Row(Modifier.widthIn(min = 58.dp, max = 85.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (active) "System VPN" else "Set up", modifier = Modifier.weight(1f), fontSize = 11.sp, color = Color(0xFFDEDDF4), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Rounded.ExpandMore, null, modifier = Modifier.size(15.dp), tint = Muted)
+        Column(Modifier.weight(1f).padding(start = 4.5.dp, end = 6.dp)) {
+            Text(if (on) "VPN protected" else "VPN protection", fontSize = 12.75.sp, fontWeight = FontWeight.SemiBold, color = HomeInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (on) "Your connection is secure" else "Not connected", fontSize = 9.75.sp, color = HomeMuted, maxLines = 2, modifier = Modifier.padding(top = 1.dp))
         }
-        // Status is never simulated: tapping opens the real Android VPN controls.
-        Switch(checked = active, onCheckedChange = { onClick() }, modifier = Modifier.heightIn(min = 48.dp), colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF32C998), checkedThumbColor = Color.White, uncheckedTrackColor = Color(0xFF35425F), uncheckedThumbColor = Color(0xFFBBC3D8)))
+        Box(Modifier.width(1.dp).height(20.dp).background(Color(0xFF33456A)))
+        Row(Modifier.padding(start = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(22.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
+                if (preview != null) preview.badge()
+                else Box(Modifier.fillMaxSize().background(Color(0xFF22345A)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Public, null, tint = Color(0xFF9FC6F5), modifier = Modifier.size(15.dp)) }
+            }
+            Text(preview?.location ?: if (active) "System VPN" else "Set up", fontSize = 10.15.sp, fontWeight = FontWeight.Medium, color = HomeInk, maxLines = 1,
+                modifier = Modifier.padding(start = 9.5.dp))
+            Icon(Icons.Rounded.ExpandMore, null, tint = Color(0xFFC9CDE6), modifier = Modifier.padding(start = 3.dp).size(15.dp))
+        }
+        Spacer(Modifier.width(15.dp))
+        MyloToggle(on, onClick)
     }
 }
 
-@Composable private fun DiscoveryBanner(onClick: () -> Unit) {
-    // Render only the landscape illustration from the approved reference; all controls/text are native.
-    val reference = ImageBitmap.imageResource(R.drawable.approved_design)
-    val landscape = remember(reference) {
-        BitmapPainter(reference, srcOffset = IntOffset(242, 968), srcSize = IntSize(328, 152))
+/** Compact switch in the approved proportions; it opens the real Android VPN controls. */
+@Composable private fun MyloToggle(checked: Boolean, onClick: () -> Unit) {
+    val track by animateColorAsState(if (checked) Color(0xFF34C18E) else Color(0xFF3A4766), label = "track")
+    val thumbX by animateDpAsState(if (checked) 21.5.dp else 1.5.dp, label = "thumb")
+    Box(Modifier.size(42.dp, 48.dp).toggleable(checked, role = Role.Switch, onValueChange = { onClick() }), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.size(42.dp, 22.5.dp).background(track, CircleShape)) {
+            Box(Modifier.offset(x = thumbX, y = 1.5.dp).size(19.5.dp).shadow(1.dp, CircleShape).background(Color.White, CircleShape))
+        }
     }
-    Box(Modifier.fillMaxWidth().heightIn(min = 88.dp).clip(RoundedCornerShape(18.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF263366), Color(0xFF182445)))).border(1.dp, Line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
-        Image(landscape, null, modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop, alignment = Alignment.CenterEnd, alpha = .92f)
-        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(Color(0xFF1B2858), Color(0xFF192651).copy(alpha = .25f)))))
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text("A little more wonder", fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.5).sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text("Explore today", fontSize = 12.sp, color = Color(0xFFD7D1F3))
-                Box(Modifier.size(23.dp).background(Lavender, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color(0xFF322B62), modifier = Modifier.size(15.dp)) }
+}
+
+@Composable private fun DiscoveryBanner(modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(modifier.fillMaxWidth().height(101.dp).clip(shape).background(Color(0xFF14245C)).clickable(role = Role.Button, onClick = onClick)) {
+        Image(painterResource(R.drawable.mylo_discovery_night), null, Modifier.matchParentSize(), contentScale = ContentScale.FillBounds)
+        Box(Modifier.matchParentSize().border(1.dp, Color(0x33A9B7FF), shape))
+        Column(Modifier.padding(start = 22.dp, top = 13.dp)) {
+            Text("A little more\nwonder", fontFamily = MyloRounded, fontWeight = FontWeight.Black, fontSize = 19.5.sp, lineHeight = 20.5.sp, color = Color(0xFFF6F4FF),
+                style = TextStyle(shadow = Shadow(Color(0x66050B2A), Offset(0f, 2f), 6f)))
+            Row(Modifier.padding(top = 2.5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Explore today", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFFE3DFF8))
+                Box(Modifier.padding(start = 7.5.dp).size(22.dp).background(Color(0xFFD9D3FB), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color(0xFF3B3478), modifier = Modifier.size(17.dp))
+                }
             }
         }
     }
 }
 
 @Composable fun BottomBar(home: Boolean, tabs: Int, onHome: () -> Unit, onSearch: () -> Unit, onTabs: () -> Unit, onMylo: () -> Unit) {
-    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 66.dp).clip(RoundedCornerShape(21.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1A274A), Color(0xFF14203D)))).border(1.dp, Line.copy(alpha = .7f), RoundedCornerShape(21.dp)), verticalAlignment = Alignment.CenterVertically) {
-        NavItem("Home", Icons.Rounded.Home, home, Modifier.weight(1f), onHome)
-        NavItem("Search", Icons.Rounded.Search, false, Modifier.weight(1f), onSearch)
-        Column(Modifier.weight(1f).heightIn(min = 66.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onTabs).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Box(Modifier.size(24.dp).border(1.8.dp, Muted, RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) { Text(if (tabs > 99) "99+" else tabs.toString(), fontSize = 11.sp, color = Muted) }
-            Text("Tabs", fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 5.dp))
+    val shape = RoundedCornerShape(17.dp)
+    HomeTextStyle {
+        Row(Modifier.padding(start = 13.5.dp, end = 13.5.dp, top = 6.dp, bottom = 6.5.dp).fillMaxWidth().height(62.dp).clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF14244A), Color(0xFF101F40)))).border(1.dp, CardBorder, shape), verticalAlignment = Alignment.CenterVertically) {
+            NavItem("Home", home, Modifier.weight(1f), onHome) { tint -> Icon(Icons.Rounded.Home, null, tint = tint, modifier = Modifier.size(21.dp)) }
+            NavItem("Search", false, Modifier.weight(1f), onSearch) { tint -> Icon(HomeArt.SearchThin, null, tint = tint, modifier = Modifier.size(26.dp)) }
+            NavItem("Tabs", false, Modifier.weight(1f), onTabs) { tint ->
+                Box(Modifier.size(19.dp).border(1.6.dp, tint, RoundedCornerShape(4.5.dp)), contentAlignment = Alignment.Center) {
+                    Text(if (tabs > 99) "99+" else tabs.toString(), fontSize = 9.5.sp, color = tint, fontWeight = FontWeight.Medium)
+                }
+            }
+            NavItem("Mylo", false, Modifier.weight(1f), onMylo) { tint -> Icon(HomeArt.MyloFace, null, tint = tint, modifier = Modifier.size(28.dp)) }
         }
-        NavItem("Mylo", Icons.Rounded.Pets, false, Modifier.weight(1f), onMylo)
     }
 }
-@Composable private fun NavItem(label: String, icon: ImageVector, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier.heightIn(min = 66.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.width(51.dp).height(32.dp).background(if (selected) Lavender else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (selected) Color(0xFF4A398F) else Muted, modifier = Modifier.size(24.dp)) }
-        Text(label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = if (selected) Lavender else Muted, modifier = Modifier.padding(top = 2.dp))
+
+@Composable private fun NavItem(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit, icon: @Composable (Color) -> Unit) {
+    Column(modifier.fillMaxHeight().clip(RoundedCornerShape(16.dp)).selectable(selected, role = Role.Tab, onClick = onClick).padding(top = 6.5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(54.5.dp, 31.5.dp).background(if (selected) Color(0xFFCFC9FB) else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) {
+            icon(if (selected) Color(0xFF2E2B7E) else NavInk)
+        }
+        Text(label, fontSize = 10.75.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) Color(0xFFC4BDFF) else Color(0xFFCDD0E6), modifier = Modifier.padding(top = 2.3.dp))
     }
 }
+
+/** Paints the content in [brush], keeping its shape (used for the gradient VPN shield). */
+private fun Modifier.brushTint(brush: Brush) = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent { drawContent(); drawRect(brush, blendMode = BlendMode.SrcIn) }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit, handleBack: Boolean = true) {
@@ -365,7 +534,7 @@ class MainActivity : ComponentActivity() {
         webView?.loadUrl(url)
         focus.clearFocus(); keyboard?.hide()
     }
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().topSafeArea()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
             IconButton(onClick = { webView?.goForward() }, enabled = canForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
