@@ -289,7 +289,7 @@ jobs:
             frames="${video%.mp4}-frames"; mkdir -p "$frames"
             ffmpeg -loglevel error -i "$video" -vf "fps=8,scale=540:-2" -q:v 4 "$frames/frame-%03d.jpg" || true
           done
-          find evidence -type f ! \( -name '*.png' -o -name '*.jpg' -o -name '*.json' -o -name '*.txt' -o -name '*.tsv' \) -delete
+          find evidence -type f ! \( -name '*.png' -o -name '*.jpg' -o -name '*.json' -o -name '*.txt' -o -name '*.tsv' -o -name '*.xml' \) -delete
           find evidence -type f -name '*logcat*' -delete
           {
             echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

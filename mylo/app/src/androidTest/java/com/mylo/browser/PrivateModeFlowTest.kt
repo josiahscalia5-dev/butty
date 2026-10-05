@@ -159,11 +159,13 @@ class PrivateModeFlowTest {
                 submit()
                 waitFor(By.textContains("in this browser"), "the private page", 20_000)
 
-                // Leave Mylo and come back: the tabs are locked until the screen lock is passed.
+                // Leave Mylo and come back: the tabs are locked, and Android's screen lock is asked for at once.
                 device.pressHome()
                 SystemClock.sleep(1_500)
                 context.startActivity(context.packageManager.getLaunchIntentForPackage(context.packageName)!!.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                waitFor(By.res("private-locked"), "the lock screen", 20_000)
+                val shown = device.wait(Until.hasObject(By.res("private-locked")), 8_000) || device.wait(Until.hasObject(By.pkg("com.android.systemui")), 12_000)
+                assertTrue("Neither the lock screen nor Android's unlock prompt appeared", shown)
+                evidence.put("lockScreenSeen", device.hasObject(By.res("private-locked")))
                 SystemClock.sleep(1_500)
                 shot(dir, "03-locked-with-prompt.png")
                 enterPin("unlocking private tabs")
@@ -199,10 +201,12 @@ class PrivateModeFlowTest {
         throw failure
     }
 
+    /** Types like a person: focus the field, then the keyboard's own key events (Android's `input text`). */
     private fun typeInto(field: UiObject2, text: String) {
         field.click()
-        SystemClock.sleep(300)
-        field.text = text
+        SystemClock.sleep(600)
+        shell("input text " + text.replace("&", "\\&"))
+        SystemClock.sleep(600)
     }
 
     private fun shell(command: String): String =
