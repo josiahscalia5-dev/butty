@@ -198,24 +198,33 @@ class PrivateModeFlowTest {
     private fun <T> recording(dir: File, block: () -> T): T = try { block() } catch (failure: Throwable) {
         runCatching { device.takeScreenshot(File(dir, "failure.png")) }
         runCatching { File(dir, "failure-hierarchy.xml").outputStream().use { device.dumpWindowHierarchy(it) } }
+        runCatching { File(dir, "failure-activities.txt").writeText(shell("dumpsys activity activities").lines().filter { "Activity" in it || "mResumed" in it || "mFocused" in it }.take(80).joinToString("\n")) }
         throw failure
     }
 
-    /** Types like a person: focus the field, then the keyboard's own key events (Android's `input text`). */
+    /**
+     * Fills a text field: first through the field's own accessibility "set text" action (what Mylo's search
+     * tests use; no key events for the keyboard or a busy emulator to drop), then, if the field didn't take
+     * it, with Android's key events. Go is pressed only once the whole address is in the field.
+     */
     private fun typeInto(selector: BySelector, what: String, text: String) {
         waitFor(selector, what).click()
         SystemClock.sleep(600)
+        runCatching { waitFor(selector, what).text = text }
+        if (fieldShows(selector, text, 3_000)) return
+        runCatching { waitFor(selector, what).clear() }
         shell("input text " + text.replace("&", "\\&"))
-        // Android delivers the key events after `input` returns; on a busy emulator the field can still be
-        // filling in, so Go is pressed only once the whole address is there.
-        val deadline = SystemClock.uptimeMillis() + 15_000
-        var shown: String? = null
+        if (fieldShows(selector, text, 15_000)) return
+        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"")
+    }
+
+    private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
+        val deadline = SystemClock.uptimeMillis() + timeout
         while (SystemClock.uptimeMillis() < deadline) {
-            shown = runCatching { device.findObject(selector)?.text }.getOrNull()
-            if (shown == text) return
+            if (runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
             SystemClock.sleep(200)
         }
-        throw AssertionError("Typing into $what did not finish: \"$shown\"")
+        return false
     }
 
     private fun shell(command: String): String =
