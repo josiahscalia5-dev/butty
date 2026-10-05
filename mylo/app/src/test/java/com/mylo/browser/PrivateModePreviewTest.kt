@@ -1,7 +1,12 @@
 package com.mylo.browser
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
@@ -21,18 +26,23 @@ class PrivateModePreviewTest {
 
     @Test fun privateModeDefault() {
         paparazzi.snapshot(name = "mylo_private_mode_393x851") {
-            MyloTheme { Box(Modifier.fillMaxSize()) { PrivateModeScreen(PrivateModeUi(), statusBarInset = 30.dp, playEntrance = false) } }
+            MyloTheme { Shell { PrivateModeScreen(PrivateModeUi(), statusBarInset = 30.dp, playEntrance = false) } }
         }
     }
 
     @Test fun privateModeWithSessionState() {
         paparazzi.snapshot(name = "mylo_private_mode_lock_on_burn_off_393x851") {
             MyloTheme {
-                Box(Modifier.fillMaxSize()) {
+                Shell {
                     PrivateModeScreen(PrivateModeUi(blockTrackers = true, lockTabs = true, burnOnExit = false, trackersBlocked = 12, privateTabs = 2),
                         statusBarInset = 30.dp, playEntrance = false)
                 }
             }
         }
+    }
+
+    /** The same insets PrivateActivity applies: art behind the status bar, controls above the navigation bar. */
+    @androidx.compose.runtime.Composable private fun Shell(content: @androidx.compose.runtime.Composable () -> Unit) {
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) { content() }
     }
 }

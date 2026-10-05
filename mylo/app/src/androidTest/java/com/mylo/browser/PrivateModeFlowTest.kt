@@ -34,8 +34,8 @@ class PrivateModeFlowTest {
 
     @Before fun setUp() {
         context.getSharedPreferences(PrivateActivity.TEST_PREFS, 0).edit().putBoolean(PrivateActivity.ALLOW_SCREENSHOTS, true).commit()
+        // The CI script stops Mylo between cases; this test process must not stop its own app.
         context.getSharedPreferences("mylo_private_settings", 0).edit().clear().commit()
-        shell("am force-stop ${context.packageName}")
     }
 
     @After fun tearDown() {
