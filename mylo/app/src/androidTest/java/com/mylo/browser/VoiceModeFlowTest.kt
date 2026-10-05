@@ -45,8 +45,8 @@ class VoiceModeFlowTest {
         val dir = artifacts("no-service")
         val evidence = JSONObject().put("verified", false)
         val steps = JSONArray()
-        try { recording(dir) {
-            ActivityScenario.launch(MainActivity::class.java).use {
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
                 waitFor(By.desc("Search or enter address"), "Home")
                 waitFor(By.text("Mylo"), "Home's Mylo button").click()
                 waitFor(By.res("voice-mode-screen"), "the Voice Mode screen")
@@ -98,9 +98,9 @@ class VoiceModeFlowTest {
                 waitFor(By.res("voice-close"), "Close voice mode").click()
                 waitFor(By.desc("Search or enter address"), "Home after closing Voice Mode")
                 steps.put("closed voice mode")
-            }
+            } }
             evidence.put("verified", true)
-        } } finally {
+        } finally {
             File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
         }
     }
@@ -113,9 +113,9 @@ class VoiceModeFlowTest {
         val dir = artifacts("service")
         val evidence = JSONObject().put("verified", false)
         val steps = JSONArray()
-        try { recording(dir) {
-            ActivityScenario.launch(MainActivity::class.java).use {
-                type(By.desc("Search or enter address"), "Home search", PLANS_PAGE)
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
+                type(HOME_SEARCH, "Home search", PLANS_PAGE)
                 waitFor(By.desc("Go"), "the Go button").click()
                 waitFor(By.text("Mylo Plans"), "the test page", 20_000)
                 steps.put("opened the plans page")
@@ -166,9 +166,9 @@ class VoiceModeFlowTest {
                 waitFor(By.res("voice-close"), "Close voice mode").click()
                 waitFor(By.text("Mylo Plans"), "the page again after closing Voice Mode")
                 shot(dir, "06-back-to-page.png"); steps.put("closed voice mode, back on the page")
-            }
+            } }
             evidence.put("verified", true)
-        } } finally {
+        } finally {
             File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
             AiPreferences(context).setTestService(null)
         }
@@ -183,7 +183,8 @@ class VoiceModeFlowTest {
         runCatching { waitFor(selector, what).clear() }
         shell("input text " + text.replace(" ", "%s"))
         if (fieldShows(selector, text, 15_000)) return
-        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"")
+        val fields = runCatching { device.findObjects(By.clazz("android.widget.EditText")).map { "${it.resourceName ?: it.contentDescription}=\"${it.text}\"" } }.getOrDefault(emptyList())
+        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"; text fields: $fields")
     }
 
     private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
@@ -200,6 +201,7 @@ class VoiceModeFlowTest {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use { it.readText() }
         }
 
+    /** On failure, inside the activity scenario (before it closes Mylo): screenshot, accessibility tree, Android's activity events. */
     private fun <T> recording(dir: File, block: () -> T): T = try { block() } catch (failure: Throwable) {
         runCatching { device.takeScreenshot(File(dir, "failure.png")) }
         runCatching { File(dir, "failure-hierarchy.xml").outputStream().use { device.dumpWindowHierarchy(it) } }
@@ -217,6 +219,8 @@ class VoiceModeFlowTest {
     }
 
     private companion object {
+        /** Home's search field by its test tag; its content description is not reported once it has text. */
+        val HOME_SEARCH: BySelector = By.res("search-input")
         const val URL_ARG = "aiServiceUrl"
         const val TOKEN_ARG = "aiServiceToken"
         const val PLANS_PAGE = "http://localhost:8080/plans.html"

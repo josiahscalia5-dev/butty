@@ -52,13 +52,13 @@ class PrivateModeFlowTest {
         val dir = artifacts("session")
         val evidence = JSONObject().put("verified", false)
         val steps = JSONArray()
-        try { recording(dir) {
+        try {
             context.getSharedPreferences("mylo_browser", 0).edit().remove("history").commit()
-            ActivityScenario.launch(MainActivity::class.java).use {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
-                waitFor(By.desc("Search or enter address"), "Home search")
+                waitFor(HOME_SEARCH, "Home search")
                 shot(dir, "00-home.png")
-                typeInto(By.desc("Search or enter address"), "Home search", NORMAL_PAGE)
+                typeInto(HOME_SEARCH, "Home search", NORMAL_PAGE)
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
                 shot(dir, "01-normal-tab.png"); steps.put("normal tab visit 1")
@@ -107,7 +107,7 @@ class PrivateModeFlowTest {
                 waitFor(By.text("Leave and burn"), "the leave confirmation").click()
                 waitFor(By.desc("Search or enter address"), "normal Home after leaving", 20_000)
                 shot(dir, "08-back-home.png"); steps.put("left private mode")
-            }
+            } }
 
             // 7. Nothing private reached normal history; the normal tab's visit is there.
             SystemClock.sleep(1_000)
@@ -120,7 +120,7 @@ class PrivateModeFlowTest {
             assertFalse("The private process ended after the burn", shell("pidof ${context.packageName}:private").isNotBlank())
             evidence.put("privateProcessEnded", true)
             evidence.put("verified", true)
-        } } finally {
+        } finally {
             File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
         }
     }
@@ -144,8 +144,8 @@ class PrivateModeFlowTest {
         val dir = artifacts("lock")
         val evidence = JSONObject().put("verified", false)
         shell("locksettings set-pin $PIN")
-        try { recording(dir) {
-            ActivityScenario.launch(MainActivity::class.java).use {
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
                 waitFor(By.text("Private"), "Home's Private card").click()
                 waitFor(By.res("private-mode-screen"), "the Private Mode screen", 20_000)
                 device.findObject(By.res("private-row-lock-tabs")).click()
@@ -175,8 +175,8 @@ class PrivateModeFlowTest {
                 waitFor(By.textContains("in this browser"), "the private page after unlocking")
                 shot(dir, "04-unlocked.png")
                 evidence.put("verified", true)
-            }
-        } } finally {
+            } }
+        } finally {
             shell("locksettings clear --old $PIN")
             File(dir, "evidence.json").writeText(evidence.toString(2))
         }
@@ -196,7 +196,10 @@ class PrivateModeFlowTest {
     /** The search box's own Go button, which appears once something is typed. */
     private fun submit() = waitFor(By.desc("Go"), "the Go button").click()
 
-    /** On failure: a screenshot and the screen's accessibility tree, for the evidence. */
+    /**
+     * On failure: a screenshot and the screen's accessibility tree, for the evidence. Runs inside the activity
+     * scenario, so they show Mylo as it was rather than the launcher left after the scenario closes.
+     */
     private fun <T> recording(dir: File, block: () -> T): T = try { block() } catch (failure: Throwable) {
         runCatching { device.takeScreenshot(File(dir, "failure.png")) }
         runCatching { File(dir, "failure-hierarchy.xml").outputStream().use { device.dumpWindowHierarchy(it) } }
@@ -219,8 +222,13 @@ class PrivateModeFlowTest {
         runCatching { waitFor(selector, what).clear() }
         shell("input text " + text.replace("&", "\\&"))
         if (fieldShows(selector, text, 15_000)) return
-        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"")
+        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"; text fields: ${textFields()}")
     }
+
+    /** Every text field on screen with its tag and text, for failure messages. */
+    private fun textFields() = runCatching {
+        device.findObjects(By.clazz("android.widget.EditText")).map { "${it.resourceName ?: it.contentDescription}=\"${it.text}\"" }
+    }.getOrDefault(emptyList())
 
     private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
         val deadline = SystemClock.uptimeMillis() + timeout
@@ -245,6 +253,8 @@ class PrivateModeFlowTest {
     }
 
     private companion object {
+        /** Home's search field by its test tag; its content description is not reported once it has text. */
+        val HOME_SEARCH: BySelector = By.res("search-input")
         const val NORMAL_PAGE = "http://localhost:8080/trackers.html?tab=normal"
         const val PRIVATE_PAGE = "http://localhost:8080/trackers.html?tab=private"
         const val PIN = "1234"

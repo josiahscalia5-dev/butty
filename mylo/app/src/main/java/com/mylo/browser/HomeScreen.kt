@@ -122,7 +122,9 @@ private const val REFERENCE_WIDTH = 392.7f
     }
     val statusBar = statusBarInset ?: WindowInsets.safeDrawing.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding()
     HomeTextStyle {
-        BoxWithConstraints(Modifier.fillMaxSize().background(HomeNight)) {
+        // Home's test tags double as resource ids, so device checks can find the search field by its tag
+        // (UI Automator loses its content description once text is typed).
+        BoxWithConstraints(Modifier.fillMaxSize().voiceAutomation().background(HomeNight)) {
             val width = maxWidth
             val keyboardCompact = maxHeight < 440.dp
             val narrow = width < 380.dp
