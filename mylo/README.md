@@ -43,8 +43,24 @@ the microphone, verified on the same emulator by `VoiceModeFlowTest` in the work
   Android's standard recognizer when the phone lacks the language pack) or explains plainly why it can't; the
   microphone is off afterwards. The CI emulator has no microphone audio, so real speech-to-text is for a phone.
 
-Not built yet: Mylo's spoken replies (OpenAI Realtime voice, milestone 3), and the page actions beyond asking (scrolling
-to pricing, translating, cancel guidance, tab comparison, site checks: milestones 5–8).
+**Voice Mode (Milestone 3: Mylo's realtime voice)** — verified by `VoiceModeFlowTest#realtimeVoiceThroughTheTestService`
+([run 37297583113](https://github.com/josiahscalia5-dev/butty/actions/runs/37297583113), all three Voice cases passed):
+
+- Tap to talk got a short-lived session from the Mylo AI gateway and opened a real WebRTC call from the emulator to a
+  **test provider that is not an AI** (a scripted peer whose voice is a tone and whose every line says it's a test);
+  Android's own microphone indicator was on and Mylo showed "Microphone on" and Mute (`17-…`).
+- The page context the switchboard allows reached the provider once, with the page's card number hidden; Mylo's
+  spoken answer was captioned; the provider's `scroll_to Pricing` tool call ran on the page (the section was marked)
+  and Mylo reported success; Mute and Unmute worked.
+- Type instead showed the spoken turns in the same conversation, with privacy receipts; a typed question was answered
+  aloud, and tapping the microphone interrupted Mylo (the provider received `response.cancel` and
+  `output_audio_buffer.clear`) (`18-…`).
+- Hanging up released the microphone and the page showed the marked Pricing section; a Cedar voice sample opened a
+  separate microphone-off session.
+
+Real answers and Mylo's real voices (Marin, Cedar) need the gateway deployed with an OpenAI API key; the device test
+proves the app's side of every step. Not built yet: translating, cancel guidance, tab comparison, site checks and the
+rest of Action Preview (milestones 5–8).
 
 `claude-ui` at `aa63420` (Settings-only search provider):
 
@@ -97,8 +113,13 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
     when asked), selected text, other tabs, history; Screenshot, Location and Saved Memory are marked "not used yet".
     Card numbers, ID numbers, bank accounts and secrets in links are hidden before anything leaves the phone, and
     every answer has a privacy receipt.
-  - The six page actions send the matching question (asking first when the page is off); Mylo answers in text until
-    spoken replies arrive.
+  - The six page actions send the matching question (asking first when the page is off).
+  - *Talking*: with the Mylo AI service, a realtime voice call (OpenAI Realtime over WebRTC, opened with a short-lived
+    session secret the service mints) with hands-free turn-taking or press and hold, live captions both ways, the
+    real microphone and playback levels, Mute, tap to interrupt, Type instead answered aloud, and voice samples
+    (Marin, Cedar). The voice model can find, scroll to and mark parts of the page, go back, search and open links on
+    the same site; leaving the site or anything consequential asks first (Action Preview). Without the service, Android's
+    speech recognizer (on-device first) turns speech into the same conversation.
 - Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
 - **Private Mode** (Home's Private card): the approved Private Mode screen with its entrance animation (the
   sunglasses corgi settles onto the moon, the lenses catch the light, the shield pulses, Active fades in; instant when
