@@ -187,7 +187,7 @@ class MainActivity : ComponentActivity() {
 @Composable private fun rememberVpnStatus(): Boolean {
     val context = LocalContext.current
     val manager = remember { context.getSystemService(ConnectivityManager::class.java) }
-    fun connected() = manager.allNetworks.any { hasVpnTransport(manager.getNetworkCapabilities(it)) }
+    fun connected() = manager.allNetworks.any { manager.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
     var active by remember { mutableStateOf(connected()) }
     DisposableEffect(manager) {
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -201,9 +201,6 @@ class MainActivity : ComponentActivity() {
     }
     return active
 }
-
-internal fun hasVpnTransport(capabilities: NetworkCapabilities?): Boolean =
-    capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit, handleBack: Boolean = true) {

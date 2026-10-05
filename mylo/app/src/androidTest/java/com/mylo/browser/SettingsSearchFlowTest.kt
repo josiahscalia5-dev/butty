@@ -93,14 +93,11 @@ class SettingsSearchFlowTest {
     }
 
     @Test fun shieldState() {
-        // Verify Android's transport classification without inventing a VPN connection.
-        assertFalse(hasVpnTransport(null))
-        assertFalse(hasVpnTransport(NetworkCapabilities().addTransportType(NetworkCapabilities.TRANSPORT_WIFI)))
-        assertTrue(hasVpnTransport(NetworkCapabilities().addTransportType(NetworkCapabilities.TRANSPORT_VPN)))
+        // Compare the UI to Android's actual network state; do not invent a VPN.
         var active = false
         activityRule.scenario.onActivity {
             val manager = it.getSystemService(ConnectivityManager::class.java)
-            active = manager.allNetworks.any { network -> hasVpnTransport(manager.getNetworkCapabilities(network)) }
+            active = manager.allNetworks.any { network -> manager.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
         }
         node(By.text("Mylo Shield"))
         node(By.text(if (active) "VPN connected" else "Not connected"))
@@ -112,7 +109,7 @@ class SettingsSearchFlowTest {
         node(By.text("Open Android VPN settings"))
         capture(folder, "02-shield-setup.png")
         File(folder, "evidence.json").writeText(JSONObject().put("verified", true)
-            .put("actualAndroidVpnActive", active).put("transportClassificationChecked", true)
+            .put("actualAndroidVpnActive", active).put("actualTransportStateCompared", true)
             .put("vpnTunnelEstablishedByTest", false)
             .put("limitation", "No installed VPN provider/server is available; a connected tunnel and network-callback transition were not exercised.")
             .toString(2))

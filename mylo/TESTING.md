@@ -22,6 +22,6 @@ The environment provides an emulator, not a physical phone. Do not claim Yahoo w
 
 ## Shield truthfulness
 
-The strip reads Android `TRANSPORT_VPN`: “Mylo Shield / Not connected / Set up” when absent, “Mylo Shield / VPN connected / Manage” when present. No country, fake toggle or built-in VPN is supplied. The setup panel explains that an installed VPN provider is required. The targeted check verifies the actual emulator state and Android capability classification for null, Wi-Fi and VPN capabilities. A real active tunnel and network-callback transition require an installed VPN provider/server and remain outside this emulator's available setup.
+The strip reads Android `TRANSPORT_VPN`: “Mylo Shield / Not connected / Set up” when absent, “Mylo Shield / VPN connected / Manage” when present. No country, fake toggle or built-in VPN is supplied. The setup panel explains that an installed VPN provider is required. The targeted check compares the displayed status to the actual emulator network capabilities. It does not synthesize an active VPN. A real active tunnel and network-callback transition require an installed VPN provider/server and remain outside this emulator's available setup.
 
 Current CI results and provider limitations must be reported with the exact tested commit and artifact. Existing per-tab, bookmark/history, Private Mode and scanner code was not changed; their whole historical suites are not rerun by this targeted task.
