@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: ./render.sh [OUT_DIR] [scenes|PHONE_FILTER]
-#   scenes  → resting Home, focused search with keyboard, provider sheet (393×851)
+#   scenes  → resting Home, and Home's own search box typed into above the keyboard (393×851)
 #   default → Home at 393×851, 412×915 and 360×640 profiles
 set -euo pipefail
 cd "$(dirname "$0")"

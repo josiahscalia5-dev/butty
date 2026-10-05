@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
@@ -100,28 +101,29 @@ class HomeLayoutTest {
                 .put("scrollAfter", scrollAfter.first).put("pinnedWhileScrolling", true)
             capture("02-home-bottom-content.png")
 
-            // Search remains reachable even when the middle content is at its lower edge.
+            // Search remains reachable even when the middle content is at its lower edge, and the
+            // Home box itself takes the text: no separate search page opens.
             compose.onNodeWithContentDescription("Search or enter address").performClick()
-            compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
             compose.onNodeWithTag(SEARCH_INPUT).assertIsDisplayed().assertIsFocused()
             waitForKeyboard(true)
+            compose.onNodeWithTag("search-input-mode").assertDoesNotExist()
             compose.onNodeWithTag(SEARCH_INPUT).performTextInput("best beaches in Florida")
             compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals("best beaches in Florida")
             val keyboardSafe = safeArea(includeKeyboard = true)
-            assertInside("Focused search input must remain above the real keyboard", bounds(SEARCH_INPUT), keyboardSafe)
-            assertInside("Search mode must resize above the keyboard", bounds(SEARCH_MODE), keyboardSafe)
+            assertInside("The Home search box must remain above the real keyboard", bounds(SEARCH), keyboardSafe)
+            assertInside("Navigation must resize above the keyboard", bounds(BOTTOM), keyboardSafe)
             report.put("keyboardVisible", true).put("keyboardSafeArea", rectangle(keyboardSafe))
                 .put("searchInput", rectangle(bounds(SEARCH_INPUT)))
             capture("03-search-and-android-keyboard.png")
 
-            compose.onNodeWithContentDescription("Close search").assertIsDisplayed().performClick()
-            compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
+            compose.onNodeWithTag(SEARCH_INPUT).performTextClearance()
+            device.pressBack()
             waitForKeyboard(false)
             val restored = assertHomeLayout()
             assertPinned(initial, restored)
             compose.onNodeWithContentDescription("Search or enter address").assertIsDisplayed()
             report.put("homeRestored", geometry(restored)).put("keyboardDismissed", true)
-                .put("homeRestoredAfterClosingSearch", true).put("verified", true)
+                .put("homeRestoredAfterDismissingKeyboard", true).put("verified", true)
             capture("04-home-restored.png")
         } catch (failure: Throwable) {
             report.put("verified", false).put("failure", failure.message ?: failure.javaClass.simpleName)
@@ -242,7 +244,6 @@ class HomeLayoutTest {
         private const val MIDDLE = "home-middle"
         private const val DISCOVERY = "home-discovery"
         private const val BOTTOM = "home-bottom-nav"
-        private const val SEARCH_MODE = "search-input-mode"
         private const val SEARCH_INPUT = "search-input"
     }
 }

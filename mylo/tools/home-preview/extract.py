@@ -9,7 +9,7 @@ drop = ("import android.", "import androidx.lifecycle.", "import androidx.activi
 imports = [l for l in imports if not l.startswith(drop)]
 i = src.index("val Night"); j = src.index("class MyloApplication", i)
 open(os.path.join(out, "Theme.kt"), "w").write('@file:Suppress("unused")\npackage com.mylo.browser\n\n' + "\n".join(imports) + "\n\n" + src[i:j])
-for f in ("HomeScreen.kt", "HomeArt.kt", "SearchInputScreen.kt"):
+for f in ("HomeScreen.kt", "HomeArt.kt"):
     shutil.copy(os.path.join(app, f), os.path.join(out, f))
 state = open(os.path.join(app, "BrowserState.kt")).read()
 i = state.index("enum class SearchProvider"); j = state.index("\n}\n", i) + 3

@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "full = every device check; search-flow = only Home → search → provider → real results"
+        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL"
         type: choice
         options: [full, search-flow]
         default: full

@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -72,25 +71,20 @@ val phones = listOf(
     }
 }
 
-/** Preview scenes at 393×851 with the same system bars: resting Home, focused search, provider sheet. */
+/** Preview scenes at 393×851 with the same system bars: resting Home, and Home's own box being typed into. */
 const val QUERY = "best night photography spots"
 val scenes: Map<String, @Composable (Phone) -> Unit> = mapOf(
     "1_resting_home" to { p -> HomeShell(p) { HomeScreen(vpnActive = true, vpnLocation = "Singapore", statusBarInset = p.status) } },
-    "2_focused_search_keyboard" to { p -> SearchShell(p, keyboard = true) },
-    "3_provider_sheet" to { p -> SearchShell(p, keyboard = false) },
+    "2_home_search_keyboard" to { p -> HomeSearchShell(p) },
 )
 
-@Composable fun SearchShell(phone: Phone, keyboard: Boolean) {
+/** Home with a query typed into its own search box, resized above the keyboard as on a device. */
+@Composable fun HomeSearchShell(phone: Phone) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
-            MyloViewport(edgeToEdgeHome = true) {
-                Box(Modifier.weight(1f)) {
-                    SearchInputScreen(QUERY, {}, provider = SearchProvider.GOOGLE, defaultProvider = SearchProvider.GOOGLE,
-                        onUseOnce = {}, onSetDefault = {}, onSubmit = {}, onClose = {}, statusBarInset = phone.status)
-                }
-            }
+            HomeShell(phone) { HomeScreen(QUERY, statusBarInset = phone.status) }
         }
-        if (keyboard) MockKeyboard()
+        MockKeyboard()
     }
 }
 
@@ -163,20 +157,6 @@ fun main(args: Array<String>) {
             var t = 0L
             fun frame(ms: Long) { t += ms * 1_000_000; sc.render(t) }
             repeat(40) { frame(16) }
-            if (name.startsWith("3_")) {
-                // Tap the "Search with Google" control exactly as a user would.
-                val at = Offset(90f * p.density, (p.status.value + 202f + 58f + 12f + 18f) * p.density)
-                sc.sendPointerEvent(PointerEventType.Move, at); frame(16)
-                sc.sendPointerEvent(PointerEventType.Press, at); frame(16)
-                sc.sendPointerEvent(PointerEventType.Release, at)
-                repeat(60) { frame(16) }
-                // Then pick Brave, so the chosen provider and the saved default are visibly different.
-                val brave = Offset(200f * p.density, 488f * p.density)
-                sc.sendPointerEvent(PointerEventType.Move, brave); frame(16)
-                sc.sendPointerEvent(PointerEventType.Press, brave); frame(16)
-                sc.sendPointerEvent(PointerEventType.Release, brave)
-                repeat(30) { frame(16) }
-            }
             File(out, "$name.png").writeBytes(sc.render(t + 16_000_000).encodeToData(EncodedImageFormat.PNG)!!.bytes)
             sc.close(); println("rendered $name")
         }

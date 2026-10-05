@@ -102,13 +102,24 @@ private const val REFERENCE_WIDTH = 392.7f
 @Composable fun HomeScreen(
     query: String = "", onQuery: (String) -> Unit = {}, onSearch: () -> Unit = {}, onVoice: () -> Unit = {},
     onPanel: (String) -> Unit = {}, onOpen: (String) -> Unit = {}, onPrivate: () -> Unit = {},
-    vpnActive: Boolean = false, searchRequest: Int = 0, onActivateSearch: (() -> Unit)? = null,
+    vpnActive: Boolean = false,
+    // Focus this screen's search box (bottom Search, new tab); [onSearchFocused] marks the request handled.
+    focusSearch: Boolean = false, onSearchFocused: () -> Unit = {},
     // Production has no known endpoint location; only the reference render supplies one.
     vpnLocation: String? = null, onScan: () -> Unit = {}, statusBarInset: Dp? = null,
 ) {
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(searchRequest) { if (searchRequest > 0) { requester.requestFocus(); keyboard?.show() } }
+    LaunchedEffect(focusSearch) {
+        if (focusSearch) {
+            // Focus can fail while the field is detached; never let that cancel the request.
+            runCatching { requester.requestFocus() }
+            // Wait until the input connection has followed Compose focus.
+            withFrameNanos { }
+            runCatching { keyboard?.show() }
+            onSearchFocused()
+        }
+    }
     val statusBar = statusBarInset ?: WindowInsets.safeDrawing.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding()
     HomeTextStyle {
         BoxWithConstraints(Modifier.fillMaxSize().background(HomeNight)) {
@@ -118,7 +129,7 @@ private const val REFERENCE_WIDTH = 392.7f
             Column(Modifier.fillMaxSize()) {
                 if (keyboardCompact) Spacer(Modifier.height(statusBar + 8.dp))
                 else HomeHero(width, statusBar) { onPanel("settings") }
-                SearchBar(query, onQuery, onSearch, onVoice, onScan, requester, Modifier.padding(horizontal = 12.dp).testTag("home-search"), onActivateSearch)
+                SearchBar(query, onQuery, onSearch, onVoice, onScan, requester, Modifier.padding(horizontal = 12.dp).testTag("home-search"))
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                     val viewport = maxHeight
                     Column(Modifier.fillMaxSize().testTag("home-middle").verticalScroll(rememberScrollState())) {
@@ -186,11 +197,8 @@ private fun heroAnchor(statusBar: Dp): Dp = maxOf(30.dp, statusBar - 12.dp)
 /** Height of the hero (art, greeting and wordmark) above the search field. */
 internal fun heroBottom(width: Dp, statusBar: Dp): Dp = heroAnchor(statusBar) + 202.dp * (width.value / REFERENCE_WIDTH)
 
-/**
- * Mylo on the moon with the wordmark, composed exactly as in the approved reference.
- * Focused search reuses it with [dim] so the hero stays visible behind the search panel.
- */
-@Composable internal fun HeroBackdrop(width: Dp, statusBar: Dp, dim: Float = 0f, content: @Composable BoxScope.() -> Unit = {}) {
+/** Mylo on the moon with the wordmark, composed exactly as in the approved reference. */
+@Composable internal fun HeroBackdrop(width: Dp, statusBar: Dp, content: @Composable BoxScope.() -> Unit = {}) {
     val art = ImageBitmap.imageResource(R.drawable.mylo_night_hero)
     val k = width.value / REFERENCE_WIDTH
     val anchor = heroAnchor(statusBar)
@@ -218,7 +226,6 @@ internal fun heroBottom(width: Dp, statusBar: Dp): Dp = heroAnchor(statusBar) + 
         Text("A brighter web awaits", fontSize = 15.sp * k, fontWeight = FontWeight.Medium, color = Color(0xFFDCDDF6), maxLines = 1,
             style = TextStyle(shadow = Shadow(Color(0x80040A24), Offset(0f, 2f), 8f)),
             modifier = Modifier.offset(x = width * .107f, y = anchor + 136.5.dp * k))
-        if (dim > 0f) Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(HomeNight.copy(alpha = dim), HomeNight.copy(alpha = dim * .8f)))))
         content()
     }
 }
@@ -256,13 +263,19 @@ internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp
     .clip(CircleShape).background(Brush.verticalGradient(listOf(Color(0xFFF0F0FE), Color(0xFFE4E5FB))))
     .border(if (focused) 1.5.dp else 1.dp, if (focused) Color(0xFFB4A8FF) else Color(0x66FFFFFF), CircleShape)
 
-@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, onScan: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier, onActivate: (() -> Unit)? = null) {
+/**
+ * Home's own search box: the user types here and the keyboard's Search action submits. Words go to
+ * the provider saved in Settings and web addresses open directly; there is no separate search page.
+ */
+@Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, onScan: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier) {
     val keyboard = LocalSoftwareKeyboardController.current
-    Row(modifier.searchPill(focused = false).padding(start = 5.5.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { if (onActivate != null) onActivate() else { requester.requestFocus(); keyboard?.show() } }) { Icon(Icons.Rounded.Search, "Focus search", tint = SearchInk, modifier = Modifier.size(31.dp)) }
-        BasicTextField(value, onValue, Modifier.weight(1f).padding(start = 8.dp).focusRequester(requester).onFocusChanged { if (it.isFocused) onActivate?.invoke() }.semantics { contentDescription = "Search or enter address" }, singleLine = true, readOnly = onActivate != null,
+    var focused by remember { mutableStateOf(false) }
+    Row(modifier.searchPill(focused).padding(start = 5.5.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { runCatching { requester.requestFocus() }; keyboard?.show() }) { Icon(Icons.Rounded.Search, "Focus search", tint = SearchInk, modifier = Modifier.size(31.dp)) }
+        BasicTextField(value, onValue, Modifier.weight(1f).padding(start = 8.dp).focusRequester(requester).onFocusChanged { focused = it.isFocused }
+            .testTag("search-input").semantics { contentDescription = "Search or enter address" }, singleLine = true,
             textStyle = SearchTextStyle, cursorBrush = SolidColor(Color(0xFF493B96)),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { onSubmit() }),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
             decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { if (value.isEmpty()) Text("Search or enter address", style = SearchPlaceholderStyle, maxLines = 1, overflow = TextOverflow.Ellipsis); inner() } })
         if (value.isNotBlank()) IconButton(onClick = onSubmit) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Go", tint = SearchInk) }
         Box(Modifier.width(1.dp).height(23.dp).background(Color(0xFFBFC1E0)))

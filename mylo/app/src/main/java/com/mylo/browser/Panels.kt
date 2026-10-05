@@ -64,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -266,8 +267,9 @@ fun MyloPanel(
 
 @Composable
 private fun SearchProviderChoices(store: BrowserStore) {
-    PanelDescription("Web addresses open directly. Everything else searches with your preferred provider.")
-    SearchProvider.entries.forEach { provider ->
+    // The only place the search provider is chosen; the Home search box always uses this saved choice.
+    PanelDescription("Choose your default search provider. Web addresses open directly; everything you type in the Home search box searches with it.")
+    Column(Modifier.testTag("search-provider-settings")) { SearchProvider.entries.forEach { provider ->
         Surface(
             color = if (store.provider == provider) Color(0xFF2A2850) else PanelCard,
             shape = RoundedCornerShape(18.dp),
@@ -282,8 +284,8 @@ private fun SearchProviderChoices(store: BrowserStore) {
                 Text(provider.displayName, Modifier.padding(start = 8.dp), color = PanelText, fontSize = 17.sp)
             }
         }
-    }
-    Text("Your preference is saved on this device.", Modifier.padding(top = 8.dp), color = PanelMuted, fontSize = 13.sp)
+    } }
+    Text("Your choice is saved on this device and kept after Mylo restarts.", Modifier.padding(top = 8.dp), color = PanelMuted, fontSize = 13.sp)
 }
 
 @Composable

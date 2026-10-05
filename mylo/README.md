@@ -19,7 +19,7 @@ The latest working-tree visual correction has **not been compiled or rendered**.
 - Greeting and search stay pinned. On short screens only the middle content scrolls; on tall screens spare height is shared between sections.
 - VPN: "VPN protected" appears only when Android reports an active VPN. The Singapore/ON sample exists only in reference renders that pass `vpnLocation`.
 - Polish (B + C): a taller search pill with a soft lavender glow, a slightly shorter hero, 16 dp card corners with top-lit edges, more even spacing and a compact banner. Shortcut rings keep the approved size. Taps get a subtle press-in, and the selected tab pill animates.
-- Focused search: tapping search keeps the hero visible but dimmed, focuses the field in place and opens the keyboard. A compact "Search with …" control opens a rounded sheet listing Google, Brave, DuckDuckGo, Bing, Yahoo and Startpage. The sheet marks the selected provider and the saved default. **Just this search** applies to one search; **Set as default** is saved locally. Providers appear as brand-coloured letter badges, because official logos are trademark-restricted.
+- Search: the search provider is chosen only in **Settings** (the gear on Home → Search engine): Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage. The choice is saved on the device and kept after Mylo restarts. Back on Home, the user types straight into the same Home search box and presses the keyboard's Search key: words open the saved provider's real results page for the exact text, and a web address such as `facebook.com` opens directly. There is no separate search page, per-search provider control or one-off provider choice. The bottom **Search** button returns to Home and focuses that same box.
 
 ## Build and run
 
@@ -38,7 +38,7 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 ## Implemented behavior
 
 - Home uses native Compose elements with the approved dark palette, corgi hero, prominent search, shortcuts, browser cards, VPN strip, discovery area, and bottom navigation.
-- URLs open in Android WebView; words open the real results page of Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage: the saved default, or a provider chosen for one search. Only HTTP(S) navigation is accepted.
+- URLs open in Android WebView; words open the real results page of the provider saved in Settings (Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage). Only HTTP(S) navigation is accepted.
 - Bookmarks and normal browsing history persist locally. Tabs can be created, selected and closed; per-tab WebView navigation state is retained while the app process lives and through rotation. Tabs are not restored after process death.
 - Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
 - Private browsing runs in a separate process and WebView data directory, blocks cookies, disables persistent web storage and disk caching, clears private website data when opened/closed, and does not write Mylo history. It is not network anonymity; some websites need cookies.

@@ -58,13 +58,9 @@ class LiveSearchFlowTest {
     @Test
     fun searchInputFocusKeyboardAndProviderPersistence() {
         compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
-        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
-        openSearch()
-        compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
+        // Settings is the only place the provider is chosen; each choice is saved without navigating.
         SearchProvider.entries.forEach { provider ->
             chooseProvider(provider)
-            compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-            assertKeyboardVisible()
             compose.runOnIdle {
                 assertEquals(provider, store().provider)
                 // This fresh model reads preferences instead of the live Compose state.
@@ -72,25 +68,19 @@ class LiveSearchFlowTest {
                 assertTrue("Choosing a provider must not navigate", store().tabs.isEmpty())
             }
         }
+        // Typing happens in Home's own box, with the Android keyboard and no provider control.
+        openSearch()
+        compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
+        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
+        compose.onNodeWithTag(HOME_SEARCH).assertIsDisplayed()
+        compose.onNodeWithText("Search with", substring = true).assertDoesNotExist()
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
-        compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
-        compose.onNodeWithTag(SEARCH_INPUT).assertTextEquals(QUERY).assertIsFocused()
-        compose.onNodeWithContentDescription("Search provider: ${SearchProvider.entries.last().displayName}")
-            .assertIsDisplayed()
-        assertKeyboardVisible()
-        compose.runOnIdle {
-            assertEquals(SearchProvider.entries.last(), BrowserStore(compose.activity.application).provider)
-        }
-        // A one-off provider applies to this search only and never replaces the saved default.
-        chooseProvider(SearchProvider.entries.first(), setDefault = false)
+        compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
         compose.runOnIdle {
             assertEquals(SearchProvider.entries.last(), store().provider)
             assertEquals(SearchProvider.entries.last(), BrowserStore(compose.activity.application).provider)
         }
-        compose.onNodeWithContentDescription("Close search").performClick()
-        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
-        compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
     }
 
     @Test
@@ -101,13 +91,13 @@ class LiveSearchFlowTest {
         try {
             compose.onNodeWithContentDescription(SEARCH_FIELD).assertIsDisplayed()
             capture("01-home.png")
+            chooseProvider(SearchProvider.GOOGLE, "02-settings-search-engine.png")
             openSearch()
-            capture("02-search-input-and-keyboard.png")
-            chooseProvider(SearchProvider.GOOGLE, "03-provider-selector.png")
+            capture("03-search-input-and-keyboard.png")
             compose.onNodeWithTag(SEARCH_INPUT).performTextInput(QUERY)
             capture("04-query-and-keyboard.png")
             compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
-            compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
+            compose.onNodeWithTag(HOME_SEARCH).assertDoesNotExist()
 
             val result = waitForRealGoogleResults()
             assertBrowserControls()
@@ -142,7 +132,7 @@ class LiveSearchFlowTest {
                 assertEquals(firstTabId, store().tabs.single().id)
             }
             evidence.writeText(result.put("verified", true)
-                .put("flow", "Home → focused input and Android keyboard → choose Google → query → real mobile Google results")
+                .put("flow", "Settings → Google → Home search box and Android keyboard → query → real mobile Google results")
                 .put("openedResult", linkedPage)
                 .put("backAndForwardVerified", true)
                 .put("currentTabReused", true).toString(2))
@@ -168,8 +158,8 @@ class LiveSearchFlowTest {
             try {
                 // Recover to native Home after a denied provider; select through the same UI a user sees.
                 compose.onNodeWithText("Home", useUnmergedTree = true).performClick()
-                openSearch()
                 chooseProvider(provider)
+                openSearch()
                 submitInput(QUERY)
                 compose.waitUntil(5_000) { currentWebView() != null }
                 compose.runOnIdle {
@@ -299,9 +289,9 @@ class LiveSearchFlowTest {
         }
     }
 
+    /** Tap Home's own search box: it takes focus and the Android keyboard opens. */
     private fun openSearch() {
         compose.onNodeWithContentDescription(SEARCH_FIELD).performClick()
-        compose.onNodeWithTag(SEARCH_MODE).assertIsDisplayed()
         compose.onNodeWithTag(SEARCH_INPUT).assertIsDisplayed().assertIsFocused()
         assertKeyboardVisible()
     }
@@ -309,30 +299,25 @@ class LiveSearchFlowTest {
     private fun submitInput(value: String) {
         compose.onNodeWithTag(SEARCH_INPUT).performTextReplacement(value)
         compose.onNodeWithTag(SEARCH_INPUT).performImeAction()
-        // Flush the state change that replaces native input with the WebView
+        // Flush the state change that replaces native Home with the WebView
         // before polling Android views outside the Compose test clock.
-        compose.onNodeWithTag(SEARCH_MODE).assertDoesNotExist()
+        compose.onNodeWithTag(HOME_SEARCH).assertDoesNotExist()
         compose.waitForIdle()
     }
 
-    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null, setDefault: Boolean = true) {
-        var current = SearchProvider.GOOGLE
-        compose.runOnIdle { current = store().provider }
-        compose.onNodeWithContentDescription("Search provider: ${current.displayName}").performClick()
-        compose.onNodeWithTag(PROVIDER_PICKER).assertIsDisplayed()
+    /** Home's Settings gear → Search engine → [provider]; the sheet is closed again afterwards. */
+    private fun chooseProvider(provider: SearchProvider, screenshot: String? = null) {
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithTag(PROVIDER_SETTINGS).assertIsDisplayed()
         SearchProvider.entries.forEach {
-            compose.onNode(hasText(it.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
+            compose.onNode(hasText(it.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_SETTINGS)))
                 .assertIsDisplayed()
         }
+        compose.onNode(hasText(provider.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_SETTINGS)))
+            .performClick()
         screenshot?.let(::capture)
-        compose.onNode(hasText(provider.displayName) and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
-            .performClick()
-        compose.onNode(hasText(if (setDefault) "Set as default" else "Just this search") and hasAnyAncestor(hasTestTag(PROVIDER_PICKER)))
-            .performClick()
-        compose.onNodeWithTag(PROVIDER_PICKER).assertDoesNotExist()
-        compose.onNodeWithContentDescription("Search provider: ${provider.displayName}").assertIsDisplayed()
-        compose.onNodeWithTag(SEARCH_INPUT).assertIsFocused()
-        assertKeyboardVisible()
+        compose.onNodeWithContentDescription("Close Search engine").performClick()
+        compose.onNodeWithTag(PROVIDER_SETTINGS).assertDoesNotExist()
     }
 
     private fun assertKeyboardVisible() {
@@ -561,9 +546,9 @@ class LiveSearchFlowTest {
 
     companion object {
         private const val SEARCH_FIELD = "Search or enter address"
-        private const val SEARCH_MODE = "search-input-mode"
         private const val SEARCH_INPUT = "search-input"
-        private const val PROVIDER_PICKER = "search-provider-picker"
+        private const val HOME_SEARCH = "home-search"
+        private const val PROVIDER_SETTINGS = "search-provider-settings"
         private const val QUERY = "best beaches in Florida"
     }
 }

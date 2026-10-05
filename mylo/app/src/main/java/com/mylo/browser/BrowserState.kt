@@ -172,10 +172,12 @@ class BrowserStore(context: Context) {
         return tab
     }
 
-    /** Address-bar submissions navigate the active tab, including an existing webpage. */
-    /** [searchWith] lets one search use another provider without changing the saved default. */
-    fun navigateInCurrentTab(currentTabId: Long?, input: String, searchWith: SearchProvider = provider): BrowserTab? {
-        val url = resolveInput(input, searchWith) ?: return null
+    /**
+     * Address-bar submissions navigate the active tab, including an existing webpage. Words search
+     * with the provider saved in Settings; web addresses open directly.
+     */
+    fun navigateInCurrentTab(currentTabId: Long?, input: String): BrowserTab? {
+        val url = resolveInput(input, provider) ?: return null
         val index = tabs.indexOfFirst { it.id == currentTabId }
         if (index < 0) return createTab(url)
         val tab = tabs[index].copy(url = url, title = url)

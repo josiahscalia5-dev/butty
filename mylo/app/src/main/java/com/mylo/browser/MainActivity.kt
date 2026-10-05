@@ -57,7 +57,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -132,27 +131,25 @@ class MainActivity : ComponentActivity() {
     var home by rememberSaveable { mutableStateOf(true) }
     var query by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var searching by rememberSaveable { mutableStateOf(false) }
-    // A provider picked with "Just this search"; null means the saved default.
-    var searchOnce by rememberSaveable { mutableStateOf<SearchProvider?>(null) }
+    // One-shot request (bottom Search, new tab) to focus Home's own search box; cleared once handled
+    // so returning to Home later never reopens the keyboard by itself.
+    var focusHomeSearch by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val vpn = rememberVpnStatus()
-    fun startSearch() { query = ""; searchOnce = null; searching = true }
-    fun closeSearch() { searching = false; query = ""; searchOnce = null; focus.clearFocus(); keyboard?.hide() }
-    fun showHome() { closeSearch(); home = true }
+    fun dismissInput() { focus.clearFocus(); keyboard?.hide() }
+    fun showHome() { dismissInput(); query = ""; home = true }
+    fun searchFromHome() { showHome(); focusHomeSearch = true }
     fun open(input: String) {
-        val tab = store.navigateInCurrentTab(currentTab, input, searchOnce ?: store.provider)
+        // Web addresses open directly; words search with the provider saved in Settings.
+        val tab = store.navigateInCurrentTab(currentTab, input)
         if (tab == null) { error = "Enter a website address or search words."; return }
-        searchOnce = null
         // A Home submission is a navigation in the existing tab, never an implicit new tab.
         session.pendingNavigations[tab.id] = tab.url
         currentTab = tab.id
         home = false
-        searching = false
         query = ""
-        focus.clearFocus()
-        keyboard?.hide()
+        dismissInput()
     }
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { open(it) }
@@ -170,34 +167,26 @@ class MainActivity : ComponentActivity() {
                 .addOnFailureListener { error = unavailable }
         }.onFailure { error = unavailable }
     }
-    // Home and focused search draw their artwork behind the status bar; browser pages do not.
-    MyloViewport(edgeToEdgeHome = searching || home || store.tabs.none { it.id == currentTab }) {
+    val onHome = home || store.tabs.none { it.id == currentTab }
+    // Home draws its artwork behind the status bar; browser pages do not.
+    MyloViewport(edgeToEdgeHome = onHome) {
             Box(Modifier.weight(1f)) {
-                Box(Modifier.fillMaxSize().then(if (searching) Modifier.clearAndSetSemantics { } else Modifier)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
                 if (home || tab == null) {
                     HomeScreen(query, { query = it }, { open(query) }, voiceSearch, { panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, onActivateSearch = { if (!searching) startSearch() }, onScan = scanCode)
+                    }, vpn, focusSearch = focusHomeSearch, onSearchFocused = { focusHomeSearch = false }, onScan = scanCode)
                 } else {
                     key(tab.id) {
-                        BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" }, !searching)
+                        BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" })
                     }
                 }
-                }
-                if (searching) {
-                    SearchInputScreen(query, { query = it }, provider = searchOnce ?: store.provider, defaultProvider = store.provider,
-                        onUseOnce = { searchOnce = it.takeIf { choice -> choice != store.provider } },
-                        onSetDefault = { store.setProvider(it); searchOnce = null },
-                        onSubmit = { open(query) }, onClose = ::closeSearch, onVoice = voiceSearch, onScan = scanCode)
-                }
             }
-            if (!searching) BottomBar(home || store.tabs.none { it.id == currentTab }, store.tabs.size,
-                ::showHome, ::startSearch, { panel = "tabs" }, { panel = "mylo" })
+            BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { panel = "mylo" })
     }
     panel?.let { selected -> MyloPanel(selected, store, { panel = null }, { open(it) }, {
-        closeSearch(); currentTab = it.id; home = it.url.isBlank()
-    }, { currentTab = store.createTab().id; home = true; startSearch() }) }
+        dismissInput(); currentTab = it.id; home = it.url.isBlank()
+    }, { currentTab = store.createTab().id; searchFromHome() }) }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null }, title = { Text("Mylo") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
 }
 
@@ -220,7 +209,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @SuppressLint("SetJavaScriptEnabled")
-@Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit, handleBack: Boolean = true) {
+@Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit) {
     val store = session.store
     var address by remember(tab.id) { mutableStateOf(tab.url) }
     var editingAddress by remember(tab.id) { mutableStateOf(false) }
@@ -309,8 +298,8 @@ class MainActivity : ComponentActivity() {
                     canForward = canGoForward()
                 }
             }, update = { view ->
-                // Search mode overlays an existing WebView. Consume a submission
-                // once, without recreating the view or losing its navigation list.
+                // A submission while this tab stays on screen (a bookmark or history entry)
+                // is consumed once, without recreating the view or losing its navigation list.
                 session.pendingNavigations.remove(tab.id)?.let { url ->
                     view.stopLoading()
                     address = url
@@ -319,7 +308,7 @@ class MainActivity : ComponentActivity() {
             }, modifier = Modifier.weight(1f).fillMaxWidth())
         }
     }
-    BackHandler(enabled = handleBack) { back() }
+    BackHandler { back() }
     DisposableEffect(tab.id) { onDispose {
         active = false
         webView?.apply {

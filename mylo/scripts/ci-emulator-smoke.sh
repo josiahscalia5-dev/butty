@@ -66,22 +66,25 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
 fi
 
 # Keep layout and live-network results independent so either failure retains the other evidence.
-# The exact user flow, one screenshot per step: Home → tap search → type → choose provider →
-# keyboard Search → the provider's real results page (Google default, Yahoo as default, Bing URL
-# check, Brave once). Each case runs alone with its own time limit and its evidence is pulled
-# straight away, so one stalled provider page cannot hide the other cases' results.
+# The final search flow, one screenshot per step: Home's Settings gear → choose the provider →
+# back on Home, type into the same Home search box → keyboard Search → the provider's real results
+# page (Google, then Yahoo), Yahoo again after Mylo is stopped and relaunched, and a typed domain
+# opening directly. Each case runs alone in a fresh app process with its own time limit and its
+# evidence is pulled straight away, so one stalled page cannot hide the other cases' results.
 flow_status=0
 flow_summary="$evidence_dir/provider-flow-test.txt"
 : > "$flow_summary"
 adb logcat -c || true
 adb logcat -v threadtime > "$evidence_dir/provider-flow-logcat.txt" 2>&1 &
 flow_logcat_pid=$!
-for flow_case in googleDefault yahooSetAsDefault bingOpensBingUrl braveJustThisSearch; do
+for flow_case in googleFromSettings yahooFromSettings savedYahooAfterRelaunch domainOpensDirectly; do
   if ! timeout 15 adb shell true >/dev/null 2>&1; then
     echo "$flow_case: not run (emulator stopped responding)" | tee -a "$flow_summary"; flow_status=1; continue
   fi
+  # The relaunch case must find only what Mylo saved, so stop the app first.
+  [[ "$flow_case" == savedYahooAfterRelaunch ]] && timeout 15 adb shell am force-stop "$app_package" || true
   case_output="$evidence_dir/provider-flow-$flow_case.txt"
-  timeout 130 adb shell am instrument -w -r -e class "com.mylo.browser.ProviderFlowPreviewTest#$flow_case" \
+  timeout 130 adb shell am instrument -w -r -e class "com.mylo.browser.SettingsSearchFlowTest#$flow_case" \
     com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$case_output" 2>&1 || true
   if grep -q '^OK (1 test)' "$case_output"; then flow_result=passed; else flow_result='failed or blocked'; flow_status=1; fi
   echo "$flow_case: $flow_result" | tee -a "$flow_summary"
@@ -98,7 +101,7 @@ kill "$flow_logcat_pid" 2>/dev/null || true
 } >> "$flow_summary"
 if [[ "${MYLO_SCOPE:-full}" == "search-flow" ]]; then
   if (( flow_status )); then echo 'Search-flow verification failed or was blocked. See provider-flow evidence.' >&2; exit 1; fi
-  echo 'Verified Home → search → provider → real results for Brave, Google and Yahoo, and the Bing URL check.'
+  echo 'Verified Settings → provider → Home search box → real Google and Yahoo results, Yahoo kept after relaunch, and facebook.com opened directly.'
   exit 0
 fi
 (( flow_status )) && failed=1
