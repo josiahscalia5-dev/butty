@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
@@ -70,8 +71,15 @@ class VoiceModeFlowTest {
                 waitFor(By.res("voice-chat-close"), "close chat").click()
                 waitFor(By.res("voice-access-adjust"), "Adjust").click()
                 waitFor(By.res("voice-access"), "the switchboard")
-                listOf("Current Page", "Selected Text", "Screenshot", "Other Tabs", "History", "Location", "Saved Mylo Memory").forEach { waitFor(By.text(it), "\"$it\" switch") }
-                shot(dir, "04-what-mylo-can-see.png"); steps.put("switchboard sheet")
+                shot(dir, "04-what-mylo-can-see.png")
+                // The sheet scrolls on smaller screens: every source has its own row.
+                val list = waitFor(By.res("voice-access-list"), "the switchboard list")
+                listOf("currentpage", "selectedtext", "screenshot", "othertabs", "history", "location", "mylomemory").forEach { source ->
+                    val row = By.res("access-$source")
+                    if (!device.hasObject(row)) list.scrollUntil(Direction.DOWN, Until.findObject(row))
+                    waitFor(By.res("access-$source"), "the $source row")
+                }
+                shot(dir, "05-what-mylo-can-see-end.png"); steps.put("switchboard sheet: all seven sources")
                 waitFor(By.res("voice-access-close"), "close switchboard").click()
 
                 waitFor(By.res("voice-close"), "Close voice mode").click()
@@ -182,6 +190,7 @@ class VoiceModeFlowTest {
     private fun <T> recording(dir: File, block: () -> T): T = try { block() } catch (failure: Throwable) {
         runCatching { device.takeScreenshot(File(dir, "failure.png")) }
         runCatching { File(dir, "failure-hierarchy.xml").outputStream().use { device.dumpWindowHierarchy(it) } }
+        runCatching { File(dir, "failure-android-events.txt").writeText(shell("logcat -d -b events -v time").lines().filter { " wm_" in it || " am_" in it }.takeLast(200).joinToString("\n")) }
         runCatching { File(dir, "failure-activities.txt").writeText(shell("dumpsys activity activities").lines().filter { "Activity" in it || "mResumed" in it || "mFocused" in it }.take(80).joinToString("\n")) }
         throw failure
     }

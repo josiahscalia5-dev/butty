@@ -297,7 +297,7 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
 
 @Composable private fun AccessSheet(switchboard: AiSwitchboard, version: Int, onSet: (AiDataSource, AiGrant) -> Unit, onClose: () -> Unit) {
     VoiceSheetFrame("What Mylo can see", "voice-access", onClose) {
-        Column(Modifier.fillMaxWidth().heightIn(max = 620.dp).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 620.dp).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).testTag("voice-access-list")) {
             Text("Mylo reads these only when you ask something, and only if they're on. “Allow once” is used up by your next question.",
                 color = SheetMuted, fontSize = 13.5.sp, lineHeight = 18.sp)
             Spacer(Modifier.height(10.dp))
