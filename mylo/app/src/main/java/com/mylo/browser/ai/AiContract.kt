@@ -22,8 +22,9 @@ data class AiContext(
 ) {
     /** For the Privacy Receipt: which sources this request actually used. */
     val used: Set<AiDataSource> get() = buildSet {
-        if (page != null) add(AiDataSource.CurrentPage)
-        if (page?.selection != null) add(AiDataSource.SelectedText)
+        // A selection can be shared on its own, without the page's address or text.
+        if (page != null && (page.url.isNotEmpty() || page.text.isNotEmpty())) add(AiDataSource.CurrentPage)
+        if (!page?.selection.isNullOrEmpty()) add(AiDataSource.SelectedText)
         if (tabs.isNotEmpty()) add(AiDataSource.OtherTabs)
         if (history.isNotEmpty()) add(AiDataSource.History)
         if (location != null) add(AiDataSource.Location)

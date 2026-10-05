@@ -22,6 +22,10 @@ fun buildConfigString(value: String): String {
 }
 val shieldApiBaseUrl = shieldSetting("mylo.shield.apiBaseUrl", "MYLO_SHIELD_API_BASE_URL").trim()
 val shieldDevToken = shieldSetting("mylo.shield.devToken", "MYLO_SHIELD_DEV_TOKEN").trim()
+// Mylo AI service: the same rules. The app only ever talks to the Mylo AI service; provider keys
+// (OpenAI and others) live on that service and never in the app (see docs/ai/BACKEND_API.md).
+val aiApiBaseUrl = shieldSetting("mylo.ai.apiBaseUrl", "MYLO_AI_API_BASE_URL").trim()
+val aiDevToken = shieldSetting("mylo.ai.devToken", "MYLO_AI_DEV_TOKEN").trim()
 
 android {
     namespace = "com.mylo.browser"
@@ -34,12 +38,19 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SHIELD_API_BASE_URL", buildConfigString(shieldApiBaseUrl))
+        buildConfigField("String", "MYLO_AI_API_BASE_URL", buildConfigString(aiApiBaseUrl))
     }
     buildTypes {
         // A development access token is only ever compiled into debug builds; release builds must use a
         // per-user sign-in flow (see docs/shield/BACKEND_API.md).
-        debug { buildConfigField("String", "SHIELD_DEV_TOKEN", buildConfigString(shieldDevToken)) }
-        release { buildConfigField("String", "SHIELD_DEV_TOKEN", "\"\"") }
+        debug {
+            buildConfigField("String", "SHIELD_DEV_TOKEN", buildConfigString(shieldDevToken))
+            buildConfigField("String", "MYLO_AI_DEV_TOKEN", buildConfigString(aiDevToken))
+        }
+        release {
+            buildConfigField("String", "SHIELD_DEV_TOKEN", "\"\"")
+            buildConfigField("String", "MYLO_AI_DEV_TOKEN", "\"\"")
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

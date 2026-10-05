@@ -24,6 +24,8 @@ data class ChatMessage(
     val ask: AccessAsk? = null,
     /** Browser actions the answer proposed; each still goes through [ActionGate]. */
     val proposals: List<AiEvent.Proposal> = emptyList(),
+    /** Answered on the phone without the service (for example "Open a page first"); never sent later. */
+    val local: Boolean = false,
 ) {
     enum class State { Streaming, Done, Stopped, Failed, NotSent }
 }
@@ -101,6 +103,15 @@ class AiConversation(
         }
     }
 
+    /** A question Mylo can answer without the service, such as "open a page first". Nothing is sent. */
+    fun answerLocally(question: String, reply: String) {
+        stop()
+        pending?.let { resolveAsk(it.askId) }
+        pending = null
+        add(ChatMessage(nextId++, AiTurn.Role.User, question.trim(), local = true))
+        add(ChatMessage(nextId++, AiTurn.Role.Assistant, reply, local = true))
+    }
+
     /** Stops the answer being written (the part already shown stays, marked as stopped). */
     fun stop() {
         val running = job ?: return
@@ -157,7 +168,7 @@ class AiConversation(
 
     /** The turns sent with a question: earlier exchanges that were really sent, then the question. */
     private fun history(userId: Long): List<AiTurn> = _messages.value
-        .filter { it.id <= userId && it.ask == null && it.text.isNotBlank() }
+        .filter { it.id <= userId && it.ask == null && !it.local && it.text.isNotBlank() }
         .filter { it.role == AiTurn.Role.User && it.state != ChatMessage.State.NotSent || it.role == AiTurn.Role.Assistant && it.state in setOf(ChatMessage.State.Done, ChatMessage.State.Stopped) }
         .map { AiTurn(it.role, it.text) }
 

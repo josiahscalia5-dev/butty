@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
@@ -70,6 +71,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.mylo.browser.ai.AiContext
+import com.mylo.browser.ai.AiConversation
+import com.mylo.browser.ai.AiDataSource
+import com.mylo.browser.ai.Gathered
+import com.mylo.browser.ai.MyloAi
+import com.mylo.browser.ai.PageContext
+import com.mylo.browser.ai.PageReader
 import com.mylo.browser.shield.ExitStatus
 import com.mylo.browser.shield.MyloShield
 import com.mylo.browser.shield.ShieldProblem
@@ -130,6 +138,36 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
     val store = BrowserStore(application)
     /** Every normal tab's page, whichever search provider or link opened it. */
     val engine = TabEngine(application, store)
+    /** Mylo AI's switchboard for normal browsing ("What Mylo can see"). */
+    val switchboard = MyloAi.switchboard(application)
+    /** The tab on screen, which is the page Mylo AI may read. */
+    var aiTab: Long? = null
+    /** One conversation for typing and talking; kept in memory only. */
+    val conversation = AiConversation(MyloAi.service(application), switchboard,
+        viewModelScope, private = false, gather = ::gather)
+
+    /** Reads exactly the sources a question was allowed, from the live tabs and normal history. */
+    private suspend fun gather(allowed: Set<AiDataSource>): Gathered {
+        val current = store.tabs.firstOrNull { it.id == aiTab && it.url.isNotBlank() }
+        val page = if (current != null && (AiDataSource.CurrentPage in allowed || AiDataSource.SelectedText in allowed)) {
+            engine.webViewIfLive(current.id)?.let { PageReader.read(it) }?.let { read ->
+                PageContext(
+                    url = if (AiDataSource.CurrentPage in allowed) read.url else "",
+                    title = if (AiDataSource.CurrentPage in allowed) read.title.ifBlank { current.title } else "",
+                    text = if (AiDataSource.CurrentPage in allowed) read.text else "",
+                    selection = read.selection.takeIf { AiDataSource.SelectedText in allowed && it.isNotEmpty() },
+                ).takeIf { it.url.isNotEmpty() || it.text.isNotEmpty() || it.selection != null }
+            }
+        } else null
+        val tabs = if (AiDataSource.OtherTabs in allowed) store.tabs.filter { it.id != current?.id && it.url.isNotBlank() }.take(6).map { tab ->
+            val read = engine.webViewIfLive(tab.id)?.let { PageReader.read(it) }
+            PageContext(tab.url, read?.title?.ifBlank { null } ?: tab.title, read?.text?.take(4_000).orEmpty())
+        } else emptyList()
+        val history = if (AiDataSource.History in allowed) store.history.take(30).map { it.url to it.title } else emptyList()
+        // Screenshot, location and saved memory aren't read by this version, whatever the switchboard says.
+        val unavailable = allowed.intersect(setOf(AiDataSource.Screenshot, AiDataSource.Location, AiDataSource.MyloMemory))
+        return Gathered(AiContext(page = page, tabs = tabs, history = history), unavailable)
+    }
 
     override fun onCleared() = engine.destroyAll()
 }
@@ -184,6 +222,8 @@ class MainActivity : ComponentActivity() {
     val shield = remember { MyloShield.get(context) }
     val shieldState by shield.engine.state.collectAsState()
     var shieldOpen by rememberSaveable { mutableStateOf(false) }
+    // Voice Mode (the Mylo button) covers the browser; the page underneath stays as it was.
+    var voiceOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(shieldRequest) { if (shieldRequest > 0) shieldOpen = true }
     LaunchedEffect(Unit) { shield.autoConnectOnLaunch(context) }
     var currentTab by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -236,6 +276,8 @@ class MainActivity : ComponentActivity() {
         }
     }
     val onHome = home || store.tabs.none { it.id == currentTab }
+    // Mylo AI may read only the page on screen (and only what its switchboard allows).
+    session.aiTab = if (onHome) null else currentTab
     val homeVpn = homeVpnStatus(shieldState, vpn)
     // Mylo Shield replaces the browser while open; tabs keep their saved navigation state meanwhile.
     if (shieldOpen) {
@@ -244,6 +286,19 @@ class MainActivity : ComponentActivity() {
     }
     // Home draws its artwork behind the status bar; browser pages do not.
     Box(Modifier.fillMaxSize()) {
+    if (voiceOpen) {
+        VoiceRoute(session.conversation, session.switchboard, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false },
+            onNav = { destination ->
+                voiceOpen = false
+                when (destination) {
+                    VoiceNav.Home -> showHome()
+                    VoiceNav.Search -> searchFromHome()
+                    VoiceNav.Tabs -> panel = "tabs"
+                    VoiceNav.Private -> context.startActivity(Intent(context, PrivateActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                    VoiceNav.Mylo -> voiceOpen = true
+                }
+            }, onMoreSettings = { panel = "mylo" })
+    } else {
     MyloViewport(edgeToEdgeHome = onHome) {
             Box(Modifier.weight(1f)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
@@ -259,7 +314,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { panel = "mylo" })
+            BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { dismissInput(); voiceOpen = true })
+    }
     }
     // Full-screen video sits above everything, with the page still attached underneath.
     engine.fullscreen?.let { FullscreenHost(it, engine::exitFullscreen) }

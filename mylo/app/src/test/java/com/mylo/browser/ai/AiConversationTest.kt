@@ -117,9 +117,10 @@ class AiConversationTest {
         assertEquals("Partial", chat.messages.value.last().text)
         assertEquals(ChatMessage.State.Stopped, chat.messages.value.last().state)
         assertFalse(chat.busy.value)
+        chat.answerLocally("Explain this page", "Open a web page first.")
         chat.send("Second?")
         advanceUntilIdle()
-        assertEquals(listOf("First?", "Partial", "Second?"), service.requests.last().first.map { it.text })
+        assertEquals("local answers are never sent", listOf("First?", "Partial", "Second?"), service.requests.last().first.map { it.text })
         chat.clear()
         assertTrue(chat.messages.value.isEmpty())
     }
