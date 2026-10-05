@@ -5,3 +5,10 @@
 - Live providers can refuse CI's datacenter network: in earlier full runs Startpage served its "Startpage Blocked" CAPTCHA page and Brave Search returned no results within 30 seconds. A denial stays a visible failure; no results are simulated.
 - The `full` device scope has not yet been run on the Settings-only search flow.
 - Mylo Shield has no real gateway yet. The client is complete and tested (unit tests, Layoutlib renders, the unconfigured device check), but the first milestone (a real tunnel and the public IP changing) needs one VPS set up with `shield-gateway/` and the `MYLO_SHIELD_TEST_URL` / `MYLO_SHIELD_TEST_TOKEN` secrets.
+- This Claude workspace can't reach Google's Maven repository or `dl.google.com`, so Android builds, Layoutlib
+  renders and device checks run in the `Mylo debug APK` workflow (`build`, `private` and other scopes); its
+  screenshots are published to the `mylo-ci-evidence` branch. `tools/home-preview` (desktop Compose) and
+  `tools/logic-tests` (pure-Kotlin tests) run locally.
+- Private Mode limits: Android lets one process use one WebView data directory, so all private tabs share one
+  session (no per-tab capsules yet). A burn deletes cookies and storage through WebView's APIs and ends the process;
+  files of a session Android killed are removed on Mylo's next start, not instantly.
