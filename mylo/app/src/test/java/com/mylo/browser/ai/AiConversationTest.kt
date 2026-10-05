@@ -1,7 +1,5 @@
 package com.mylo.browser.ai
 
-import com.sun.net.httpserver.HttpServer
-import java.net.InetSocketAddress
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -178,34 +176,51 @@ class AiContractTest {
 }
 
 class HttpMyloAiServiceTest {
+    /** A tiny HTTP server on a socket (Android unit tests have no JDK HTTP server): path → status and body. */
+    private class TinyServer(private val routes: Map<String, Pair<Int, String>>) : AutoCloseable {
+        private val socket = java.net.ServerSocket(0, 50, java.net.InetAddress.getByName("127.0.0.1"))
+        val port get() = socket.localPort
+        val seen = java.util.concurrent.ConcurrentHashMap<String, Pair<Map<String, String>, String>>()
+        private val thread = Thread {
+            while (!socket.isClosed) {
+                val client = runCatching { socket.accept() }.getOrNull() ?: break
+                client.use { connection ->
+                    val input = java.io.BufferedInputStream(connection.getInputStream())
+                    fun line(): String {
+                        val out = StringBuilder()
+                        while (true) { val c = input.read(); if (c < 0 || c == '\n'.code) break; if (c != '\r'.code) out.append(c.toChar()) }
+                        return out.toString()
+                    }
+                    val path = line().split(" ").getOrElse(1) { "/" }
+                    val headers = generateSequence { line().takeIf { it.isNotEmpty() } }.associate { it.substringBefore(':').lowercase() to it.substringAfter(':').trim() }
+                    val body = ByteArray(headers["content-length"]?.toIntOrNull() ?: 0).also { var read = 0; while (read < it.size) { val n = input.read(it, read, it.size - read); if (n < 0) break; read += n } }
+                    seen[path] = headers to body.decodeToString()
+                    val (status, reply) = routes[path] ?: (404 to "")
+                    val bytes = reply.toByteArray()
+                    connection.getOutputStream().apply {
+                        write("HTTP/1.1 $status X\r\nContent-Type: text/event-stream\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
+                        write(bytes); flush()
+                    }
+                }
+            }
+        }.apply { isDaemon = true; start() }
+        override fun close() = socket.close()
+    }
+
     @Test fun streamsFromTheServiceWithTheMyloToken() = runBlocking {
-        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        var authorization: String? = null
-        var body = ""
-        server.createContext("/v1/chat") { exchange ->
-            authorization = exchange.requestHeaders.getFirst("Authorization")
-            body = exchange.requestBody.readBytes().decodeToString()
-            exchange.responseHeaders.add("Content-Type", "text/event-stream")
-            exchange.sendResponseHeaders(200, 0)
-            exchange.responseBody.use { it.write("event: delta\ndata: {\"text\":\"Hi\"}\n\nevent: done\ndata: {}\n\n".toByteArray()) }
-        }
-        server.createContext("/v1/voice/sessions") { exchange ->
-            exchange.requestBody.readBytes()
-            exchange.sendResponseHeaders(401, -1)
-            exchange.close()
-        }
-        server.start()
-        try {
-            val service = HttpMyloAiService({ AiEndpoint("http://127.0.0.1:${server.address.port}", "dev-token") }, allowDevCleartext = true)
+        TinyServer(mapOf(
+            "/v1/chat" to (200 to "event: delta\ndata: {\"text\":\"Hi\"}\n\nevent: done\ndata: {}\n\n"),
+            "/v1/voice/sessions" to (401 to ""),
+        )).use { server ->
+            val service = HttpMyloAiService({ AiEndpoint("http://127.0.0.1:${server.port}", "dev-token") }, allowDevCleartext = true)
             assertTrue(service.configured)
             val events = service.chat("c1", listOf(AiTurn(AiTurn.Role.User, "Hello")), AiContext(), private = false).toList()
             assertEquals(listOf(AiEvent.Delta("Hi"), AiEvent.Done), events)
-            assertEquals("Bearer dev-token", authorization)
+            val (headers, body) = server.seen.getValue("/v1/chat")
+            assertEquals("Bearer dev-token", headers["authorization"])
             assertEquals("Hello", JSONObject(body).getJSONArray("messages").getJSONObject(0).getString("text"))
             try { service.voiceSession("marin", false); fail("401 must fail") } catch (e: AiException) { assertEquals(AiProblem.Unauthorized, e.problem) }
             assertFalse(HttpMyloAiService({ null }, true).configured)
-        } finally {
-            server.stop(0)
         }
     }
 }
