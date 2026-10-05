@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets)"
+        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings)"
         type: choice
-        options: [full, search-flow, shield]
+        options: [full, search-flow, shield, compat]
         default: full
   push:
     branches: ["mylo-development"]
@@ -56,7 +56,7 @@ jobs:
       - name: Ensure Android 35 build tools
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Build APK and run URL resolver tests
-        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest --tests 'com.mylo.browser.web.*'
       - name: Verify and package debug APK
         run: |
           mkdir -p dist
@@ -130,7 +130,7 @@ jobs:
     name: Verify the APK on a Pixel emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || 25 }}
+    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -170,7 +170,8 @@ jobs:
           # The default RAM leaves Android 35 with live web pages starved: the low-memory killer
           # cleared the system and the emulator stopped responding mid-flow (run 37241786694).
           ram-size: 4096M
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          # The compatibility run needs a camera and a microphone for the permission cases.
+          emulator-options: ${{ inputs.scope == 'compat' && '-no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back emulated -camera-front emulated' || '-no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none' }}
           disable-animations: true
           script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
         env:
@@ -216,7 +217,7 @@ jobs:
           import base64, glob, io, os
           from PIL import Image
           root = "mylo/dist/preview"
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png")):
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png")):
               name = "/".join(path.split("/")[-2:])
               im = Image.open(path).convert("RGB")
               im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
@@ -225,13 +226,27 @@ jobs:
               print(f"-----BEGIN MYLO-IMAGE {name}-----")
               for i in range(0, len(data), 4000): print(data[i:i + 4000])
               print(f"-----END MYLO-IMAGE {name}-----")
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json")):
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json") + glob.glob(f"{root}/compat/*/*.json")):
               name = "/".join(path.split("/")[-2:])
               print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
-          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt"):
+          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt"):
               if os.path.exists(summary):
                   print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
           PY
+      - name: Print compatibility screen recordings into the log
+        # Small re-encoded copies of the emulator recordings, for reviewers without artifact access.
+        if: always() && inputs.scope == 'compat'
+        run: |
+          command -v ffmpeg > /dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null; }
+          mkdir -p /tmp/small
+          for video in mylo/dist/preview/compat/recordings/*.mp4; do
+            [[ -s "$video" ]] || continue
+            name="$(basename "$video")"
+            ffmpeg -loglevel error -y -i "$video" -vf "scale=360:-2,fps=12" -c:v libx264 -crf 32 -preset veryfast -an "/tmp/small/$name" || continue
+            echo "-----BEGIN MYLO-VIDEO recordings/$name-----"
+            base64 -w 4000 "/tmp/small/$name"
+            echo "-----END MYLO-VIDEO recordings/$name-----"
+          done
       - name: Link Android evidence
         if: always() && steps.preview.outputs.artifact-url != ''
         env:

@@ -76,6 +76,9 @@ class WebPolicyTest {
         assertFalse(WebViewRefusals.hostNeedsCheck("https://example.com/"))
         assertTrue(WebViewRefusals.detect("https://accounts.google.com/signin/oauth/error", "Error 403: disallowed_useragent") != null)
         assertNull(WebViewRefusals.detect("https://example.com/", "disallowed_useragent"))
+        assertTrue("Any site's refusal code in the address is recognised",
+            WebViewRefusals.fromUrl("https://login.example.com/oauth/error?error=disallowed_useragent")!!.message.startsWith("login.example.com"))
+        assertNull(WebViewRefusals.fromUrl("https://example.com/search?q=browsers"))
     }
 
     @Test fun sitePermissionsAreRememberedOnlyForSecureOrigins() {

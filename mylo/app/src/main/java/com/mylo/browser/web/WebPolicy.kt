@@ -125,7 +125,12 @@ object DownloadNames {
 
 /**
  * Pages that refuse Android WebView by their own policy. Mylo does not disguise itself to get past them;
- * it explains the refusal and offers to open the page in another browser. Only listed hosts are checked.
+ * it explains the refusal and offers to open the page in another browser.
+ *
+ * Generic: any site whose address reports `disallowed_useragent` (the OAuth error code for refusing
+ * embedded browsers). Site-specific, and documented in docs/compat/README.md: Google's sign-in host is the
+ * only one whose page text is read, because its refusal page doesn't always say so in the address.
+ * Nothing is read from any other page.
  */
 object WebViewRefusals {
     data class Refusal(val message: String)
@@ -134,13 +139,25 @@ object WebViewRefusals {
 
     fun hostNeedsCheck(url: String?): Boolean = runCatching { URI(url ?: "").host }.getOrNull()?.let { google.containsMatchIn(it) } == true
 
+    /** From the address alone; safe to run on every page. */
+    fun fromUrl(url: String?): Refusal? {
+        val host = runCatching { URI(url ?: "").host }.getOrNull() ?: return null
+        if (!url.orEmpty().contains("disallowed_useragent", ignoreCase = true)) return null
+        return refusal(host)
+    }
+
     fun detect(url: String?, pageText: String): Refusal? {
+        fromUrl(url)?.let { return it }
         val host = runCatching { URI(url ?: "").host }.getOrNull() ?: return null
         if (google.containsMatchIn(host) &&
-            (url.orEmpty().contains("disallowed_useragent") || pageText.contains("disallowed_useragent") ||
-                pageText.contains("This browser or app may not be secure"))) {
-            return Refusal("Google doesn't allow signing in from in-app browsers such as Mylo's Android WebView. Open this page in another browser to sign in there.")
+            (pageText.contains("disallowed_useragent") || pageText.contains("This browser or app may not be secure"))) {
+            return refusal(host)
         }
         return null
+    }
+
+    private fun refusal(host: String): Refusal {
+        val who = if (google.containsMatchIn(host)) "Google" else host.removePrefix("www.")
+        return Refusal("$who doesn't allow signing in from in-app browsers such as Mylo's Android WebView. Open this page in another browser to continue there.")
     }
 }

@@ -65,6 +65,90 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
   exit 1
 fi
 
+# Website compatibility: the shared engine against the local test site (two origins through adb reverse)
+# and real, unrelated websites reached from every search provider. Each case runs in a fresh app process
+# with a screen recording; evidence is pulled after every case.
+if [[ "${MYLO_SCOPE:-full}" == "compat" ]]; then
+  compat_status=0
+  compat_dir="$evidence_dir/compat"
+  compat_summary="$evidence_dir/compat-test.txt"
+  mkdir -p "$compat_dir/recordings"
+  : > "$compat_summary"
+  python3 "$script_dir/../compat-site/serve.py" > "$compat_dir/test-site.log" 2>&1 &
+  site_pid=$!
+  adb reverse tcp:8080 tcp:8080
+  adb reverse tcp:8081 tcp:8081
+  sleep 2
+  curl -sf http://localhost:8080/index.html > /dev/null || { echo 'The compat test site did not start.' >&2; exit 1; }
+  adb shell cmd location set-location-enabled true || true
+  # A steady GPS position (Sydney Opera House) for the location case; sent from the host like a real fix.
+  ( while true; do adb emu geo fix 151.2153 -33.8568 > /dev/null 2>&1 || true; sleep 2; done ) &
+  geo_pid=$!
+  adb logcat -c || true
+  adb logcat -v threadtime > "$compat_dir/logcat.txt" 2>&1 &
+  compat_logcat_pid=$!
+
+  run_compat() {
+    local class="$1" method="$2" label="$3" limit="$4"
+    shift 4
+    if ! timeout 15 adb shell true > /dev/null 2>&1; then
+      echo "$label: not run (emulator stopped responding)" | tee -a "$compat_summary"; compat_status=1; return
+    fi
+    timeout 15 adb shell am force-stop "$app_package" || true
+    timeout 15 adb shell rm -f "/sdcard/Movies/$label.mp4" || true
+    adb shell screenrecord --bit-rate 1500000 --size 720x1600 --time-limit 180 "/sdcard/Movies/$label.mp4" > /dev/null 2>&1 &
+    local recorder=$!
+    sleep 1
+    local output="$compat_dir/$label.txt"
+    timeout "$limit" adb shell am instrument -w -r "$@" -e class "com.mylo.browser.$class#$method" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
+    timeout 10 adb shell pkill -INT screenrecord > /dev/null 2>&1 || true
+    sleep 2
+    kill "$recorder" 2> /dev/null || true
+    timeout 60 adb pull "/sdcard/Movies/$label.mp4" "$compat_dir/recordings/$label.mp4" > /dev/null 2>&1 || true
+    local result
+    if grep -q '^OK (1 test)' "$output"; then result=passed; else result=failed; compat_status=1; fi
+    echo "$label: $result" | tee -a "$compat_summary"
+    [[ "$result" == passed ]] || grep -E '^(INSTRUMENTATION_(STATUS: stack|RESULT|CODE|ABORTED)|java\.|junit\.|Process crashed)' "$output" \
+      | cut -c1-500 | head -n 6 | sed 's/^/    /' >> "$compat_summary" || true
+    timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/compat/. "$compat_dir/" > /dev/null 2>&1 || true
+  }
+
+  for method in staticSite singlePageApp newWindows signInPopup cookiesAndStorage fileUpload fileDownload camera microphone \
+      location fullscreenVideo appLinks backForwardAfterComplexNavigation multipleTabs entryPointsShareOneEngine dialogs; do
+    run_compat CompatibilityMatrixTest "$method" "matrix-$method" 180
+  done
+  run_compat RealSiteCompatTest emergentGetStarted real-emergent-get-started 240
+  run_compat RealSiteCompatTest popupLoginSite real-popup-login-site 300
+  for provider in GOOGLE YAHOO BING BRAVE DUCKDUCKGO STARTPAGE; do
+    run_compat RealSiteCompatTest searchResultsOpenInTheSharedEngine "real-provider-${provider,,}" 300 -e provider "$provider"
+  done
+  kill "$geo_pid" "$compat_logcat_pid" "$site_pid" 2> /dev/null || true
+
+  # Same engine everywhere: compare what every real destination page saw of Mylo.
+  python3 - "$compat_dir" >> "$compat_summary" <<'PY'
+import glob, json, sys
+seen = {}
+for path in sorted(glob.glob(sys.argv[1] + "/provider-*/evidence.json")):
+    data = json.load(open(path))
+    for result in data.get("results", []):
+        if "fingerprint" in result:
+            key = json.dumps(result["fingerprint"], sort_keys=True)
+            seen.setdefault(key, []).append("%s → %s" % (data.get("provider"), result.get("expectedHost")))
+print("Engine capabilities seen by real destination pages: %d distinct fingerprint(s) across %d page loads"
+      % (len(seen), sum(len(v) for v in seen.values())))
+for key, pages in seen.items():
+    print("  " + ", ".join(pages))
+PY
+  { echo 'Crash, renderer and memory events during the compatibility run:'
+    grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |Render process|renderer.*(crash|gone)|lowmemorykiller: Kill|ANR in|Process com\.mylo\.browser.* has died| [WEF] Watchdog: ' \
+      "$compat_dir/logcat.txt" | cut -c1-300 | tail -n 30 || echo '  none recorded'
+  } >> "$compat_summary"
+  if (( compat_status )); then echo 'Some compatibility cases failed or were blocked. See compat evidence.' >&2; exit 1; fi
+  echo 'Every compatibility case passed on the emulator.'
+  exit 0
+fi
+
 # Mylo Shield: the honest unconfigured screen always; the real-tunnel milestone only with a test gateway
 # from CI secrets, passed as instrumentation arguments so it never ends up in the APK or the logs.
 if [[ "${MYLO_SCOPE:-full}" == "shield" ]]; then

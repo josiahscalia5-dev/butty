@@ -439,7 +439,8 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
             page.title = view.title.orEmpty()
             store.updateTab(tabId, url, view.title.orEmpty())
             if (page.error == null) store.recordVisit(url, view.title.orEmpty())
-            if (WebViewRefusals.hostNeedsCheck(url)) {
+            WebViewRefusals.fromUrl(url)?.let { page.notice = PageNotice.Refused(it.message) }
+            if (page.notice !is PageNotice.Refused && WebViewRefusals.hostNeedsCheck(url)) {
                 view.evaluateJavascript(PAGE_TEXT) { raw ->
                     val text = runCatching { JSONTokener(raw).nextValue() as? String }.getOrNull().orEmpty()
                     WebViewRefusals.detect(url, text)?.let { page.notice = PageNotice.Refused(it.message) }
