@@ -28,7 +28,8 @@ timeout 5s adb shell wm dismiss-keyguard
 timeout 5s adb shell am force-stop com.google.android.apps.nexuslauncher
 # Only requested flows. One baseline Yahoo submission and one diagnostic reload;
 # CAPTCHA/bot pages get passive observation, never retries or a UA change.
-for method in yahoo google domainOpensDirectly browserBackForward shieldState; do
+read -r -a cases <<< "${MYLO_POLISH_CASES:-yahoo google domainOpensDirectly browserBackForward shieldState}"
+for method in "${cases[@]}"; do
   timeout -k 2s 5s adb shell am force-stop com.mylo.browser
   limit=60
   if [[ "$method" == yahoo ]]; then

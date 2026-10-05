@@ -54,7 +54,7 @@ class SettingsSearchFlowTest {
             submitHome("example.com", folder, report)
             waitForNavigation()
             assertChrome()
-            assertFalse("Forward starts disabled", node(By.desc("Forward")).isEnabled)
+            assertFalse("Forward starts disabled", toolbarButton("Forward").isEnabled)
             val next = "https://example.com/?mylo=toolbar-navigation-long-address-check"
             node(By.desc("Browser address")).click()
             device.pressKeyCode(KeyEvent.KEYCODE_A, KeyEvent.META_CTRL_ON)
@@ -65,10 +65,10 @@ class SettingsSearchFlowTest {
             waitForUrl(next)
             waitUntil("WebView must retain Back history", 5_000) { browserState().optBoolean("canGoBack") }
             capture(folder, "06-long-address.png")
-            node(By.desc("Back")).click()
+            toolbarButton("Back").click()
             waitForUrl("https://example.com/")
-            waitUntil("Forward must become enabled", 5_000) { node(By.desc("Forward")).isEnabled }
-            node(By.desc("Forward")).click()
+            waitUntil("Forward must become enabled", 5_000) { toolbarButton("Forward").isEnabled }
+            toolbarButton("Forward").click()
             waitForUrl(next)
             activityRule.scenario.onActivity {
                 assertEquals("Address navigation reuses the tab", 1, ViewModelProvider(it)[BrowserSession::class.java].store.tabs.size)
@@ -135,6 +135,15 @@ class SettingsSearchFlowTest {
             assertTrue("$it must fit portrait width", bounds.width() > 0 && bounds.left >= 0 && bounds.right <= device.displayWidth)
         }
         listOf("Home", "Tabs", "Mylo").forEach { node(By.text(it).pkg("com.mylo.browser")) }
+    }
+
+    private fun toolbarButton(label: String): UiObject2 {
+        // Material Icon's descriptive node is a child of the clickable button;
+        // enabled/disabled semantics belong to the button, not its decorative icon.
+        var control = node(By.desc(label))
+        while (!control.isClickable && control.parent != null) control = control.parent!!
+        assertTrue("$label must resolve to a button", control.isClickable)
+        return control
     }
 
     // Called in a fresh instrumentation process by the shell script, after Yahoo was
