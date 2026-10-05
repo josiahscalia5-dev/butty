@@ -56,6 +56,8 @@ class PrivateModeFlowTest {
             context.getSharedPreferences("mylo_browser", 0).edit().remove("history").commit()
             ActivityScenario.launch(MainActivity::class.java).use {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
+                waitFor(By.desc("Search or enter address"), "Home search")
+                shot(dir, "00-home.png")
                 typeInto(By.desc("Search or enter address"), "Home search", NORMAL_PAGE)
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
@@ -210,6 +212,8 @@ class PrivateModeFlowTest {
     private fun typeInto(selector: BySelector, what: String, text: String) {
         waitFor(selector, what).click()
         SystemClock.sleep(600)
+        runCatching { device.takeScreenshot(File(context.getExternalFilesDir(null), "test-artifacts/private/typing-${what.replace(' ', '-')}.png")) }
+        waitFor(selector, "$what after focusing it")
         runCatching { waitFor(selector, what).text = text }
         if (fieldShows(selector, text, 3_000)) return
         runCatching { waitFor(selector, what).clear() }
