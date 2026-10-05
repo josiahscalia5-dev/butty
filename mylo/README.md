@@ -29,7 +29,7 @@ Screens: `design/previews/claude-ui/09-…` to `13-…`. Earlier verification (s
 
 **Voice Mode (Milestones 1–2)** — the approved Voice Mode screen, the typed chat (Type instead), the AI switchboard and
 the microphone, verified on the same emulator by `VoiceModeFlowTest` in the workflow's `voice` scope
-([run RUN_ID](https://github.com/josiahscalia5-dev/butty/actions/runs/RUN_ID)), both cases passed:
+([run 37294002700](https://github.com/josiahscalia5-dev/butty/actions/runs/37294002700)), both cases passed:
 
 - Home's Mylo button opens the Voice Mode screen; it matches `design/reference/voice-mode-reference.png`
   (`design/previews/claude-ui/14-…`). Close voice mode returns to Home or the page.
