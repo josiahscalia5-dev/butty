@@ -1,0 +1,50 @@
+INSTRUMENTATION_STATUS: class=com.mylo.browser.VoiceModeFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.mylo.browser.VoiceModeFlowTest:
+INSTRUMENTATION_STATUS: test=pageActionsOnThePhone
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.mylo.browser.VoiceModeFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: the test scam page did not appear
+	at com.mylo.browser.VoiceModeFlowTest.waitFor(VoiceModeFlowTest.kt:474)
+	at com.mylo.browser.VoiceModeFlowTest.pageActionsOnThePhone$lambda$17$lambda$16(VoiceModeFlowTest.kt:385)
+	at com.mylo.browser.VoiceModeFlowTest.$r8$lambda$Vl-kq-uGxffPIQd6AEcL3GZ_zWs(Unknown Source:0)
+	at com.mylo.browser.VoiceModeFlowTest$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at com.mylo.browser.VoiceModeFlowTest.recording(VoiceModeFlowTest.kt:456)
+	at com.mylo.browser.VoiceModeFlowTest.pageActionsOnThePhone(VoiceModeFlowTest.kt:316)
+
+INSTRUMENTATION_STATUS: stream=
+Error in pageActionsOnThePhone(com.mylo.browser.VoiceModeFlowTest):
+java.lang.AssertionError: the test scam page did not appear
+	at com.mylo.browser.VoiceModeFlowTest.waitFor(VoiceModeFlowTest.kt:474)
+	at com.mylo.browser.VoiceModeFlowTest.pageActionsOnThePhone$lambda$17$lambda$16(VoiceModeFlowTest.kt:385)
+	at com.mylo.browser.VoiceModeFlowTest.$r8$lambda$Vl-kq-uGxffPIQd6AEcL3GZ_zWs(Unknown Source:0)
+	at com.mylo.browser.VoiceModeFlowTest$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at com.mylo.browser.VoiceModeFlowTest.recording(VoiceModeFlowTest.kt:456)
+	at com.mylo.browser.VoiceModeFlowTest.pageActionsOnThePhone(VoiceModeFlowTest.kt:316)
+
+INSTRUMENTATION_STATUS: test=pageActionsOnThePhone
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 80.235
+There was 1 failure:
+1) pageActionsOnThePhone(com.mylo.browser.VoiceModeFlowTest)
+java.lang.AssertionError: the test scam page did not appear
+	at com.mylo.browser.VoiceModeFlowTest.waitFor(VoiceModeFlowTest.kt:474)
+	at com.mylo.browser.VoiceModeFlowTest.pageActionsOnThePhone$lambda$17$lambda$16(VoiceModeFlowTest.kt:385)
+	at com.mylo.browser.VoiceModeFlowTest.$r8$lambda$Vl-kq-uGxffPIQd6AEcL3GZ_zWs(Unknown Source:0)
+	at com.mylo.browser.VoiceModeFlowTest$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at com.mylo.browser.VoiceModeFlowTest.recording(VoiceModeFlowTest.kt:456)
+	at com.mylo.browser.VoiceModeFlowTest.pageActionsOnThePhone(VoiceModeFlowTest.kt:316)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,16 @@
+voiceModeWithoutAServiceSendsNothing: passed
+typedChatThroughTheMyloAiService: failed
+    INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: the answer with a screenshot did not appear
+    java.lang.AssertionError: the answer with a screenshot did not appear
+    INSTRUMENTATION_RESULT: stream=
+    java.lang.AssertionError: the answer with a screenshot did not appear
+    INSTRUMENTATION_CODE: -1
+realtimeVoiceThroughTheTestService: passed
+pageActionsOnThePhone: failed
+    INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: the test scam page did not appear
+    java.lang.AssertionError: the test scam page did not appear
+    INSTRUMENTATION_RESULT: stream=
+    java.lang.AssertionError: the test scam page did not appear
+    INSTRUMENTATION_CODE: -1
+Crash and memory events during the Voice Mode run:
+  none recorded

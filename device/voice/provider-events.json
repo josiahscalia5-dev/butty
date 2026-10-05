@@ -1,0 +1,1 @@
+{"events": ["answered", "channel oai-events", "session.update hands-free=True", "context title=Mylo Plans hidden=1", "tool call_test_1 ok=True", "typed Tell me a long story", "cancel", "clear", "answered", "channel oai-events", "session.update hands-free=False", "sample"]}

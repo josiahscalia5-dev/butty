@@ -1,0 +1,21 @@
+{
+  "verified": true,
+  "providerLog": [
+    "answered",
+    "channel oai-events",
+    "session.update hands-free=True",
+    "context title=Mylo Plans hidden=1",
+    "tool call_test_1 ok=True"
+  ],
+  "steps": [
+    "call open, microphone on",
+    "spoken answer captioned",
+    "context sent once (card hidden); scroll_to Pricing ran",
+    "mute and unmute",
+    "type instead answered aloud; tap interrupted",
+    "call closed; the page shows the pricing",
+    "voice sample requested"
+  ],
+  "otherAppDialogsDismissed": [],
+  "staleScreenReadsRefreshed": []
+}

@@ -1,0 +1,15 @@
+{
+  "verified": true,
+  "microphoneOutcome": "listening",
+  "speechRecognitionAvailable": true,
+  "steps": [
+    "voice mode screen",
+    "listening with the microphone on",
+    "microphone off after the turn",
+    "typed message not sent without a service",
+    "switchboard sheet: all seven sources",
+    "closed voice mode"
+  ],
+  "otherAppDialogsDismissed": [],
+  "staleScreenReadsRefreshed": []
+}

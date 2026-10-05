@@ -1,0 +1,52 @@
+    topResumedActivity=ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+    * Hist  #0: ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+      Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=com.mylo.browser/.MainActivity }
+      mActivityComponent=com.mylo.browser/.MainActivity
+      stateNotNeeded=false componentSpecified=true mActivityType=standard
+        mGlobalConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.47 fontWeightAdjustment=0}
+        mOverrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.3 fontWeightAdjustment=0}
+      mLastReportedActivityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1080, 2400), taskFragmentBounds=Rect(0, 0 - 1080, 2400)}
+      CurrentConfiguration={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.3 fontWeightAdjustment=0}
+      RequestedOverrideConfiguration={0.0 ?mcc0mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mMaxBounds=Rect(0, 0 - 0, 0) mDisplayRotation=undefined mWindowingMode=undefined mActivityType=standard mAlwaysOnTop=undefined mRotation=undefined} ?fontWeightAdjustment}
+      ResolvedOverrideConfiguration={0.0 ?mcc0mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mMaxBounds=Rect(0, 0 - 0, 0) mDisplayRotation=undefined mWindowingMode=undefined mActivityType=undefined mAlwaysOnTop=undefined mRotation=undefined} s.3 ?fontWeightAdjustment}
+      mActivityType=standard
+      windows=[Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}]
+    * Task{f86ec8d #7 type=home I=com.google.android.apps.nexuslauncher/.NexusLauncherActivity U=0 rootTaskId=1 visible=false visibleRequested=false mode=fullscreen translucent=true sz=2}
+      mLastPausedActivity: ActivityRecord{3f297d5 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7}
+      * Hist  #1: ActivityRecord{3f297d5 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7}
+        Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.google.android.apps.nexuslauncher/.NexusLauncherActivity (has extras) }
+        rootOfTask=true task=Task{f86ec8d #7 type=home I=com.google.android.apps.nexuslauncher/.NexusLauncherActivity}
+        mActivityComponent=com.google.android.apps.nexuslauncher/.NexusLauncherActivity
+        stateNotNeeded=true componentSpecified=true mActivityType=home
+          mGlobalConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.70 fontWeightAdjustment=0}
+          mOverrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.5 fontWeightAdjustment=0}
+        mLastReportedActivityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1080, 2400), taskFragmentBounds=Rect(0, 0 - 1080, 2400)}
+        CurrentConfiguration={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.6 fontWeightAdjustment=0}
+        RequestedOverrideConfiguration={0.0 ?mcc0mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mMaxBounds=Rect(0, 0 - 0, 0) mDisplayRotation=undefined mWindowingMode=undefined mActivityType=home mAlwaysOnTop=undefined mRotation=undefined} as.3 ?fontWeightAdjustment}
+        mActivityType=home
+        windows=[Window{c5388ff u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}]
+    Resumed: ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+  ResumedActivity: ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+ActivityTaskSupervisor state:
+  deepestLastOrientationSource=ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+  overrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.3 s.47 fontWeightAdjustment=0}
+  mCurrentFocus=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+  mFocusedApp=ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+  mObscuringWindow=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+  mLastWakeLockObscuringWindow=Window{bdf07a2 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+      overrideConfig={0.0 ?mcc0mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mMaxBounds=Rect(0, 0 - 0, 0) mDisplayRotation=undefined mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=undefined} ?fontWeightAdjustment}
+        * ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}
+        * Task{f86ec8d #7 type=home I=com.google.android.apps.nexuslauncher/.NexusLauncherActivity U=0 rootTaskId=1 visible=false visibleRequested=false mode=fullscreen translucent=true sz=2}
+          * ActivityRecord{3f297d5 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7}
+    mFocusedWindow=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+    mTopFullscreenOpaqueWindowState=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+    mSystemBarColorApps={ActivityRecord{eacd805 u0 com.mylo.browser/.MainActivity t17}}
+    mNavBarColorWindowCandidate=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+    mNavBarBackgroundWindowCandidate=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+      Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+      Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}:
+        mControlTarget=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+        mControlTarget=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+        mControlTarget=Window{20abce5 u0 com.mylo.browser/com.mylo.browser.MainActivity}
+   KeyguardShowing=false AodShowing=false KeyguardGoingAway=false DismissalRequested=false  Occluded=false DismissingKeyguardActivity=null TurnScreenOnActivity=null at display=0
+  VisibleActivityProcess:[ ProcessRecord{953c8aa 5090:com.mylo.browser/u0a209}]

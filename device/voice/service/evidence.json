@@ -1,0 +1,23 @@
+{
+  "verified": false,
+  "answer": "Test reply from the Mylo test upstream (not an AI). I can see the page “Mylo Plans”. 1 detail arrived hidden. You asked: “Explain this page in simple words.”",
+  "receipt": "Privacy receipt: Current Page shared · 1 hidden",
+  "answerWithoutPage": "Test reply from the Mylo test upstream (not an AI). No page was shared with me. You asked: “What is this page about”",
+  "steps": [
+    "opened the plans page",
+    "explained the page through the service",
+    "privacy receipt",
+    "current page off",
+    "switchboard kept the page on the phone",
+    "asked before reading the page",
+    "allow once used up",
+    "closed voice mode, back on the page"
+  ],
+  "otherAppDialogsDismissed": [
+    "Allow Gboard to record audio?",
+    "Allow Gboard to record audio?"
+  ],
+  "staleScreenReadsRefreshed": [
+    "the connected status"
+  ]
+}

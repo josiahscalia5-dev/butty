@@ -1,0 +1,371 @@
+10-05 11:36:09.050 D/AndroidRuntime( 4389): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-05 11:36:09.065 I/AndroidRuntime( 4389): Using default boot image
+10-05 11:36:09.065 I/AndroidRuntime( 4389): Leaving lock profiling enabled
+10-05 11:36:09.386 D/AndroidRuntime( 4389): Calling main entry com.android.commands.am.Am
+10-05 11:36:09.390 I/ActivityManager(  559): Force stopping com.mylo.browser appid=10209 user=0: start instr
+10-05 11:36:09.433 I/ActivityManager(  559): Start proc 4405:com.mylo.browser/u0a209 for added application com.mylo.browser
+10-05 11:36:11.730 D/ActivityManager(  559): freezing 2323 com.google.android.tts
+10-05 11:36:11.810 D/ActivityManager(  559): sync unfroze 3370 com.google.android.gms.ui for 6
+10-05 11:36:12.320 D/ActivityManager(  559): freezing 3080 com.android.chrome
+10-05 11:36:12.324 D/ActivityManager(  559): freezing 1713 com.google.android.partnersetup
+10-05 11:36:12.869 D/ActivityManager(  559): freezing 3360 com.google.android.apps.safetyhub
+10-05 11:36:12.883 D/ActivityManager(  559): Reschedule freeze for process 3360 com.google.android.apps.safetyhub (outstanding txns), timeout=2829
+10-05 11:36:12.883 D/ActivityManager(  559): freezing 3384 com.google.android.marvin.talkback
+10-05 11:36:12.887 I/ActivityTaskManager(  559): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=com.mylo.browser/.MainActivity} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_PERMISSION) result code=0
+10-05 11:36:13.086 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: PRE_ON_CREATE
+10-05 11:36:13.488 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: CREATED
+10-05 11:36:13.489 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: STARTED
+10-05 11:36:13.495 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: RESUMED
+10-05 11:36:15.253 D/ActivityManager(  559): freezing 1831 android.process.media
+10-05 11:36:15.713 D/ActivityManager(  559): freezing 3360 com.google.android.apps.safetyhub
+10-05 11:36:15.841 I/ActivityTaskManager(  559): Displayed com.mylo.browser/.MainActivity for user 0: +2s965ms
+10-05 11:36:16.753 D/ActivityManager(  559): sync unfroze 2323 com.google.android.tts for 6
+10-05 11:36:16.950 D/ActivityManager(  559): freezing 4303 com.mylo.browser.test
+10-05 11:36:17.533 D/ActivityTaskManager(  559): Remove task fragment: deleteTaskFragment
+10-05 11:36:18.021 I/ActivityTaskManager(  559): Activity reported stop, but no longer stopping: ActivityRecord{3f297d5 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7} STOPPED
+10-05 11:36:18.151 I/ImeTracker(  559): com.mylo.browser:801b7a: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:18.152 I/ImeTracker(  559): com.mylo.browser:801b7a: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:18.167 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:18.169 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:18.169 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:18.170 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:18.812 D/ActivityManager(  559): freezing 2748 com.google.android.rkpdapp
+10-05 11:36:19.260 D/ActivityManager(  559): freezing 4084 com.google.android.settings.intelligence
+10-05 11:36:19.890 I/ImeTracker( 4405): com.mylo.browser:2b8ca956: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:36:19.890 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{6bd9114 VFED..... .F....ID 0,0-1080,2400 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT_BY_INSETS_API
+10-05 11:36:19.896 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:19.896 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:19.896 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8011, inputTypeString=Uri, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000003, privateImeOptions=null, actionName=SEARCH, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, false)
+10-05 11:36:19.897 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:19.898 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8011, inputTypeString=Uri, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000003, privateImeOptions=null, actionName=SEARCH, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, true)
+10-05 11:36:19.899 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:19.903 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8011, inputTypeString=Uri, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000003, privateImeOptions=null, actionName=SEARCH, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, false)
+10-05 11:36:19.908 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:20.008 I/ImeTracker( 4405): com.mylo.browser:e153ff22: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+10-05 11:36:20.008 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{6bd9114 VFED..... .F...... 0,0-1080,2400 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+10-05 11:36:20.233 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:36:20.421 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:36:20.422 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:36:20.452 I/ImeTracker( 4405): com.mylo.browser:2b8ca956: onShown
+10-05 11:36:20.513 I/ImeTracker( 4405): com.mylo.browser:e153ff22: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:23.021 I/ActivityManager(  559): Start proc 4599:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i1 for  {com.mylo.browser/org.chromium.content.app.SandboxedProcessService0:0}
+10-05 11:36:23.132 D/ActivityManager(  559): sync unfroze 3754 com.google.android.webview:webview_service for 6
+10-05 11:36:23.242 D/ActivityManager(  559): freezing 2726 com.google.android.configupdater
+10-05 11:36:23.428 I/ImeTracker( 4405): com.mylo.browser:99520116: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:36:23.429 I/ImeTracker( 4405): com.mylo.browser:ff00d480: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_REQUEST_HIDE_WITH_CONTROL fromUser false
+10-05 11:36:23.491 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInputView():2393 
+10-05 11:36:23.596 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService.finishViews(InputMethodService.java:3245)
+10-05 11:36:23.596 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService.hideWindow(InputMethodService.java:3284)
+10-05 11:36:23.596 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.hideSoftInput(InputMethodService.java:967)
+10-05 11:36:23.596 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.hideSoftInputWithToken(InputMethodService.java:927)
+10-05 11:36:23.596 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:247)
+10-05 11:36:23.627 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, true)
+10-05 11:36:23.628 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:23.805 I/ImeTracker( 4405): com.mylo.browser:918c68b0: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+10-05 11:36:23.806 I/ImeTracker( 4405): com.mylo.browser:99520116: onHidden
+10-05 11:36:23.812 I/ImeTracker(  559): com.mylo.browser:918c68b0: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:23.930 I/ImeTracker( 4405): com.mylo.browser:ff00d480: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:25.996 I/ImeTracker( 4405): com.mylo.browser:4cf699ab: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:36:25.996 I/ImeTracker( 4405): com.mylo.browser:4cf699ab: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:26.709 D/ActivityManager(  559): freezing 2485 com.google.android.gms.unstable
+10-05 11:36:27.145 D/ActivityManager(  559): freezing 1618 com.google.android.googlequicksearchbox:search
+10-05 11:36:27.149 D/ActivityManager(  559): freezing 3739 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+10-05 11:36:29.065 D/ActivityManager(  559): freezing 3370 com.google.android.gms.ui
+10-05 11:36:29.841 D/ActivityManager(  559): freezing 2323 com.google.android.tts
+10-05 11:36:31.038 I/ImeTracker(  559): com.mylo.browser:f847b4f7: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:31.039 I/ImeTracker(  559): com.mylo.browser:f847b4f7: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:31.057 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:31.061 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:31.064 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:31.073 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:32.147 D/ActivityManager(  559): sync unfroze 3370 com.google.android.gms.ui for 10
+10-05 11:36:32.148 D/ActivityManager(  559): sync unfroze 2485 com.google.android.gms.unstable for 10
+10-05 11:36:33.959 D/ActivityManager(  559): freezing 3754 com.google.android.webview:webview_service
+10-05 11:36:36.157 I/ImeTracker(  559): com.mylo.browser:1cc3b907: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:36.157 I/ImeTracker(  559): com.mylo.browser:1cc3b907: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:36.158 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:36.159 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:36.159 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:36.159 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:37.415 I/ImeTracker(  559): com.mylo.browser:882cd895: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:37.415 I/ImeTracker(  559): com.mylo.browser:882cd895: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:37.421 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:37.421 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:37.424 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:37.557 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:37.909 D/ActivityManager(  559): freezing 919 com.google.android.permissioncontroller
+10-05 11:36:39.374 I/ImeTracker(  559): com.mylo.browser:51e22af0: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:39.374 I/ImeTracker(  559): com.mylo.browser:51e22af0: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:39.375 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:39.376 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:39.377 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:39.377 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:41.651 I/ImeTracker(  559): com.mylo.browser:519e52fc: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:41.651 I/ImeTracker(  559): com.mylo.browser:519e52fc: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:41.653 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:41.653 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:41.653 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:41.654 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:42.797 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:42.798 I/ImeTracker( 4405): com.mylo.browser:5806bd57: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:36:42.798 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{a26f0b0 VFED..... .F....ID 0,0-1080,2400 aid=1073741828} flags=0 reason=SHOW_SOFT_INPUT_BY_INSETS_API
+10-05 11:36:42.798 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:42.799 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, false)
+10-05 11:36:42.799 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:42.800 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, true)
+10-05 11:36:42.804 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:42.805 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, false)
+10-05 11:36:42.805 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:42.829 I/ImeTracker( 4405): com.mylo.browser:97b4a32b: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+10-05 11:36:42.829 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{a26f0b0 VFED..... .F....ID 0,0-1080,2400 aid=1073741828} flags=0 reason=SHOW_SOFT_INPUT
+10-05 11:36:42.880 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:36:43.071 I/ImeTracker( 4405): com.mylo.browser:97b4a32b: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:43.071 I/ImeTracker( 4405): com.mylo.browser:5806bd57: onShown
+10-05 11:36:43.109 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:36:43.110 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:36:46.485 I/ImeTracker(  559): com.mylo.browser:579b1651: onRequestShow at ORIGIN_SERVER reason ATTACH_NEW_INPUT fromUser false
+10-05 11:36:46.511 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, true)
+10-05 11:36:46.511 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:46.615 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService.doStartInput(InputMethodService.java:3390)
+10-05 11:36:46.615 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.restartInput(InputMethodService.java:875)
+10-05 11:36:46.615 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.dispatchStartInput(InputMethodService.java:890)
+10-05 11:36:46.615 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:201)
+10-05 11:36:46.617 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, true)
+10-05 11:36:46.628 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:47.121 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:36:47.231 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService.doStartInput(InputMethodService.java:3396)
+10-05 11:36:47.231 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.restartInput(InputMethodService.java:875)
+10-05 11:36:47.231 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.dispatchStartInput(InputMethodService.java:890)
+10-05 11:36:47.231 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:201)
+10-05 11:36:47.336 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService.doStartInput(InputMethodService.java:3396)
+10-05 11:36:47.336 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.restartInput(InputMethodService.java:875)
+10-05 11:36:47.336 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.dispatchStartInput(InputMethodService.java:890)
+10-05 11:36:47.336 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:201)
+10-05 11:36:47.353 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:36:47.353 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:36:47.672 I/ImeTracker( 4405): com.mylo.browser:579b1651: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:49.634 I/ImeTracker( 4405): com.mylo.browser:9d32b245: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false
+10-05 11:36:49.634 I/ImeTracker( 4405): com.mylo.browser:9d32b245: onFailed at PHASE_CLIENT_VIEW_SERVED
+10-05 11:36:50.020 I/ImeTracker(  559): com.mylo.browser:1e73149d: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:50.045 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInputView():2393 
+10-05 11:36:50.047 I/ImeTracker(  559): com.mylo.browser:1e73149d: onFailed at PHASE_WM_HAS_IME_INSETS_CONTROL_TARGET
+10-05 11:36:50.057 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:50.059 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:50.060 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:50.060 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:51.148 I/ImeTracker(  559): com.mylo.browser:5a7f6be5: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:51.151 I/ImeTracker(  559): com.mylo.browser:5a7f6be5: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:51.153 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:51.154 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:51.154 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:51.155 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:54.861 I/ImeTracker(  559): com.mylo.browser:3ef97113: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:54.866 I/ImeTracker(  559): com.mylo.browser:3ef97113: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:54.889 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:54.893 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:54.897 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:54.898 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:56.994 I/ImeTracker( 4405): com.mylo.browser:d59a659: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:36:56.994 I/ImeTracker( 4405): com.mylo.browser:d59a659: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:58.156 I/ImeTracker(  559): com.mylo.browser:c046805a: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:36:58.156 I/ImeTracker(  559): com.mylo.browser:c046805a: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:36:58.165 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:58.165 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:58.165 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:36:58.166 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:58.985 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:36:58.985 I/ImeTracker( 4405): com.mylo.browser:a8786300: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:36:58.986 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:36:58.986 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, false)
+10-05 11:36:58.986 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:58.987 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{9ae2de3 VFED..... .F....ID 0,0-1080,2400 aid=1073741831} flags=0 reason=SHOW_SOFT_INPUT_BY_INSETS_API
+10-05 11:36:58.988 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, true)
+10-05 11:36:58.988 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:58.991 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, false)
+10-05 11:36:58.991 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:36:59.033 I/ImeTracker( 4405): com.mylo.browser:fc9ed07a: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+10-05 11:36:59.034 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{9ae2de3 VFED..... .F....ID 0,0-1080,2400 aid=1073741831} flags=0 reason=SHOW_SOFT_INPUT
+10-05 11:36:59.067 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:36:59.190 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:36:59.191 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:36:59.206 I/ImeTracker( 4405): com.mylo.browser:fc9ed07a: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:36:59.228 I/ImeTracker( 4405): com.mylo.browser:a8786300: onShown
+10-05 11:37:01.017 I/ImeTracker(  559): com.mylo.browser:d1d41ff: onRequestShow at ORIGIN_SERVER reason ATTACH_NEW_INPUT fromUser false
+10-05 11:37:01.024 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, true)
+10-05 11:37:01.025 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:01.185 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService.doStartInput(InputMethodService.java:3390)
+10-05 11:37:01.185 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.restartInput(InputMethodService.java:875)
+10-05 11:37:01.185 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.InputMethodService$InputMethodImpl.dispatchStartInput(InputMethodService.java:890)
+10-05 11:37:01.185 E/InputConnectionWrapper( 1378): 	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:201)
+10-05 11:37:01.190 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=8001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, true)
+10-05 11:37:01.196 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:01.406 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:37:01.448 I/ImeTracker( 4405): com.mylo.browser:d1d41ff: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:37:01.468 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:37:01.468 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:37:02.199 D/ActivityManager(  559): freezing 2485 com.google.android.gms.unstable
+10-05 11:37:02.199 D/ActivityManager(  559): freezing 3370 com.google.android.gms.ui
+10-05 11:37:03.182 I/ImeTracker( 4405): com.mylo.browser:9087e894: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false
+10-05 11:37:03.183 I/ImeTracker( 4405): com.mylo.browser:9087e894: onFailed at PHASE_CLIENT_VIEW_SERVED
+10-05 11:37:03.442 I/ImeTracker(  559): com.mylo.browser:99a68415: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:03.446 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInputView():2393 
+10-05 11:37:03.450 I/ImeTracker(  559): com.mylo.browser:99a68415: onFailed at PHASE_WM_HAS_IME_INSETS_CONTROL_TARGET
+10-05 11:37:03.453 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:03.454 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:03.454 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:03.454 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:04.521 I/ImeTracker(  559): com.mylo.browser:7554bc1c: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:04.521 I/ImeTracker(  559): com.mylo.browser:7554bc1c: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:04.523 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:04.523 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:04.523 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:04.524 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:06.562 D/ActivityManager(  559): sync unfroze 2485 com.google.android.gms.unstable for 6
+10-05 11:37:06.757 D/ActivityManager(  559): sync unfroze 2748 com.google.android.rkpdapp for 6
+10-05 11:37:07.731 I/ActivityTaskManager(  559): START u0 {act=android.content.pm.action.REQUEST_PERMISSIONS pkg=com.google.android.permissioncontroller cmp=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity (has extras)} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 11:37:07.843 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: PAUSED
+10-05 11:37:07.854 D/ActivityManager(  559): quick sync unfreeze 919 for 1
+10-05 11:37:07.862 D/ActivityManager(  559): sync unfroze 919 com.google.android.permissioncontroller for 1
+10-05 11:37:08.043 D/ActivityManager(  559): sync unfroze 1618 com.google.android.googlequicksearchbox:search for 6
+10-05 11:37:08.050 D/ActivityManager(  559): sync unfroze 3739 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0 for 6
+10-05 11:37:08.064 W/system_server(  559): Long monitor contention with owner appscheduling.default (656) at int com.android.server.am.ActivityManagerService.bindServiceInstance(android.app.IApplicationThread, android.os.IBinder, android.content.Intent, java.lang.String, android.app.IServiceConnection, long, java.lang.String, boolean, int, java.lang.String, android.app.IApplicationThread, java.lang.String, int)(ActivityManagerService.java:14231) waiters=0 in void com.android.server.am.BroadcastQueueModernImpl.handleProcessFreezableChanged(com.android.server.am.ProcessRecord) for 163ms
+10-05 11:37:09.528 I/ImeTracker(  559): com.google.android.permissioncontroller:c09c3ea4: onRequestHide at ORIGIN_SERVER reason HIDE_ALWAYS_HIDDEN_STATE fromUser false
+10-05 11:37:09.529 I/ImeTracker(  559): com.google.android.permissioncontroller:c09c3ea4: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:09.534 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:09.537 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:09.537 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.google.android.permissioncontroller, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:09.538 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:09.549 I/ActivityTaskManager(  559): Displayed com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity for user 0: +1s599ms
+10-05 11:37:10.570 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: RESUMED
+10-05 11:37:10.611 I/ImeTracker(  559): com.mylo.browser:77104e0a: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:10.617 I/ImeTracker(  559): com.mylo.browser:77104e0a: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:10.623 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:10.639 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:10.639 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:10.640 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:12.212 I/ImeTracker(  559): com.mylo.browser:791e7de8: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:12.229 I/ImeTracker(  559): com.mylo.browser:791e7de8: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:12.231 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:12.237 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:12.237 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:12.237 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:13.274 I/ImeTracker(  559): com.mylo.browser:17581655: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:13.276 I/ImeTracker(  559): com.mylo.browser:17581655: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:13.281 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:13.285 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:13.285 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:13.285 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:14.430 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:14.432 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:14.432 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, false)
+10-05 11:37:14.432 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:14.433 I/ImeTracker( 4405): com.mylo.browser:98162322: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT_BY_INSETS_API fromUser false
+10-05 11:37:14.433 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{18c82da VFED..... .F....ID 0,0-1080,2400 aid=1073741834} flags=0 reason=SHOW_SOFT_INPUT_BY_INSETS_API
+10-05 11:37:14.434 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, true)
+10-05 11:37:14.435 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:14.438 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, false)
+10-05 11:37:14.438 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:14.451 I/ImeTracker( 4405): com.mylo.browser:28193378: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false
+10-05 11:37:14.452 D/InputMethodManager( 4405): showSoftInput() view=androidx.compose.ui.platform.AndroidComposeView{18c82da VFED..... .F....ID 0,0-1080,2400 aid=1073741834} flags=0 reason=SHOW_SOFT_INPUT
+10-05 11:37:14.469 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:37:14.745 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:37:14.746 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:37:14.770 I/ImeTracker( 4405): com.mylo.browser:28193378: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+10-05 11:37:14.781 I/ImeTracker( 4405): com.mylo.browser:98162322: onShown
+10-05 11:37:16.793 D/ActivityManager(  559): freezing 2748 com.google.android.rkpdapp
+10-05 11:37:17.184 D/ActivityManager(  559): freezing 2485 com.google.android.gms.unstable
+10-05 11:37:17.962 I/ActivityTaskManager(  559): START u0 {flg=0x10008000 cmp=com.google.android.inputmethod.latin/com.google.android.libraries.inputmethod.permissions.PermissionsActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 10153 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 11:37:17.976 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: PAUSED
+10-05 11:37:18.209 D/ActivityManager(  559): freezing 1618 com.google.android.googlequicksearchbox:search
+10-05 11:37:18.210 D/ActivityManager(  559): freezing 3739 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+10-05 11:37:18.425 I/ActivityTaskManager(  559): START u0 {act=android.content.pm.action.REQUEST_PERMISSIONS pkg=com.google.android.permissioncontroller cmp=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity (has extras)} with LAUNCH_MULTIPLE from uid 10153 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 11:37:18.901 I/ActivityTaskManager(  559): Displayed com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity for user 0: +951ms
+10-05 11:37:19.587 D/ActivityManager(  559): freezing 1742 android.process.acore
+10-05 11:37:19.587 D/ActivityManager(  559): freezing 1096 com.android.settings
+10-05 11:37:19.593 D/ActivityManager(  559): freezing 1410 com.google.android.apps.wellbeing
+10-05 11:37:19.900 I/ImeTracker(  559): com.google.android.permissioncontroller:848939da: onRequestHide at ORIGIN_SERVER reason HIDE_ALWAYS_HIDDEN_STATE fromUser false
+10-05 11:37:19.905 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInputView():2393 
+10-05 11:37:19.937 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:19.938 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:19.938 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.google.android.permissioncontroller, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:19.938 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:19.981 I/ImeTracker( 4405): com.mylo.browser:65fc8bde: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+10-05 11:37:19.984 I/ImeTracker( 4405): com.mylo.browser:65fc8bde: onFailed at PHASE_CLIENT_VIEW_SERVED
+10-05 11:37:19.985 I/ImeTracker( 4405): com.google.android.permissioncontroller:848939da: onHidden
+10-05 11:37:20.975 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: RESUMED
+10-05 11:37:21.087 I/ImeTracker(  559): com.mylo.browser:7a0ef879: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:21.087 I/ImeTracker(  559): com.mylo.browser:7a0ef879: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:21.337 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:21.344 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:21.344 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=15, initialSelEnd=15, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, false)
+10-05 11:37:21.345 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:21.356 I/ImeTracker( 1378): com.google.android.inputmethod.latin:b6272b82: onRequestShow at ORIGIN_IME reason SHOW_SOFT_INPUT_FROM_IME fromUser false
+10-05 11:37:21.362 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=15, initialSelEnd=15, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, false)
+10-05 11:37:21.372 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:21.444 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:37:21.773 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:37:21.774 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:37:21.888 I/ImeTracker( 4405): com.google.android.inputmethod.latin:b6272b82: onShown
+10-05 11:37:24.356 I/ActivityTaskManager(  559): START u0 {flg=0x10008000 cmp=com.google.android.inputmethod.latin/com.google.android.libraries.inputmethod.permissions.PermissionsActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 10153 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 11:37:24.362 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: PAUSED
+10-05 11:37:24.454 I/ActivityTaskManager(  559): START u0 {act=android.content.pm.action.REQUEST_PERMISSIONS pkg=com.google.android.permissioncontroller cmp=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity (has extras)} with LAUNCH_MULTIPLE from uid 10153 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 11:37:24.961 I/ActivityTaskManager(  559): Displayed com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity for user 0: +659ms
+10-05 11:37:26.185 I/ImeTracker(  559): com.google.android.permissioncontroller:883b6a7a: onRequestHide at ORIGIN_SERVER reason HIDE_ALWAYS_HIDDEN_STATE fromUser false
+10-05 11:37:26.188 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInputView():2393 
+10-05 11:37:26.195 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:26.206 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:26.206 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.google.android.permissioncontroller, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:37:26.220 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:26.250 I/ImeTracker( 4405): com.google.android.permissioncontroller:883b6a7a: onCancelled at PHASE_CLIENT_ANIMATION_CANCEL
+10-05 11:37:26.252 I/ImeTracker( 4405): com.mylo.browser:26e305f3: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT_ON_ANIMATION_STATE_CHANGED fromUser false
+10-05 11:37:26.256 I/ImeTracker( 4405): com.mylo.browser:26e305f3: onFailed at PHASE_CLIENT_VIEW_SERVED
+10-05 11:37:27.178 D/ActivityManager(  559): sync unfroze 1742 android.process.acore for 7
+10-05 11:37:27.226 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: RESUMED
+10-05 11:37:27.453 I/ImeTracker(  559): com.mylo.browser:5b702261: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:27.454 I/ImeTracker(  559): com.mylo.browser:5b702261: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 11:37:27.769 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:37:27.771 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:37:27.771 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=15, initialSelEnd=15, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[mParcelledData.dataSize=404], hintText=null, hintLocales=[]}}, false)
+10-05 11:37:27.771 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:27.772 I/ImeTracker( 1378): com.google.android.inputmethod.latin:552c43fa: onRequestShow at ORIGIN_IME reason SHOW_SOFT_INPUT_FROM_IME fromUser false
+10-05 11:37:27.865 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInputView():2098 onStartInputView(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=28001, inputTypeString=Normal, enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000004, privateImeOptions=null, actionName=SEND, actionLabel=null, initialSelStart=15, initialSelEnd=15, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=Bundle[{android.support.text.emoji.emojiCompat_metadataVersion=9, androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true, android.support.text.emoji.emojiCompat_replaceAll=false}], hintText=null, hintLocales=[]}}, false)
+10-05 11:37:27.873 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 11:37:27.895 I/GoogleInputMethodService( 1378): GoogleInputMethodService.startInputIfInputViewStarted():3728 startInputIfInputViewStarted(): default prime
+10-05 11:37:28.420 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=HEADER keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{f1ac779 V.E...... ........ 0,0-1080,116}
+10-05 11:37:28.421 I/GoogleInputMethodService( 1378): GoogleInputMethodService$1.onKeyboardViewShown():494 onKeyboardViewShown: keyboardType=prime, keyboardViewType=BODY keyboardView=com.google.android.libraries.inputmethod.widgets.SoftKeyboardView{ccecdc4 V.E...... ........ 0,0-1080,641}
+10-05 11:37:28.462 I/ImeTracker( 4405): com.google.android.inputmethod.latin:552c43fa: onShown
+10-05 11:37:37.453 D/ActivityManager(  559): freezing 919 com.google.android.permissioncontroller
+10-05 11:37:46.137 D/ActivityManager(  559): freezing 1927 com.google.android.as.oss
+10-05 11:37:53.589 D/ActivityManager(  559): freezing 1328 com.google.android.gms
+10-05 11:37:58.133 I/ActivityTaskManager(  559): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.mylo.browser.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 11:37:58.138 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: PAUSED
+10-05 11:37:58.141 D/ActivityManager(  559): quick sync unfreeze 4303 for 1
+10-05 11:37:58.157 D/ActivityManager(  559): sync unfroze 4303 com.mylo.browser.test for 1
+10-05 11:37:58.773 W/system_server(  559): Long monitor contention with owner android.anim (585) at void com.android.server.wm.WindowSurfacePlacer$Traverser.run()(WindowSurfacePlacer.java:58) waiters=3 in void com.android.server.wm.ActivityClientController.setTaskDescription(android.os.IBinder, android.app.ActivityManager$TaskDescription) for 270ms
+10-05 11:37:59.176 I/ActivityTaskManager(  559): Displayed com.mylo.browser.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity for user 0: +1s51ms
+10-05 11:37:59.209 D/ActivityManager(  559): sync unfroze 1618 com.google.android.googlequicksearchbox:search for 6
+10-05 11:37:59.217 D/ActivityManager(  559): sync unfroze 3739 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0 for 6
+10-05 11:37:59.226 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: STOPPED
+10-05 11:37:59.473 D/LifecycleMonitor( 4405): Lifecycle status change: com.mylo.browser.MainActivity@bce1daf in: DESTROYED
+10-05 11:37:59.501 W/ActivityTaskManager(  559): Request to remove task ignored for non-existent task 13
+10-05 11:37:59.629 I/ActivityManager(  559): Killing 4599:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a209i1 (adj 0): isolated not needed
+10-05 11:37:59.743 I/ActivityManager(  559): Force stopping com.mylo.browser appid=10209 user=0: finished inst
+10-05 11:37:59.748 I/AndroidRuntime( 4389): VM exiting with result code 0.
+10-05 11:37:59.759 E/ActivityManager(  559): Unable to freeze binder for 4405: -11
+10-05 11:37:59.809 I/ImeTracker( 4405): com.mylo.browser:6e85e5e: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false
+10-05 11:37:59.809 I/ImeTracker( 4405): com.mylo.browser:6e85e5e: onFailed at PHASE_CLIENT_VIEW_SERVED
+10-05 11:37:59.824 I/ImeTracker(  559): com.google.android.apps.nexuslauncher:2edfe3f9: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 11:37:59.870 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInputView():2393 
+10-05 11:38:00.133 I/ActivityManager(  559): Killing 4405:com.mylo.browser/u0a209 (adj 0): stop com.mylo.browser due to finished inst
+10-05 11:38:00.134 W/system_server(  559): Long monitor contention with owner binder:559_2 (577) at com.android.server.am.ProcessRecord com.android.server.am.ProcessList.removeProcessNameLocked(java.lang.String, int, com.android.server.am.ProcessRecord)(ProcessList.java:3472) waiters=0 in boolean com.android.server.am.ActivityManagerService.isUidActive(int, java.lang.String) for 379ms
+10-05 11:38:00.138 W/system_server(  559): Long monitor contention with owner binder:559_2 (577) at com.android.server.am.ProcessRecord com.android.server.am.ProcessList.removeProcessNameLocked(java.lang.String, int, com.android.server.am.ProcessRecord)(ProcessList.java:3472) waiters=1 in void com.android.server.am.ActivityManagerService$LocalService.notifyNetworkPolicyRulesUpdated(int, long) for 381ms
+10-05 11:38:00.139 W/system_server(  559): Long monitor contention with owner binder:559_2 (577) at com.android.server.am.ProcessRecord com.android.server.am.ProcessList.removeProcessNameLocked(java.lang.String, int, com.android.server.am.ProcessRecord)(ProcessList.java:3472) waiters=2 in java.util.List com.android.server.am.ActivityManagerService.getRunningAppProcesses() for 332ms
+10-05 11:38:00.143 W/system_server(  559): Long monitor contention with owner binder:559_2 (577) at void com.android.server.am.ActivityManagerService.finishInstrumentation(android.app.IApplicationThread, int, android.os.Bundle)(ActivityManagerService.java:16926) waiters=0 in boolean com.android.server.am.ActivityManagerService.unbindService(android.app.IServiceConnection) for 320ms
+10-05 11:38:00.166 W/system_server(  559): Long monitor contention with owner binder:559_2 (577) at void com.android.server.am.ActivityManagerService.finishInstrumentation(android.app.IApplicationThread, int, android.os.Bundle)(ActivityManagerService.java:16926) waiters=2 in int com.android.server.am.ActivityManagerService.bindServiceInstance(android.app.IApplicationThread, android.os.IBinder, android.content.Intent, java.lang.String, android.app.IServiceConnection, long, java.lang.String, boolean, int, java.lang.String, android.app.IApplicationThread, java.lang.String, int) for 189ms
+10-05 11:38:00.168 W/system_server(  559): Long monitor contention with owner binder:559_2 (577) at void com.android.server.am.ActivityManagerService.finishInstrumentation(android.app.IApplicationThread, int, android.os.Bundle)(ActivityManagerService.java:16926) waiters=3 in int com.android.server.am.ActivityManagerService.broadcastIntentWithFeature(android.app.IApplicationThread, java.lang.String, android.content.Intent, java.lang.String, android.content.IIntentReceiver, int, java.lang.String, android.os.Bundle, java.lang.String[], java.lang.String[], java.lang.String[], int, android.os.Bundle, boolean, boolean, int) for 125ms
+10-05 11:38:00.175 W/system_server(  559): Long monitor contention with owner android.imms (683) at com.android.internal.inputmethod.InputBindResult com.android.server.inputmethod.InputMethodManagerService.startInputOrWindowGainedFocus(int, com.android.internal.inputmethod.IInputMethodClient, android.os.IBinder, int, int, int, android.view.inputmethod.EditorInfo, com.android.internal.inputmethod.IRemoteInputConnection, com.android.internal.inputmethod.IRemoteAccessibilityInputConnection, int, int, android.window.ImeOnBackInvokedDispatcher)(InputMethodManagerService.java:3846) waiters=0 in void com.android.server.inputmethod.InputMethodManagerService.setImeWindowStatus(android.os.IBinder, int, int) for 301ms
+10-05 11:38:00.176 I/ImeTracker(  559): com.google.android.apps.nexuslauncher:2edfe3f9: onFailed at PHASE_WM_HAS_IME_INSETS_CONTROL_TARGET
+10-05 11:38:00.188 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onFinishInput():3157 
+10-05 11:38:00.188 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 11:38:00.188 I/GoogleInputMethodService( 1378): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.google.android.apps.nexuslauncher, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 11:38:00.189 I/GoogleInputMethodService( 1378): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false

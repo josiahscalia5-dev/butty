@@ -1,0 +1,19 @@
+{
+  "verified": false,
+  "comparison": "The lowest price is on “Mylo Starter” (localhost): $48 a year, compared per month.",
+  "detected": "This page is in Spanish. Translate to:",
+  "translatedSample": "Prices",
+  "steps": [
+    "pricing found and marked on the phone",
+    "page coach: three steps from the page's instructions",
+    "compared prices across two tabs on the phone",
+    "translated Spanish to English on the phone",
+    "original restored"
+  ],
+  "otherAppDialogsDismissed": [],
+  "staleScreenReadsRefreshed": [
+    "the second step",
+    "the last step",
+    "the translated note"
+  ]
+}

@@ -1,0 +1,50 @@
+INSTRUMENTATION_STATUS: class=com.mylo.browser.VoiceModeFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.mylo.browser.VoiceModeFlowTest:
+INSTRUMENTATION_STATUS: test=typedChatThroughTheMyloAiService
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.mylo.browser.VoiceModeFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: the answer with a screenshot did not appear
+	at com.mylo.browser.VoiceModeFlowTest.waitFor(VoiceModeFlowTest.kt:474)
+	at com.mylo.browser.VoiceModeFlowTest.typedChatThroughTheMyloAiService$lambda$10$lambda$9(VoiceModeFlowTest.kt:200)
+	at com.mylo.browser.VoiceModeFlowTest.$r8$lambda$nyKtl5LAeMZ4o8GUPvURvLtEuU8(Unknown Source:0)
+	at com.mylo.browser.VoiceModeFlowTest$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+	at com.mylo.browser.VoiceModeFlowTest.recording(VoiceModeFlowTest.kt:456)
+	at com.mylo.browser.VoiceModeFlowTest.typedChatThroughTheMyloAiService(VoiceModeFlowTest.kt:126)
+
+INSTRUMENTATION_STATUS: stream=
+Error in typedChatThroughTheMyloAiService(com.mylo.browser.VoiceModeFlowTest):
+java.lang.AssertionError: the answer with a screenshot did not appear
+	at com.mylo.browser.VoiceModeFlowTest.waitFor(VoiceModeFlowTest.kt:474)
+	at com.mylo.browser.VoiceModeFlowTest.typedChatThroughTheMyloAiService$lambda$10$lambda$9(VoiceModeFlowTest.kt:200)
+	at com.mylo.browser.VoiceModeFlowTest.$r8$lambda$nyKtl5LAeMZ4o8GUPvURvLtEuU8(Unknown Source:0)
+	at com.mylo.browser.VoiceModeFlowTest$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+	at com.mylo.browser.VoiceModeFlowTest.recording(VoiceModeFlowTest.kt:456)
+	at com.mylo.browser.VoiceModeFlowTest.typedChatThroughTheMyloAiService(VoiceModeFlowTest.kt:126)
+
+INSTRUMENTATION_STATUS: test=typedChatThroughTheMyloAiService
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 106.945
+There was 1 failure:
+1) typedChatThroughTheMyloAiService(com.mylo.browser.VoiceModeFlowTest)
+java.lang.AssertionError: the answer with a screenshot did not appear
+	at com.mylo.browser.VoiceModeFlowTest.waitFor(VoiceModeFlowTest.kt:474)
+	at com.mylo.browser.VoiceModeFlowTest.typedChatThroughTheMyloAiService$lambda$10$lambda$9(VoiceModeFlowTest.kt:200)
+	at com.mylo.browser.VoiceModeFlowTest.$r8$lambda$nyKtl5LAeMZ4o8GUPvURvLtEuU8(Unknown Source:0)
+	at com.mylo.browser.VoiceModeFlowTest$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+	at com.mylo.browser.VoiceModeFlowTest.recording(VoiceModeFlowTest.kt:456)
+	at com.mylo.browser.VoiceModeFlowTest.typedChatThroughTheMyloAiService(VoiceModeFlowTest.kt:126)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1
