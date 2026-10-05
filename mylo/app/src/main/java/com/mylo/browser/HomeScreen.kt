@@ -166,7 +166,7 @@ private val MIDDLE_HEIGHT = 393.8.dp
             val width = maxWidth
             val keyboardCompact = maxHeight < 440.dp
             // Height the target composition needs here; anything beyond it is spare.
-            val spare = maxHeight - (heroBottom(width, statusBar) + 49.dp + MIDDLE_HEIGHT)
+            val spare = maxHeight - (heroBottom(width, statusBar) + 48.4.dp + MIDDLE_HEIGHT)
             val lift = (spare * .3f).coerceIn(0.dp, 64.dp)
             Column(Modifier.fillMaxSize()) {
                 if (keyboardCompact) Spacer(Modifier.height(statusBar + 8.dp))
@@ -279,11 +279,18 @@ private fun Modifier.baselineAt(x: Dp, baseline: Dp) = layout { measurable, cons
     }
 }
 
-internal val SearchTextStyle = TextStyle(color = Color(0xFF1E2150), fontSize = 15.5.sp, fontFamily = GoogleSans)
-internal val SearchPlaceholderStyle = TextStyle(color = Color(0xFF4A4E7E), fontSize = 15.5.sp, letterSpacing = .1.sp, fontFamily = GoogleSans)
+// Private Mode's new-tab page keeps its own approved search pill and text.
+internal val SearchTextStyle = TextStyle(color = Color(0xFF1E2150), fontSize = 15.5.sp)
+internal val SearchPlaceholderStyle = TextStyle(color = Color(0xFF4A4E7E), fontSize = 15.5.sp, letterSpacing = .1.sp)
 
-/** The large rounded search pill (Private Mode's new-tab page shares it); brighter edge while focused. */
-internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(48.4.dp)
+/** Private Mode's large rounded search pill with a soft lavender glow; brighter edge while focused. */
+internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp)
+    .shadow(if (focused) 22.dp else 16.dp, CircleShape, ambientColor = Color(0xFF8E7CFF), spotColor = Color(0xFF8E7CFF))
+    .clip(CircleShape).background(Brush.verticalGradient(listOf(Color(0xFFF0F0FE), Color(0xFFE4E5FB))))
+    .border(if (focused) 1.5.dp else 1.dp, if (focused) Color(0xFFB4A8FF) else Color(0x66FFFFFF), CircleShape)
+
+/** Home's search pill: 48.4 dp tall (target y 448–549 px), pale lavender, a faint glow; brighter edge while focused. */
+private fun Modifier.homeSearchPill(focused: Boolean) = fillMaxWidth().height(48.4.dp)
     .shadow(if (focused) 16.dp else 9.dp, CircleShape, ambientColor = Color(0xFF8E7CFF), spotColor = Color(0xFF6E62E0))
     .clip(CircleShape).background(SearchFill)
     .border(if (focused) 1.5.dp else 1.dp, if (focused) Color(0xFFB4A8FF) else Color(0x80FFFFFF), CircleShape)
@@ -297,7 +304,7 @@ internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(48.4.
 @Composable private fun SearchBar(value: String, onValue: (String) -> Unit, onSubmit: () -> Unit, onVoice: () -> Unit, onScan: () -> Unit, requester: FocusRequester, modifier: Modifier = Modifier) {
     val keyboard = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
-    Row(modifier.searchPill(focused).padding(start = 5.6.dp, end = 5.1.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.homeSearchPill(focused).padding(start = 5.6.dp, end = 5.1.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { runCatching { requester.requestFocus() }; keyboard?.show() }, modifier = Modifier.size(44.dp)) {
             Icon(HomeArt.SearchBold, "Focus search", tint = SearchInk, modifier = Modifier.size(25.5.dp))
         }

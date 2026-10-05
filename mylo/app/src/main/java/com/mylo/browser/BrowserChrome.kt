@@ -37,6 +37,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.net.URI
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /*
  * Mylo's browser chrome, reproduced from the approved target design/reference/browser-reference.jpg
@@ -72,6 +74,7 @@ internal fun cleanHost(url: String): String {
 ) {
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
     var field by remember { mutableStateOf(TextFieldValue(cleanHost(url))) }
     // At rest the pill shows the clean host; editing starts from the full address, all selected.
     LaunchedEffect(url, editing) { if (!editing) field = TextFieldValue(cleanHost(url)) }
@@ -100,6 +103,11 @@ internal fun cleanHost(url: String): String {
                         if (state.isFocused && !editing) {
                             field = TextFieldValue(url, TextRange(0, url.length))
                             onAddress(url)
+                            // The tap that focused the field may move the cursor afterwards; keep the whole address selected.
+                            scope.launch {
+                                delay(120)
+                                if (field.text == url) field = field.copy(selection = TextRange(0, url.length))
+                            }
                         }
                         onEditing(state.isFocused)
                     }.semantics { contentDescription = "Browser address" }.testTag("browser-address"),

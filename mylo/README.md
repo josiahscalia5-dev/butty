@@ -4,6 +4,30 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 
 ## Current verification status
 
+**Approved Home, browser chrome and Voice Mode entry (latest)** — Home is reproduced from
+`design/reference/home-reference.jpg` (864×1536 px for a 411×731 dp phone) and the browser's own controls from
+`design/reference/browser-reference.jpg`; the provider's page in between is always its real live page.
+
+- Home: the hero illustration is lifted from the target itself (`tools/home-art/build_home_art.py` removes the
+  baked-in status bar, greeting, gear, wordmark and tagline), the wordmark is re-traced from the target into a vector
+  (`tools/home-art/trace_wordmark.py`), and text uses Google Sans (OFL, `third_party/googlesans/OFL.txt`) like the
+  target. Every size, gap and colour is measured from the target (`tools/compare/measure_home.py`); in Layoutlib at
+  the target's own phone size (1080×1920 @ 420 dpi) every probed element lands within about 1 dp.
+- Mylo Shield on Home is truthful: "Not connected" with **Set up** unless a Mylo Shield tunnel is verified or Android
+  reports another app's VPN.
+- Browser: thin Back/Forward, an address pill with the lock (or "Not secure"), the clean host at rest
+  (`google.com`) and the full editable address when tapped, Reload/Stop, Bookmark (filled when saved), More, a slim
+  progress line, and the bottom navigation with **Search** selected. Long addresses stay inside the pill.
+- Voice Mode: the approved screen (`design/reference/voice-mode-reference.png`) is what the bottom navigation's
+  **Mylo** button opens. The handoff APK on `mylo-apk-handoff` was built from `2b7ba2f`, before Voice Mode existed;
+  in that build Mylo opened the old about panel. Without a Mylo AI service, Voice Mode still opens and its caption
+  says plainly that answers need setup.
+- Device check (workflow scope `screens`, `ApprovedScreensTest` and `VoiceEntry`): launch → Home → bottom Mylo →
+  Voice Mode → Close voice mode → Home → Mylo again, with no AI service; Home at the target's size, a Pixel 6, a
+  360×640 dp and a 412×915 dp phone; a real Google results page in Mylo's chrome, resting and with the address
+  tapped. When it passes, the exact APK it tested is published to the `mylo-apk-<branch>` branch with its commit.
+  Side-by-side previews: `design/previews/claude-ui/19-…` to `22-…` (`tools/compare/device_previews.py`).
+
 **Private Mode (Milestone 1)** — verified on a real Android 35 emulator (Pixel 6) by `PrivateModeFlowTest` in the
 workflow's `private` scope, all three cases passed, most recently on `claude-ui` itself at `6703008`
 ([run 37292933926](https://github.com/josiahscalia5-dev/butty/actions/runs/37292933926); first on the session branch in
@@ -73,17 +97,23 @@ rest of Action Preview (milestones 5–8).
   - Screens: `design/previews/claude-ui/07-…` and `08-…`.
 - Not yet run on this flow: the `full` device scope (portrait layout matrix, tabs, Back/Forward, every provider live). Earlier full runs found Brave Search and Startpage showing CAPTCHAs to CI's datacenter network; see [BLOCKERS.md](BLOCKERS.md).
 
-## Current visual correction (claude-ui)
+## Home and browser design (claude-ui)
 
-`HomeScreen.kt` is matched side by side against the approved reference (`drawable-nodpi/approved_design.jpg`) at 393 × 851 dp. Existing browser and search behavior is unchanged.
+`HomeScreen.kt` follows `design/reference/home-reference.jpg` and `BrowserChrome.kt` follows
+`design/reference/browser-reference.jpg` (see the status above). The earlier reference (`approved_design.jpg`,
+393×851 dp) and its art stay in the repository for history; Private Mode and Voice Mode keep their own references.
 
-- Hero: the bundled high-resolution corgi illustration (`mylo_night_hero.png`) is drawn at the crop registered against the reference, edge to edge behind the status bar. Greeting and settings sit over the art. The Mylo wordmark is a vector traced from the reference, and the star is vector too (`HomeArt.kt`), so the hero stays sharp at every density.
-- Search bar: search icon, placeholder, divider, microphone and code scanner. The scanner uses Google Play services' code scanner; a scanned link or text opens like typed input.
-- Shortcuts, cards (approved wording and chevrons), VPN strip and bottom navigation (Mylo face icon) use the reference's measured sizes, spacing and colours.
-- Discovery banner: the approved lake/cabin/moon scene, with baked-in text removed and upscaled 3× (`mylo_discovery_night.webp`). The title uses bundled Nunito Black (OFL, `third_party/nunito/OFL.txt`).
-- Greeting and search stay pinned. On short screens only the middle content scrolls; on tall screens spare height is shared between sections.
-- VPN strip: shows Mylo Shield's real state ("Server setup required" while no gateway is configured; a city only when connected through it), or that another app's VPN is on. The Singapore/ON sample exists only in reference renders that pass `vpnLocation`.
-- Polish (B + C): a taller search pill with a soft lavender glow, a slightly shorter hero, 16 dp card corners with top-lit edges, more even spacing and a compact banner. Shortcut rings keep the approved size. Taps get a subtle press-in, and the selected tab pill animates.
+- Hero: `home_hero.webp` (the target's own illustration, UI removed, upscaled 2×) drawn edge to edge behind the status
+  bar; the vector wordmark and the tagline scale with it, so the composition is the same on every width. Taller
+  status bars move the greeting and art down together.
+- Search bar: magnifier, placeholder, divider, microphone (Voice Search) and code scanner. The scanner uses Google
+  Play services' code scanner; a scanned link or text opens like typed input.
+- Greeting and search stay pinned. On short screens only the middle content scrolls; on taller screens the sky above
+  the wordmark grows a little and the rest of the spare height is shared between sections.
+- Discovery banner: `home_discovery.webp`, the target's lake/cabin/moon scene with its words and button removed; the
+  title uses Nunito Black (OFL, `third_party/nunito/OFL.txt`).
+- Bottom navigation: Home selected on Home; on a web page the browser target's taller bar with Search selected. The
+  bottom **Mylo** opens Voice Mode; the search bar's microphone is Voice Search.
 - Search: the search provider is chosen only in **Settings** (the gear on Home → Search engine): Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage. The choice is saved on the device and kept after Mylo restarts. Back on Home, the user types straight into the same Home search box and presses the keyboard's Search key: words open the saved provider's real results page for the exact text, and a web address such as `facebook.com` opens directly. There is no separate search page, per-search provider control or one-off provider choice. The bottom **Search** button returns to Home and focuses that same box.
 
 ## Build and run

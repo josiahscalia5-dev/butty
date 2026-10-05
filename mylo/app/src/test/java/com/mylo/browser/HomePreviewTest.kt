@@ -85,3 +85,24 @@ class HomeCompactPreviewTest {
         }
     }
 }
+
+/** A taller phone than the target (Pixel 6: 1080 × 2400 at 420 dpi, 411 × 914 dp), with a camera-cutout status bar. */
+class HomeTallPreviewTest {
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1080, screenHeight = 2400, density = Density(420)),
+        theme = "Theme.Mylo",
+        showSystemUi = false,
+    )
+
+    @Test fun homeOnPixel6() {
+        paparazzi.snapshot(name = "mylo_home_pixel6_1080x2400") {
+            MyloTheme {
+                MyloViewport(edgeToEdgeHome = true) {
+                    Box(Modifier.weight(1f)) { HomeScreen(statusBarInset = 42.dp) }
+                    BottomBar(NavTab.Home, 0, {}, {}, {}, {}, navigationInset = 24.dp)
+                }
+            }
+        }
+    }
+}
