@@ -122,6 +122,63 @@ if [[ "${MYLO_SCOPE:-full}" == "private" ]]; then
   exit 0
 fi
 
+# Voice Mode: the approved screen, the typed chat and the switchboard. Mylo AI runs as the reference
+# gateway (ai-gateway/) in front of a TEST upstream that is not an AI and says so in every reply; it proves
+# the app → service → app path, what leaves the phone, and the honest "not connected" state.
+if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
+  voice_status=0
+  voice_dir="$evidence_dir/voice"
+  voice_summary="$evidence_dir/voice-test.txt"
+  mkdir -p "$voice_dir"
+  : > "$voice_summary"
+  gateway_dir="$(mktemp -d)"
+  voice_token="mylo-ci-test-token"
+  printf 'test-upstream-key\n' > "$gateway_dir/openai_api_key"
+  printf '%s\n' "$(printf '%s' "$voice_token" | sha256sum | cut -d' ' -f1)" > "$gateway_dir/token_hashes"
+  python3 "$script_dir/../compat-site/serve.py" > "$voice_dir/test-site.log" 2>&1 &
+  site_pid=$!
+  python3 "$script_dir/../ai-gateway/fake_openai.py" 8091 test-upstream-key 0.04 > "$voice_dir/test-upstream.log" 2>&1 &
+  upstream_pid=$!
+  MYLO_OPENAI_KEY_FILE="$gateway_dir/openai_api_key" MYLO_OPENAI_BASE_URL=http://127.0.0.1:8091 MYLO_TOKEN_HASHES_FILE="$gateway_dir/token_hashes" \
+    MYLO_LISTEN=127.0.0.1:8090 MYLO_AI_REQUESTS_PER_MINUTE=60 python3 "$script_dir/../ai-gateway/mylo_ai_gateway.py" > "$voice_dir/gateway.log" 2>&1 &
+  gateway_pid=$!
+  adb reverse tcp:8080 tcp:8080
+  adb reverse tcp:8081 tcp:8081
+  adb reverse tcp:8090 tcp:8090
+  sleep 2
+  curl -sf http://localhost:8080/plans.html > /dev/null || { echo 'The test site did not start.' >&2; exit 1; }
+  curl -sf -H "Authorization: Bearer $voice_token" http://127.0.0.1:8090/v1/status > /dev/null || { echo 'The Mylo AI test gateway did not start.' >&2; cat "$voice_dir/gateway.log" >&2; exit 1; }
+  run_voice() {
+    local method="$1" limit="$2"
+    shift 2
+    timeout 15 adb shell am force-stop "$app_package" || true
+    timeout 15 adb logcat -c || true
+    # Each case starts with the microphone not yet allowed, so Android's prompt is part of the flow.
+    timeout 15 adb shell pm revoke "$app_package" android.permission.RECORD_AUDIO > /dev/null 2>&1 || true
+    timeout 15 adb shell pm clear-permission-flags "$app_package" android.permission.RECORD_AUDIO user-set user-fixed > /dev/null 2>&1 || true
+    local output="$voice_dir/$method.txt"
+    timeout "$limit" adb shell am instrument -w -r "$@" -e class "com.mylo.browser.VoiceModeFlowTest#$method" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
+    timeout 30 adb logcat -d -b events -v time 2> /dev/null | grep -E '(wm|am)_[a-z_]+' | tail -n 300 > "$voice_dir/$method-android-events.txt" || true
+    timeout 30 adb logcat -d -v time 2> /dev/null | grep -E 'ActivityTaskManager|ActivityManager|InputDispatcher|AndroidRuntime|InputMethod|ImeTracker|LifecycleMonitor|SpeechRecognizer|RecognitionService' | grep -vE 'AppsFilter|WindowManagerShell' | tail -n 400 > "$voice_dir/$method-android-system.txt" || true
+    local result
+    if grep -q '^OK (1 test)' "$output"; then result=passed; else result=failed; voice_status=1; fi
+    echo "$method: $result" | tee -a "$voice_summary"
+    [[ "$result" == passed ]] || grep -E '^(INSTRUMENTATION_(STATUS: stack|RESULT|CODE|ABORTED)|java\.|junit\.|Process crashed)' "$output" \
+      | cut -c1-500 | head -n 8 | sed 's/^/    /' >> "$voice_summary" || true
+    timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/voice/. "$voice_dir/" > /dev/null 2>&1 || true
+  }
+  run_voice voiceModeWithoutAServiceSendsNothing 240
+  run_voice typedChatThroughTheMyloAiService 300 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
+  kill "$site_pid" "$upstream_pid" "$gateway_pid" 2> /dev/null || true
+  { echo 'Crash and memory events during the Voice Mode run:'
+    timeout 30 adb logcat -d -v threadtime | grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |ANR in|Process com\.mylo\.browser.* has died' | cut -c1-300 | tail -n 20 || echo '  none recorded'
+  } >> "$voice_summary"
+  if (( voice_status )); then echo 'Voice Mode device checks failed. See voice evidence.' >&2; exit 1; fi
+  echo 'Every Voice Mode device check passed.'
+  exit 0
+fi
+
 # Website compatibility: the shared engine against the local test site (two origins through adb reverse)
 # and real, unrelated websites reached from every search provider. Each case runs in a fresh app process
 # with a screen recording; evidence is pulled after every case.

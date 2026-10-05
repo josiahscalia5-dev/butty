@@ -190,10 +190,41 @@ fun renderPrivate(out: File) {
     sc.close(); println("rendered private animation frames")
 }
 
+@Composable fun VoiceDevice(phone: Phone, ui: VoiceModeUi) {
+    MyloTheme {
+        Box(Modifier.fillMaxSize().background(Night)) {
+            Column(Modifier.fillMaxSize().padding(bottom = phone.nav)) { VoiceModeScreen(ui, statusBarInset = phone.status) }
+            SystemStatusBar(phone.status)
+            Box(Modifier.align(Alignment.BottomCenter)) { SystemNavBar(phone) }
+        }
+    }
+}
+
+/** Voice Mode at the reference's size and on phone profiles, in each conversation state. */
+fun renderVoice(out: File) {
+    val states = listOf(
+        "idle" to VoiceModeUi(tabs = 3),
+        "listening" to VoiceModeUi(VoicePhase.Listening, level = .7f, micLive = true, tabs = 3, caption = "You: find the pricing section"),
+        "speaking" to VoiceModeUi(VoicePhase.Speaking, level = .55f, tabs = 3, caption = "Mylo: The plans start at \$9 a month. I’ve scrolled to Pricing."),
+    )
+    for (p in privatePhones) {
+        for ((name, ui) in if (p.name.startsWith("reference")) states else states.take(1)) {
+            val w = if (p.name.startsWith("reference")) 941 else (p.w * p.density).toInt()
+            val h = if (p.name.startsWith("reference")) 1672 else (p.h * p.density).toInt()
+            val sc = ImageComposeScene(w, h, Density(p.density)) { VoiceDevice(p, ui) }
+            var t = 0L
+            repeat(30) { sc.render(t); t += 16_000_000 }
+            File(out, "voice_${name}_${p.name}.png").writeBytes(sc.render(t).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+            sc.close(); println("rendered voice_${name}_${p.name}")
+        }
+    }
+}
+
 fun main(args: Array<String>) {
     val out = File(args.getOrElse(0) { "out" }).apply { mkdirs() }
     val only = args.getOrNull(1)?.takeIf { it.isNotBlank() }
     if (only == "private") { renderPrivate(out); return }
+    if (only == "voice") { renderVoice(out); return }
     if (only == "scenes") {
         val p = phones.first()
         for ((name, scene) in scenes) {

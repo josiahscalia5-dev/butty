@@ -18,6 +18,9 @@ Renders of the production Home and search composables from `tools/home-preview` 
 | `11-private-session-device-2.jpg` | Real emulator: blocked list, Burn on Exit, fresh storage after the burn, back on Home |
 | `12-private-lock-tabs-device.jpg` | Real emulator: Lock tabs on, Android's PIN prompt after a relaunch (secure, so black), unlocked |
 | `13-private-entrance-animation-device.jpg` | Real emulator recording: the entrance animation, frame by frame (125 ms apart) |
+| `14-voice-mode-reference-vs-device.jpg` | Approved Voice Mode reference next to the real emulator (Pixel 6, API 35) |
+| `15-voice-chat-and-switchboard-device.jpg` | Real emulator: Type instead without an AI service (nothing sent, and it says so); What Mylo can see with all seven sources |
+| `16-voice-chat-through-test-service-device.jpg` | Real emulator: typed chat through the reference Mylo AI gateway with a TEST upstream (not an AI): answer, privacy receipt with the card number hidden, Current Page off, Allow once |
 
 `03` and `05` show an earlier search-provider direction ("Search with …" control and per-search sheet). It was
 replaced: the provider is now chosen only in Settings, and Home's own search box submits to it.

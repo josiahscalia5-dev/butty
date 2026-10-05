@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings); private = Private Mode (screen, private browsing, tracker blocking, Burn, Lock tabs, entrance recording); build = compile, unit tests and Layoutlib renders only (no emulator)"
+        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings); private = Private Mode (screen, private browsing, tracker blocking, Burn, Lock tabs, entrance recording); voice = Voice Mode (screen, typed chat through the reference Mylo AI gateway with a test upstream, switchboard, privacy receipt); build = compile, unit tests and Layoutlib renders only (no emulator)"
         type: choice
-        options: [full, search-flow, shield, compat, private, build]
+        options: [full, search-flow, shield, compat, private, voice, build]
         default: full
   push:
     branches: ["mylo-development"]
@@ -95,7 +95,7 @@ jobs:
       - name: Render the production Home against the approved reference
         id: home_layoutlib
         continue-on-error: true
-        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest --tests com.mylo.browser.PrivateModePreviewTest
+        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest --tests com.mylo.browser.PrivateModePreviewTest --tests com.mylo.browser.VoiceModePreviewTest
       - name: Upload Android Home reference renders
         if: always()
         uses: actions/upload-artifact@v4
@@ -131,7 +131,7 @@ jobs:
     needs: build
     if: inputs.scope != 'build'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || inputs.scope == 'private' && 30 || 25 }}
+    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || (inputs.scope == 'private' || inputs.scope == 'voice') && 30 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -218,7 +218,7 @@ jobs:
           import base64, glob, io, os
           from PIL import Image
           root = "mylo/dist/preview"
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png") + glob.glob(f"{root}/private/*/*.png")):
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png") + glob.glob(f"{root}/private/*/*.png") + glob.glob(f"{root}/voice/*/*.png")):
               name = "/".join(path.split("/")[-2:])
               im = Image.open(path).convert("RGB")
               im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
@@ -230,7 +230,7 @@ jobs:
           for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json") + glob.glob(f"{root}/compat/*/*.json")):
               name = "/".join(path.split("/")[-2:])
               print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
-          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt", f"{root}/private-test.txt"):
+          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt", f"{root}/private-test.txt", f"{root}/voice-test.txt"):
               if os.path.exists(summary):
                   print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
           PY
