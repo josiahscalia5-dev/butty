@@ -1,20 +1,27 @@
-# Settings-based Home search verification
+# Targeted browser polish verification
 
-The current change keeps Codex's Home artwork/layout and WebView implementation unchanged. The Home gear opens **Mylo Settings → Default search provider**. All six choices persist locally; the existing Home field submits directly through that default with the Android keyboard Search action. The intermediate input/provider screen has been removed.
+Work stays in `josiahscalia5-dev/butty` on `codex-development`, based on verified Settings-search build `df81f16`. The Home hero, search, shortcuts, cards, banner and bottom navigation remain unchanged. Only the Shield strip and native browser toolbar presentation change; provider resolution, WebView settings/client, saved browser data, private browsing and scanner implementation stay unchanged.
 
-Default CI builds the app and test APK, runs `BrowserStateTest`, then runs only `SettingsSearchFlowTest` on a Pixel 5/API 35. The device script has a six-minute total limit and 60-second per-case limits, stops on the first app/test failure, and never retries provider challenges. The full Home matrix and Paparazzi renders are opt-in workflow-dispatch checks.
+Default CI builds the app and test APK, runs the 18 `BrowserStateTest` checks, and runs five isolated Android checks: the existing Yahoo URL, Google Home search, example.com, toolbar editing/Back/Forward at 393 and 360 dp widths, and Shield state/setup. Each case has a 60-second limit (75 for Yahoo diagnostics); the whole device script has a six-minute cap. Full Home rendering/matrices remain opt-in.
 
 ```sh
-gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest
-timeout -k 10s 360s bash scripts/verify-settings-search.sh \
-  app/build/outputs/apk/debug/app-debug.apk dist/settings-search \
+timeout -k 10s 360s bash scripts/verify-browser-polish.sh \
+  app/build/outputs/apk/debug/app-debug.apk dist/browser-polish \
   app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 ```
 
-The focused device checks choose Google, Brave, DuckDuckGo, Bing, Yahoo and Startpage through the real Settings UI, then type Facebook in the existing Home field and tap the real Android IME Search key. They assert the corgi remains visible and the field remains above the keyboard. Each actual WebView `originalUrl` is checked against a literal expected URL independently of the app's resolver. A direct-domain case must open example.com; a fresh instrumentation process verifies the previously selected Yahoo default survives process death. Unit tests separately check every persisted provider, query encoding, direct URLs, rejected schemes and tab reuse.
+Node 22 and an Android API 35 emulator/device are required for the script. Screenshots and per-case JSON are uploaded with the APK in GitHub Actions; Android downloads should use the HTTPS artifact link, extract the ZIP, then install `Mylo-debug.apk`.
 
-Screenshots and JSON evidence distinguish successful provider routing from actual live-page availability. Each provider gets one bounded observation window; CAPTCHA, consent, blocking, redirects or network errors must be reported as limitations. No HTML, WebView client or provider response is replaced. An observed live document is not by itself proof that every result link works.
+## Yahoo investigation
 
-Historical navigation/QR tests remain available separately in `LiveSearchFlowTest` and `QrScannerTest`; the focused workflow does not rerun their full suites. Physical-camera scanning requires a camera-equipped Android device.
+The baseline verified at `df81f16` reached `https://search.yahoo.com/search?p=Facebook` on the real Android 15 WebView (Chrome 124 mobile UA). Yahoo rendered its own “temporary problems searching for web pages” message. This was neither a fabricated results page nor a fallback to another engine.
 
-Current build/device outcomes will be reported with the exact CI commit and artifact; do not infer success from these instructions.
+The targeted test tries that same URL first with unchanged WebView settings, records JavaScript/DOM storage/cookie policy, default-UA equality, WebView package/version and the real response document. An instrumentation-only DevTools connection records HTTP status, redirects, failed requests and JavaScript exceptions without intercepting requests, changing headers/cookies or substituting responses. One normal reload is allowed after the baseline to capture the main HTTP response with DevTools attached; an explicit bot/CAPTCHA challenge gets passive observation only. Cookie values and request/response headers are not recorded. Do not treat a provider-branded error document as successful search results.
+
+The environment provides an emulator, not a physical phone. Do not claim Yahoo works (or fails) on a phone from CI evidence alone. No compatibility changes should be made without evidence that the failing behavior is controlled by Mylo; do not spoof a desktop UA or bypass provider protections.
+
+## Shield truthfulness
+
+The strip reads Android `TRANSPORT_VPN`: “Mylo Shield / Not connected / Set up” when absent, “Mylo Shield / VPN connected / Manage” when present. No country, fake toggle or built-in VPN is supplied. The setup panel explains that an installed VPN provider is required. The targeted check verifies the actual emulator state and Android capability classification for null, Wi-Fi and VPN capabilities. A real active tunnel and network-callback transition require an installed VPN provider/server and remain outside this emulator's available setup.
+
+Current CI results and provider limitations must be reported with the exact tested commit and artifact. Existing per-tab, bookmark/history, Private Mode and scanner code was not changed; their whole historical suites are not rerun by this targeted task.

@@ -187,7 +187,7 @@ class MainActivity : ComponentActivity() {
 @Composable private fun rememberVpnStatus(): Boolean {
     val context = LocalContext.current
     val manager = remember { context.getSystemService(ConnectivityManager::class.java) }
-    fun connected() = manager.allNetworks.any { manager.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
+    fun connected() = manager.allNetworks.any { hasVpnTransport(manager.getNetworkCapabilities(it)) }
     var active by remember { mutableStateOf(connected()) }
     DisposableEffect(manager) {
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -201,6 +201,9 @@ class MainActivity : ComponentActivity() {
     }
     return active
 }
+
+internal fun hasVpnTransport(capabilities: NetworkCapabilities?): Boolean =
+    capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit, handleBack: Boolean = true) {
@@ -231,13 +234,10 @@ class MainActivity : ComponentActivity() {
         focus.clearFocus(); keyboard?.hide()
     }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = ::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
-            IconButton(onClick = { webView?.goForward() }, enabled = canForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
-            OutlinedTextField(address, { address = it }, Modifier.weight(1f).padding(vertical = 5.dp).onFocusChanged { editingAddress = it.isFocused }.semantics { contentDescription = "Browser address" }, textStyle = TextStyle(fontSize = 13.sp), singleLine = true, shape = RoundedCornerShape(20.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { submitAddress() }))
-            IconButton(onClick = { webView?.reload() }) { Icon(Icons.Rounded.Refresh, "Reload") }
-            IconButton(onClick = { webView?.let { store.addBookmark(it.url.orEmpty(), it.title.orEmpty()) }; onBookmarks() }) { Icon(Icons.Rounded.BookmarkAdd, "Bookmark this page") }
-        }
+        BrowserToolbar(address, editingAddress, { address = it }, { editingAddress = it },
+            ::submitAddress, ::back, { webView?.goForward() }, canForward,
+            { webView?.reload() },
+            { webView?.let { store.addBookmark(it.url.orEmpty(), it.title.orEmpty()) }; onBookmarks() })
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Lavender)
         pageError?.let { Text(it, modifier = Modifier.padding(16.dp), color = Color(0xFFFFCCCF)) }
         key(tab.id) {

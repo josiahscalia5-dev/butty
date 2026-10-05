@@ -40,7 +40,7 @@ class HomePreviewTest {
             MyloTheme {
                 MyloViewport(edgeToEdgeHome = true) {
                     Box(Modifier.weight(1f)) {
-                        HomeScreen(vpnActive = true, vpnLocation = "Singapore")
+                        HomeScreen()
                     }
                     BottomBar(true, 1, {}, {}, {}, {})
                 }

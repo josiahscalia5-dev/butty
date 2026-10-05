@@ -217,7 +217,7 @@ fun MyloPanel(
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.Outlined.Shield, null, Modifier.size(32.dp), tint = PanelAccent)
                             Text("Your connection, your choice", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = PanelText)
-                            Text("Mylo does not include a VPN service. To protect your connection or choose a country such as Singapore, connect with your installed VPN provider.", color = PanelMuted, style = MaterialTheme.typography.bodyMedium)
+                            Text("Mylo does not include a VPN service. To connect, use your installed VPN provider. Mylo Shield displays Android’s VPN connection state.", color = PanelMuted, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     Spacer(Modifier.height(12.dp))

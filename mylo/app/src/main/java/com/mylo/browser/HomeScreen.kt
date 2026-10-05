@@ -145,8 +145,6 @@ fun HomeScreen(
     query: String = "", onQuery: (String) -> Unit = {}, onSearch: () -> Unit = {}, onVoice: () -> Unit = {},
     onPanel: (String) -> Unit = {}, onOpen: (String) -> Unit = {}, onPrivate: () -> Unit = {},
     vpnActive: Boolean = false, searchRequest: Int = 0,
-    // Production has no known endpoint location. The Android reference render supplies Singapore.
-    vpnLocation: String? = null,
     polish: HomePolish = HomePolish.REFERENCE,
     onScanner: () -> Unit = { onPanel("tools") },
 ) {
@@ -181,7 +179,7 @@ fun HomeScreen(
                     HomeCard("Tools", "Useful tools\nfor your browsing", 320, 765, unit, metrics, Modifier.weight(1f)) { onPanel("tools") }
                 }
                 Spacer(Modifier.height(unit * 14f))
-                HomeVpnStrip(vpnActive, vpnLocation, unit) { onPanel("vpn") }
+                HomeVpnStrip(vpnActive, unit) { onPanel("vpn") }
                 Spacer(Modifier.height(unit * 14f))
                 HomeDiscovery(unit) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
             }
@@ -300,35 +298,30 @@ private fun HomeCard(title: String, subtitle: String, x: Int, y: Int, unit: Dp, 
 }
 
 @Composable
-private fun HomeVpnStrip(active: Boolean, location: String?, unit: Dp, onClick: () -> Unit) {
+private fun HomeVpnStrip(active: Boolean, unit: Dp, onClick: () -> Unit) {
     val shape = RoundedCornerShape(unit * 21f)
-    Row(Modifier.fillMaxWidth().heightIn(min = unit * 86f).homePressable(onClick, shape)
+    Row(Modifier.fillMaxWidth().heightIn(min = unit * 86f).testTag("home-shield")
+        .homePressable(onClick, shape)
         .background(Brush.horizontalGradient(listOf(Color(0xFF10323F), Color(0xFF152443), Color(0xFF142140))))
         .border(.7.dp, Color(0xFF2B455D), shape)
         .padding(horizontal = unit * 19f, vertical = unit * 10f), verticalAlignment = Alignment.CenterVertically) {
         ApprovedArt(39, 884, 53, 59, Modifier.size(unit * 53f, unit * 59f))
         Column(Modifier.weight(1f).padding(start = unit * 15f, end = unit * 8f)) {
-            Text(if (active) "VPN protected" else "VPN not connected", fontSize = (unit.value * 18f).sp,
-                lineHeight = (unit.value * 23f).sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
-            Text(if (active) "Your connection is secure" else "Manage connection", fontSize = (unit.value * 14f).sp,
-                lineHeight = (unit.value * 20f).sp, color = HomeMuted, maxLines = 2)
+            Text("Mylo Shield", fontSize = (unit.value * 18f).sp,
+                lineHeight = (unit.value * 23f).sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(if (active) "VPN connected" else "Not connected", fontSize = (unit.value * 14f).sp,
+                lineHeight = (unit.value * 20f).sp,
+                color = if (active) Color(0xFF8BE1C5) else HomeMuted, maxLines = 1)
         }
-        Box(Modifier.width(.7.dp).height(unit * 36f).background(Color(0xFF41495F)))
-        Row(Modifier.width(unit * 183f).padding(horizontal = unit * 18f), verticalAlignment = Alignment.CenterVertically) {
-            if (active && location == "Singapore") {
-                ApprovedArt(317, 893, 35, 37, Modifier.size(unit * 35f, unit * 37f).clip(CircleShape))
-                Spacer(Modifier.width(unit * 12f))
-            }
-            Text(if (active) location ?: "System VPN" else "Set up", modifier = Modifier.weight(1f),
-                fontSize = (unit.value * 16f).sp, maxLines = 2, color = Color(0xFFEDECF7))
-            Icon(Icons.Rounded.ExpandMore, null, modifier = Modifier.size(unit * 16f), tint = HomeMuted)
-        }
-        // This is an indicator of the real ConnectivityManager state; its action opens VPN settings.
-        Box(Modifier.size(unit * 66f, unit * 35f).clip(CircleShape)
-            .background(if (active) Color(0xFF32CA9B) else Color(0xFF3A4760))
-            .semantics { contentDescription = if (active) "VPN connected" else "VPN disconnected" }) {
-            Box(Modifier.padding(unit * 3f).size(unit * 29f).align(if (active) Alignment.CenterEnd else Alignment.CenterStart)
-                .background(if (active) Color.White else Color(0xFFBFC7DA), CircleShape))
+        // This opens system VPN setup; it never pretends to switch on a Mylo VPN.
+        Row(Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF264653))
+            .padding(horizontal = unit * 16f, vertical = unit * 11f),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(if (active) "Manage" else "Set up", fontSize = (unit.value * 16f).sp,
+                color = Color(0xFFD5F1E9), maxLines = 1)
+            Spacer(Modifier.width(unit * 8f))
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                Modifier.size(unit * 20f), tint = Color(0xFF9BD8C7))
         }
     }
 }

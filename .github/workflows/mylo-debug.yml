@@ -186,7 +186,7 @@ jobs:
         run: echo "[Download real Home screenshots, measurements, and logs]($HOME_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
 
   android-preview:
-    name: Verify Settings and Home search only
+    name: Verify browser polish and Yahoo compatibility
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -219,16 +219,20 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify saved defaults, Home keyboard, and provider URLs
+      - name: Set up network diagnostics runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify Yahoo, Google, toolbar navigation and Shield
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           arch: x86_64
           target: google_apis
           profile: pixel_5
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -memory 4096 -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: timeout -k 10s 360s bash mylo/scripts/verify-settings-search.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
+          script: timeout -k 10s 360s bash mylo/scripts/verify-browser-polish.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
       - name: Upload Android screenshot and smoke-test evidence
         if: always()
         id: preview

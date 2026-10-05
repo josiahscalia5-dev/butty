@@ -34,7 +34,7 @@ class HomeReferenceRenderTest {
             .apply { mkdirs() }
         val report = JSONObject().put("verified", false).put("testFixture", true)
             .put("source", "Real Android rendering of production HomeScreen, BottomBar, MyloViewport and MyloTheme")
-            .put("fixture", "Approved reference only: active VPN label, Singapore, one tab; no VPN service is simulated")
+            .put("fixture", "Home preview: disconnected Shield and one tab; no VPN connection is simulated")
         try {
             val density = compose.activity.resources.displayMetrics.density
             assertEquals("Reference render requires a 393 dp width", 393f, device.displayWidth / density, 1f)
@@ -46,7 +46,7 @@ class HomeReferenceRenderTest {
                     MyloTheme {
                         MyloViewport(edgeToEdgeHome = true) {
                             Box(Modifier.weight(1f)) {
-                                HomeScreen(vpnActive = true, vpnLocation = "Singapore")
+                                HomeScreen()
                             }
                             BottomBar(true, 1, {}, {}, {}, {})
                         }
@@ -57,7 +57,7 @@ class HomeReferenceRenderTest {
             listOf("home-header", "home-search", "home-discovery", "home-bottom-nav").forEach {
                 compose.onNodeWithTag(it).assertIsDisplayed()
             }
-            compose.onNodeWithText("Singapore", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithText("Not connected", useUnmergedTree = true).assertIsDisplayed()
             device.waitForIdle(1_000)
             assertTrue("Failed to capture the actual Android reference render",
                 device.takeScreenshot(File(artifacts, "05-approved-reference-state.png")))
