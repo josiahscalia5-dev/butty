@@ -32,6 +32,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -127,8 +128,12 @@ private const val HERO_ROWS = 448f
 /** The target's status bar. Taller bars move the greeting and art down together. */
 private val TARGET_STATUS_BAR = 24.dp
 
-/** Height of the hero (art, greeting and wordmark) above the search field. */
-internal fun heroBottom(width: Dp, statusBar: Dp, lift: Dp = 0.dp): Dp = heroShift(statusBar) + lift + width * (HERO_ROWS / TARGET_WIDTH)
+/**
+ * Height of the hero (art, greeting and wordmark) above the search field: the target's, plus [lift] of extra sky on
+ * taller screens. A taller status bar than the target's (camera cutouts) moves the art, wordmark and greeting down
+ * together, without pushing the page: the art's lowest strip then tucks behind the search field.
+ */
+internal fun heroBottom(width: Dp, lift: Dp = 0.dp): Dp = lift + width * (HERO_ROWS / TARGET_WIDTH)
 private fun heroShift(statusBar: Dp) = (statusBar - TARGET_STATUS_BAR).coerceAtLeast(0.dp)
 
 /** Content below the search field at the target size, down to the bottom navigation's top margin. */
@@ -166,7 +171,7 @@ private val MIDDLE_HEIGHT = 393.8.dp
             val width = maxWidth
             val keyboardCompact = maxHeight < 440.dp
             // Height the target composition needs here; anything beyond it is spare.
-            val spare = maxHeight - (heroBottom(width, statusBar) + 48.4.dp + MIDDLE_HEIGHT)
+            val spare = maxHeight - (heroBottom(width) + 48.4.dp + MIDDLE_HEIGHT)
             val lift = (spare * .3f).coerceIn(0.dp, 64.dp)
             Column(Modifier.fillMaxSize()) {
                 if (keyboardCompact) Spacer(Modifier.height(statusBar + 8.dp))
@@ -224,9 +229,10 @@ private fun Modifier.baselineAt(x: Dp, baseline: Dp) = layout { measurable, cons
 @Composable internal fun HeroBackdrop(width: Dp, statusBar: Dp, lift: Dp = 0.dp, content: @Composable BoxScope.() -> Unit = {}) {
     val art = ImageBitmap.imageResource(R.drawable.home_hero)
     val k = width / TARGET_WIDTH // dp per target px
-    val top = heroShift(statusBar) + lift
+    // The art sits below the status bar's extra height or the extra sky, whichever is more.
+    val top = maxOf(heroShift(statusBar), lift)
     val density = LocalDensity.current
-    Box(Modifier.fillMaxWidth().height(heroBottom(width, statusBar, lift)).drawBehind {
+    Box(Modifier.fillMaxWidth().height(heroBottom(width, lift)).clipToBounds().drawBehind {
         val y = top.toPx()
         // The target's sky continues above the art when the hero is taller than the target's.
         if (y > 0f) drawRect(Brush.verticalGradient(listOf(Color(0xFF07163D), Color(0xFF0A1A45)), 0f, y + 1f), size = Size(size.width, y + 1f))

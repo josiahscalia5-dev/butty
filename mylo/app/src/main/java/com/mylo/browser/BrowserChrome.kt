@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -75,9 +77,9 @@ internal fun cleanHost(url: String): String {
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
-    var field by remember { mutableStateOf(TextFieldValue(cleanHost(url))) }
-    // At rest the pill shows the clean host; editing starts from the full address, all selected.
-    LaunchedEffect(url, editing) { if (!editing) field = TextFieldValue(cleanHost(url)) }
+    // The field always holds the full address; at rest the clean host is drawn over it instead.
+    var field by remember { mutableStateOf(TextFieldValue(url)) }
+    LaunchedEffect(url, editing) { if (!editing) field = TextFieldValue(url) }
     var menuOpen by remember { mutableStateOf(false) }
     val secure = url.startsWith("https://")
     Box(Modifier.fillMaxWidth().background(BrowserBar).testTag("browser-toolbar")) {
@@ -98,22 +100,26 @@ internal fun cleanHost(url: String): String {
                 Icon(if (secure) HomeArt.PadlockSolid else Icons.Rounded.Info, if (secure) "Secure connection" else "Not secure",
                     tint = if (secure) PillInk else Color(0xFFFFC8A8), modifier = Modifier.size(19.2.dp))
                 Spacer(Modifier.width(10.1.dp))
-                BasicTextField(field, { field = it; onAddress(it.text) },
-                    Modifier.weight(1f).focusRequester(requester).onFocusChanged { state ->
-                        if (state.isFocused && !editing) {
-                            field = TextFieldValue(url, TextRange(0, url.length))
-                            onAddress(url)
-                            // The tap that focused the field may move the cursor afterwards; keep the whole address selected.
-                            scope.launch {
-                                delay(120)
-                                if (field.text == url) field = field.copy(selection = TextRange(0, url.length))
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    BasicTextField(field, { field = it; onAddress(it.text) },
+                        Modifier.fillMaxWidth().graphicsLayer { alpha = if (editing) 1f else 0f }.focusRequester(requester).onFocusChanged { state ->
+                            if (state.isFocused && !editing) {
+                                onAddress(field.text)
+                                // Select the whole address once the tap that focused the field has placed its cursor.
+                                scope.launch {
+                                    delay(150)
+                                    field = field.copy(selection = TextRange(0, field.text.length))
+                                }
                             }
-                        }
-                        onEditing(state.isFocused)
-                    }.semantics { contentDescription = "Browser address" }.testTag("browser-address"),
-                    singleLine = true, textStyle = sansStyle(14.8f, 19f, color = Color(0xFFF6F7FF)), cursorBrush = SolidColor(ChromeLavender),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                    keyboardActions = KeyboardActions(onGo = { onSubmit() }))
+                            onEditing(state.isFocused)
+                        }.semantics { contentDescription = "Browser address" }.testTag("browser-address"),
+                        singleLine = true, textStyle = sansStyle(14.8f, 19f, color = Color(0xFFF6F7FF)), cursorBrush = SolidColor(ChromeLavender),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                        keyboardActions = KeyboardActions(onGo = { onSubmit() }))
+                    // At rest: just the site (no pointer handling, so a tap reaches the field underneath).
+                    if (!editing) Text(cleanHost(url), style = sansStyle(14.8f, 19f, color = Color(0xFFF6F7FF)), maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clearAndSetSemantics { }.testTag("browser-host"))
+                }
                 if (editing) IconButton(onClick = { field = TextFieldValue(""); onAddress("") }, modifier = Modifier.size(44.dp)) {
                     Icon(Icons.Rounded.Close, "Clear address", tint = PillInk, modifier = Modifier.size(20.dp))
                 } else IconButton(onClick = onReloadOrStop, modifier = Modifier.size(44.dp)) {

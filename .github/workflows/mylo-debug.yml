@@ -318,9 +318,10 @@ jobs:
           git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-ci-evidence HEAD:refs/heads/mylo-ci-evidence-${{ inputs.scope || 'full' }}
 
   apk:
-    # The exact APK the emulator just verified, in a git branch (mylo-apk-<branch>) with its full commit SHA, for
-    # phones and reviewers that cannot download Actions artifacts. Only after the approved-screen checks passed.
-    name: Publish the verified APK to mylo-apk-<branch>
+    # The exact APK the emulator just verified, as the rolling pre-release mylo-apk-<branch> (a phone can download it
+    # from the release page without signing in), with the full commit SHA and the device-check results. Only after
+    # every approved-screen check passed. (A git branch can't hold it: the APK is over GitHub's 100 MB file limit.)
+    name: Publish the verified APK as the mylo-apk-<branch> pre-release
     needs: [build, android-preview]
     if: github.event_name == 'workflow_dispatch' && inputs.scope == 'screens' && needs.android-preview.result == 'success'
     runs-on: ubuntu-latest
@@ -339,25 +340,29 @@ jobs:
         with:
           name: Mylo-Android-preview
           path: preview
-      - name: Push to mylo-apk-${{ github.ref_name }}
+      - name: Publish the mylo-apk-${{ github.ref_name }} pre-release
         working-directory: handoff
         env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          tag="mylo-apk-${GITHUB_REF_NAME}"
           {
             echo "Branch: $GITHUB_REF_NAME"
             echo "Commit: $GITHUB_SHA"
             echo "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "Built at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "APK size: $(stat -c %s Mylo-debug.apk) bytes"
             echo "APK SHA-256: $(cut -d' ' -f1 Mylo-debug.apk.sha256)"
             echo
             echo "Device checks on the Android 35 emulator (this exact APK):"
-            cat ../preview/screens-test.txt 2> /dev/null || echo "  (summary missing)"
+            sed 's/^/    /' ../preview/screens-test.txt 2> /dev/null || echo "    (summary missing)"
           } > BUILD_INFO.txt
           cat BUILD_INFO.txt
-          git init -q -b handoff
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Mylo-debug.apk Mylo-debug.apk.sha256 BUILD_INFO.txt
-          git commit -q -m "Mylo-debug.apk built and device-checked from $GITHUB_REF_NAME @ $GITHUB_SHA"
-          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-apk-${GITHUB_REF_NAME}
+          gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2> /dev/null || true
+          gh release create "$tag" Mylo-debug.apk Mylo-debug.apk.sha256 BUILD_INFO.txt --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --title "Mylo-debug.apk · $GITHUB_REF_NAME @ ${GITHUB_SHA::7}" --notes-file BUILD_INFO.txt
+          {
+            echo "## Verified Mylo-debug.apk"
+            echo
+            echo "[Download Mylo-debug.apk]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$tag/Mylo-debug.apk) (pre-release $tag, commit $GITHUB_SHA)"
+          } >> "$GITHUB_STEP_SUMMARY"

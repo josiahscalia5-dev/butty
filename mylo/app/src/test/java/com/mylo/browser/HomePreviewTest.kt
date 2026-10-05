@@ -49,6 +49,18 @@ class HomeTargetPreviewTest {
         showSystemUi = false,
     )
 
+    /** The same phone with a camera-cutout status bar (39 dp, as the Pixel 6 emulator reports at this size). */
+    @Test fun homeAtTargetSizeTallStatusBar() {
+        paparazzi.snapshot(name = "mylo_home_target_1080x1920_status39") {
+            MyloTheme {
+                MyloViewport(edgeToEdgeHome = true) {
+                    Box(Modifier.weight(1f)) { HomeScreen(statusBarInset = 39.dp) }
+                    BottomBar(NavTab.Home, 0, {}, {}, {}, {}, navigationInset = 24.dp)
+                }
+            }
+        }
+    }
+
     @Test fun homeAtTargetSize() {
         paparazzi.snapshot(name = "mylo_home_target_1080x1920") {
             MyloTheme {

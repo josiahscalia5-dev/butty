@@ -25,7 +25,7 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 - Device check (workflow scope `screens`, `ApprovedScreensTest` and `VoiceEntry`): launch → Home → bottom Mylo →
   Voice Mode → Close voice mode → Home → Mylo again, with no AI service; Home at the target's size, a Pixel 6, a
   360×640 dp and a 412×915 dp phone; a real Google results page in Mylo's chrome, resting and with the address
-  tapped. When it passes, the exact APK it tested is published to the `mylo-apk-<branch>` branch with its commit.
+  tapped. When it passes, the exact APK it tested is attached to the rolling `mylo-apk-<branch>` pre-release (Releases page) with its commit.
   Side-by-side previews: `design/previews/claude-ui/19-…` to `22-…` (`tools/compare/device_previews.py`).
 
 **Private Mode (Milestone 1)** — verified on a real Android 35 emulator (Pixel 6) by `PrivateModeFlowTest` in the
