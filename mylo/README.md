@@ -5,8 +5,13 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 ## Current verification status
 
 **Private Mode (Milestone 1)** — verified on a real Android 35 emulator (Pixel 6) by `PrivateModeFlowTest` in the
-workflow's `private` scope ([run 37261817092](https://github.com/josiahscalia5-dev/butty/actions/runs/37261817092)),
-all three cases passed:
+workflow's `private` scope, all three cases passed, most recently on `claude-ui` itself at `6703008`
+([run 37292933926](https://github.com/josiahscalia5-dev/butty/actions/runs/37292933926); first on the session branch in
+[run 37261817092](https://github.com/josiahscalia5-dev/butty/actions/runs/37261817092)). Between those runs the device
+test was made robust to the CI emulator: the emulator's launcher sometimes stopped responding and its system dialog
+covered Mylo, dropping typed characters. The test now hides other apps' error dialogs (and answers any that still
+appear with Wait, never one about Mylo), fills fields through Android's set-text action, and records failures before
+the test closes the activity. Each run's screenshots are on the `mylo-ci-evidence-<scope>` branches.
 
 - The approved Private Mode screen opens from Home's Private card, in its own process. Layoutlib renders and the
   device screenshot match `design/reference/private-mode-reference.png` (`design/previews/claude-ui/09-…`).
