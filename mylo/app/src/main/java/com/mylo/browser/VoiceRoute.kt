@@ -65,7 +65,12 @@ import com.mylo.browser.ai.MyloVoice
 import com.mylo.browser.ai.PrivacyReceipt
 import com.mylo.browser.voice.CallState
 import com.mylo.browser.voice.DeviceSpeech
+import com.mylo.browser.voice.PageHelper
+import com.mylo.browser.voice.PageTargets
+import com.mylo.browser.voice.PageTranslator
 import com.mylo.browser.voice.VoiceCall
+import androidx.compose.foundation.horizontalScroll
+import kotlinx.coroutines.launch
 import com.mylo.browser.voice.ListenProblem
 import androidx.core.content.ContextCompat
 import java.util.Locale
@@ -83,7 +88,7 @@ private val NoteBack = Color(0xFF33290F)
 private val NoteInk = Color(0xFFFFDB91)
 private val OnMint = Color(0xFF52E0AE)
 
-private enum class VoiceSheet { Chat, Access, Settings }
+private enum class VoiceSheet { Chat, Access, Settings, Translate }
 
 
 
@@ -109,6 +114,7 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
     conversation: AiConversation,
     switchboard: AiSwitchboard,
     call: VoiceCall,
+    page: PageHelper,
     hasPage: Boolean,
     tabs: Int,
     onClose: () -> Unit,
@@ -187,12 +193,38 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
     val ui = VoiceModeUi(phase = phase, level = level, micLive = listen.listening || (inCall && !callState.muted && callState.phase != CallState.Phase.Connecting),
         access = access, tabs = tabs, caption = caption, problem = problem, inCall = inCall, muted = callState.muted)
     fun close() { speech.cancel(); call.close(); conversation.stop(); onClose() }
+    val scope = rememberCoroutineScope()
+    fun ask(action: VoiceAction) {
+        val (prompt, needs) = voicePrompt(action)
+        conversation.send(prompt, wants = AiConversation.DEFAULT_WANTS + needs, needs = needs)
+        sheet = VoiceSheet.Chat
+    }
     fun runAction(action: VoiceAction) {
         val title = action.title.replace("\n", " ")
-        val (prompt, needs) = voicePrompt(action)
-        if (!hasPage) conversation.answerLocally(title, "Open a web page first, then ask me again and I’ll help with “$title”.")
-        else conversation.send(prompt, wants = AiConversation.DEFAULT_WANTS + needs, needs = needs)
-        sheet = VoiceSheet.Chat
+        if (!hasPage) {
+            conversation.answerLocally(title, "Open a web page first, then ask me again and I’ll help with “$title”.")
+            sheet = VoiceSheet.Chat
+            return
+        }
+        when (action) {
+            // Finding a section happens on the phone; Mylo AI is only asked when the page has no such section
+            // (pricing) or for step-by-step guidance (cancelling).
+            VoiceAction.FindPricing -> scope.launch {
+                if (page.show(PageTargets.pricing) != null) { page.note("Mylo found the pricing section and marked it."); close() }
+                else if (connectedHost != null) ask(action)
+                else { conversation.answerLocally(title, "I couldn’t find a pricing section on this page."); sheet = VoiceSheet.Chat }
+            }
+            VoiceAction.HelpCancel -> scope.launch {
+                val found = page.show(PageTargets.cancel) != null
+                when {
+                    connectedHost != null -> ask(action)
+                    found -> { page.note("Mylo found how to cancel and marked it. Step-by-step help needs the Mylo AI service."); close() }
+                    else -> { conversation.answerLocally(title, "I couldn’t find a cancel option on this page. Look for Account, Plan or Subscription settings."); sheet = VoiceSheet.Chat }
+                }
+            }
+            VoiceAction.Translate -> sheet = VoiceSheet.Translate
+            else -> ask(action)
+        }
     }
     BackHandler(enabled = sheet == null) { close() }
     Box(Modifier.fillMaxSize().background(Color(0xFF071430)).voiceAutomation()
@@ -241,6 +273,7 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
             if (source == AiDataSource.Location && grant != AiGrant.Off && !DeviceContext.hasLocationPermission(context))
                 askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         }, onClose = { sheet = null })
+        VoiceSheet.Translate -> TranslateSheet(page, onDone = { message -> sheet = null; page.note(message); close() }, onClose = { sheet = null })
         VoiceSheet.Settings -> VoiceSettingsSheet(preferences, connectedHost, onServiceChanged = { connectedHost = MyloAi.connectedHost(context) },
             onSample = { voice -> if (!inCall) call.sample(voice.id, VOICE_SAMPLE) }, sampling = inCall,
             onMoreSettings = { sheet = null; onMoreSettings() }, onClose = { sheet = null })
@@ -383,6 +416,70 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
             modifier = Modifier.size(48.dp).testTag("voice-chat-stop")) { Icon(Icons.Rounded.Stop, "Stop answer", tint = SheetInk) }
         else FilledIconButton(onClick = ::send, enabled = text.isNotBlank(), colors = IconButtonDefaults.filledIconButtonColors(containerColor = SheetAccent, contentColor = UserInk),
             modifier = Modifier.size(48.dp).testTag("voice-chat-send")) { Icon(Icons.AutoMirrored.Rounded.Send, "Send") }
+    }
+}
+
+// Translate this page -----------------------------------------------------------------------------------
+
+/** Translate on the phone: detect the page's language, pick a target, agree to a one-time language pack, translate. */
+@Composable private fun TranslateSheet(page: PageHelper, onDone: (String) -> Unit, onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var source by remember { mutableStateOf<String?>(null) }
+    var detecting by remember { mutableStateOf(true) }
+    var target by rememberSaveable { mutableStateOf(PageTranslator.deviceLanguage()) }
+    var download by remember { mutableStateOf<Boolean?>(null) }
+    var progress by remember { mutableStateOf<String?>(null) }
+    var failed by remember { mutableStateOf<String?>(null) }
+    val translated = page.translated
+    LaunchedEffect(Unit) {
+        source = page.sample()?.let { PageTranslator.detect(it) }
+        detecting = false
+        if (source == target) target = if (target == "en") "es" else "en"
+    }
+    LaunchedEffect(source, target) { source?.let { download = PageTranslator.needsDownload(it, target) } }
+    VoiceSheetFrame("Translate this page", "voice-translate", onClose) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 18.dp)) {
+            Text("Translation happens on this phone: the page's text isn't sent anywhere.", color = SheetMuted, fontSize = 13.sp, lineHeight = 18.sp)
+            Spacer(Modifier.height(12.dp))
+            when {
+                translated != null -> {
+                    Text("This page is translated from ${PageTranslator.name(translated.first)} to ${PageTranslator.name(translated.second)}.", fontSize = 15.sp)
+                    Button(onClick = { scope.launch { page.showOriginal(); onDone("Showing the original page.") } }, Modifier.padding(top = 12.dp).testTag("translate-original"),
+                        colors = ButtonDefaults.buttonColors(containerColor = SheetAccent, contentColor = UserInk)) { Text("Show original") }
+                }
+                detecting -> Text("Finding the page’s language…", fontSize = 15.sp)
+                source == null -> Text("Mylo couldn’t tell which language this page is in, so it can’t translate it.", Modifier.testTag("translate-unknown"), fontSize = 15.sp)
+                else -> {
+                    Text("This page is in ${PageTranslator.name(source!!)}. Translate to:", Modifier.testTag("translate-source"), fontSize = 15.sp)
+                    Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PageTranslator.choices.filter { it != source }.forEach { code ->
+                            val selected = code == target
+                            Box(Modifier.clip(CircleShape).background(if (selected) SheetAccent else SheetCard).border(1.dp, if (selected) SheetAccent else SheetLine, CircleShape)
+                                .selectable(selected, role = Role.RadioButton) { target = code }.padding(horizontal = 14.dp, vertical = 7.dp).testTag("translate-to-$code")) {
+                                Text(PageTranslator.name(code), color = if (selected) UserInk else SheetInk, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                    if (download == true) Text("The first time, Mylo downloads the ${PageTranslator.name(source!!)}–${PageTranslator.name(target)} language pack (about 30 MB each) from Google. Pages are still translated on the phone.",
+                        Modifier.padding(top = 10.dp).testTag("translate-download-note"), color = NoteInk, fontSize = 12.5.sp, lineHeight = 17.sp)
+                    failed?.let { Text(it, Modifier.padding(top = 10.dp), color = NoteInk, fontSize = 13.sp) }
+                    progress?.let { Text(it, Modifier.padding(top = 10.dp).testTag("translate-progress"), color = SheetMuted, fontSize = 13.sp) }
+                    Button(onClick = {
+                        val from = source ?: return@Button
+                        progress = if (download == true) "Downloading the language pack…" else "Translating…"; failed = null
+                        scope.launch {
+                            val count = runCatching { page.translate(from, target) { done, total -> progress = "Translating $done of $total…" } }
+                                .getOrElse { failed = "The translation couldn’t finish. Check your connection for the language pack and try again."; progress = null; return@launch }
+                            if (count > 0) onDone("Translated from ${PageTranslator.name(from)} to ${PageTranslator.name(target)} on this phone. Tap Translate this page again for the original.")
+                            else { failed = "There's no text on this page to translate."; progress = null }
+                        }
+                    }, Modifier.padding(top = 14.dp).testTag("translate-go"), enabled = progress == null,
+                        colors = ButtonDefaults.buttonColors(containerColor = SheetAccent, contentColor = UserInk)) {
+                        Text(if (download == true) "Download and translate" else "Translate")
+                    }
+                }
+            }
+        }
     }
 }
 

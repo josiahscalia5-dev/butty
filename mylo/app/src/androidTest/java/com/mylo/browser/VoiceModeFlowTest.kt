@@ -300,6 +300,58 @@ class VoiceModeFlowTest {
         }
     }
 
+    /** Page actions that run on the phone without Mylo AI: find and mark pricing, find how to cancel, translate on the phone. */
+    @Test fun pageActionsOnThePhone() {
+        assumeTrue("This case covers builds without a Mylo AI service", BuildConfig.MYLO_AI_API_BASE_URL.isBlank())
+        val dir = artifacts("page-actions")
+        val evidence = JSONObject().put("verified", false)
+        val steps = JSONArray()
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
+                type(By.desc("Search or enter address"), "Home search", PLANS_PAGE)
+                waitFor(By.desc("Go"), "the Go button").click()
+                waitFor(By.text("Mylo Plans"), "the test page", 20_000)
+
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-action-findpricing"), "Find the pricing section").click()
+                waitFor(By.text("Mylo found the pricing section and marked it."), "the note on the page", 15_000)
+                waitFor(By.text("Pricing"), "the pricing section on screen")
+                shot(dir, "01-pricing-found.png"); steps.put("pricing found and marked on the phone")
+
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-action-helpcancel"), "Help me cancel").click()
+                waitFor(By.textStartsWith("Mylo found how to cancel and marked it."), "the cancel note", 15_000)
+                waitFor(By.text("Cancel your plan"), "the cancel section on screen")
+                shot(dir, "02-cancel-found.png"); steps.put("cancel section found and marked")
+
+                // Translate a Spanish page on the phone, then show the original.
+                waitFor(By.text("Home"), "Home in the bottom bar").click()
+                type(By.desc("Search or enter address"), "Home search", SPANISH_PAGE)
+                waitFor(By.desc("Go"), "the Go button").click()
+                waitFor(By.text("Planes de Mylo"), "the Spanish page", 20_000)
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-action-translate"), "Translate this page").click()
+                waitFor(By.res("translate-source"), "the detected language", 20_000)
+                shot(dir, "03-translate-sheet.png")
+                evidence.put("detected", device.findObject(By.res("translate-source"))?.text)
+                waitFor(By.res("translate-to-en"), "English").click()
+                waitFor(By.res("translate-go"), "Translate").click()
+                waitFor(By.textStartsWith("Translated from Spanish to English on this phone."), "the translated note", 180_000)
+                val translated = waitFor(By.textContains("month"), "English text on the page", 20_000)
+                evidence.put("translatedSample", translated.text)
+                shot(dir, "04-translated.png"); steps.put("translated Spanish to English on the phone")
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-action-translate"), "Translate this page").click()
+                waitFor(By.res("translate-original"), "Show original").click()
+                waitFor(By.text("Precios"), "the original Spanish again", 15_000)
+                shot(dir, "05-original.png"); steps.put("original restored")
+            } }
+            evidence.put("verified", true)
+        } finally {
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+        }
+    }
+
     /** What the TEST provider received on the call's event channel. */
     private fun providerLog(): List<String> = runCatching {
         val connection = java.net.URL("http://localhost:8091/test/realtime").openConnection() as java.net.HttpURLConnection
@@ -388,6 +440,7 @@ class VoiceModeFlowTest {
         const val URL_ARG = "aiServiceUrl"
         const val TOKEN_ARG = "aiServiceToken"
         const val PLANS_PAGE = "http://localhost:8080/plans.html"
+        const val SPANISH_PAGE = "http://localhost:8080/planes.html"
         val CURRENT_PAGE_OFF: BySelector = By.res("voice-access-currentpage").hasDescendant(By.text("OFF"))
     }
 }

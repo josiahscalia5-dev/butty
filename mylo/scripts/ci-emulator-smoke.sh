@@ -183,6 +183,7 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
   run_voice voiceModeWithoutAServiceSendsNothing 240
   run_voice typedChatThroughTheMyloAiService 300 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
   run_voice realtimeVoiceThroughTheTestService 360 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
+  run_voice pageActionsOnThePhone 420
   timeout 10 curl -s http://127.0.0.1:8091/test/realtime > "$voice_dir/provider-events.json" || true
   kill "$site_pid" "$upstream_pid" "$gateway_pid" "$geo_pid" 2> /dev/null || true
   { echo 'Crash and memory events during the Voice Mode run:'

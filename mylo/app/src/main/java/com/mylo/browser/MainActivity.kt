@@ -175,6 +175,41 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val translations = mutableMapOf<Long, Pair<String, String>>()
+
+    /** Page actions that run on the phone: find and mark, notes, on-device translation. */
+    val pageHelper = object : com.mylo.browser.voice.PageHelper {
+        private fun tabId() = store.tabs.firstOrNull { it.id == aiTab && it.url.isNotBlank() }?.id
+        private fun view() = tabId()?.let { engine.webViewIfLive(it) }
+
+        override suspend fun show(candidates: List<String>): String? {
+            val view = view() ?: return null
+            for (candidate in candidates) com.mylo.browser.voice.PageActions.show(view, candidate)?.let { return it }
+            return null
+        }
+
+        override fun note(message: String) { tabId()?.let { engine.page(it).notice = com.mylo.browser.web.PageNotice.Info(message) } }
+
+        override suspend fun sample(): String? = view()?.let { PageReader.read(it) }?.text?.take(2_000)
+
+        override val translated: Pair<String, String>? get() = tabId()?.let { translations[it] }
+
+        override suspend fun translate(source: String, target: String, onProgress: (Int, Int) -> Unit): Int {
+            val id = tabId() ?: return 0
+            val view = engine.webViewIfLive(id) ?: return 0
+            if (translations.containsKey(id)) com.mylo.browser.voice.PageTranslator.restore(view)
+            val count = com.mylo.browser.voice.PageTranslator.translate(view, source, target, onProgress)
+            if (count > 0) translations[id] = source to target else translations.remove(id)
+            return count
+        }
+
+        override suspend fun showOriginal() {
+            val id = tabId() ?: return
+            engine.webViewIfLive(id)?.let { com.mylo.browser.voice.PageTranslator.restore(it) }
+            translations.remove(id)
+        }
+    }
+
     /** Mylo's realtime voice (needs the Mylo AI service; without it Voice Mode uses on-device speech). */
     val voiceCall = com.mylo.browser.voice.VoiceCall(application, aiService, conversation, switchboard, ::gather, tools, viewModelScope, private = false)
 
@@ -332,7 +367,7 @@ class MainActivity : ComponentActivity() {
     // Home draws its artwork behind the status bar; browser pages do not.
     Box(Modifier.fillMaxSize()) {
     if (voiceOpen) {
-        VoiceRoute(session.conversation, session.switchboard, session.voiceCall, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false; session.pageSnapshot = null },
+        VoiceRoute(session.conversation, session.switchboard, session.voiceCall, session.pageHelper, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false; session.pageSnapshot = null },
             onNav = { destination ->
                 voiceOpen = false
                 session.pageSnapshot = null

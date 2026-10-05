@@ -81,6 +81,9 @@ dependencies {
     // Mylo's realtime voice: WebRTC (Google's libwebrtc, packaged by Stream, Apache-2.0/BSD) for the call to the
     // provider the Mylo AI service chose; opened with a short-lived session secret, never an API key.
     implementation("io.getstream:stream-webrtc-android:1.3.10")
+    // Translate this page: ML Kit's on-device language identification and translation (page text stays on the phone).
+    implementation("com.google.mlkit:language-id:17.0.6")
+    implementation("com.google.mlkit:translate:17.0.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
