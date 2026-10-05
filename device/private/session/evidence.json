@@ -1,0 +1,19 @@
+{
+  "verified": true,
+  "privatePageStrip": "4 trackers blocked on this page",
+  "normalHistory": [
+    "http:\/\/localhost:8080\/trackers.html?tab=normal"
+  ],
+  "privateProcessEnded": true,
+  "steps": [
+    "normal tab visit 1",
+    "private mode screen",
+    "private new tab",
+    "trackers blocked: 4 trackers blocked on this page",
+    "blocked list",
+    "burned",
+    "fresh cookie and storage after burn",
+    "left private mode"
+  ],
+  "otherAppDialogsDismissed": []
+}

@@ -1,0 +1,5 @@
+privateSessionIsSeparateBlocksTrackersAndBurns: passed
+lockTabsNeedsTheScreenLock: passed
+entranceAnimation: passed
+Crash and memory events during the Private Mode run:
+  none recorded

@@ -1,0 +1,55 @@
+10-05 09:59:28.676 D/AndroidRuntime( 4839): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-05 09:59:28.683 I/AndroidRuntime( 4839): Using default boot image
+10-05 09:59:28.683 I/AndroidRuntime( 4839): Leaving lock profiling enabled
+10-05 09:59:28.779 D/AndroidRuntime( 4839): Calling main entry com.android.commands.am.Am
+10-05 09:59:28.781 I/ActivityManager(  555): Force stopping com.mylo.browser appid=10209 user=0: start instr
+10-05 09:59:28.797 I/ActivityManager(  555): Start proc 4854:com.mylo.browser/u0a209 for added application com.mylo.browser
+10-05 09:59:29.294 I/ActivityTaskManager(  555): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=com.mylo.browser/.MainActivity} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_PERMISSION) result code=0
+10-05 09:59:29.462 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: PRE_ON_CREATE
+10-05 09:59:30.046 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: CREATED
+10-05 09:59:30.047 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: STARTED
+10-05 09:59:30.083 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: RESUMED
+10-05 09:59:32.060 I/ActivityTaskManager(  555): Displayed com.mylo.browser/.MainActivity for user 0: +2s773ms
+10-05 09:59:32.805 I/ImeTracker(  555): com.mylo.browser:c5af5c64: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 09:59:32.806 I/ImeTracker(  555): com.mylo.browser:c5af5c64: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 09:59:32.813 I/GoogleInputMethodService( 1315): GoogleInputMethodService.onFinishInput():3157 
+10-05 09:59:32.813 I/GoogleInputMethodService( 1315): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 09:59:32.813 I/GoogleInputMethodService( 1315): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 09:59:32.813 I/GoogleInputMethodService( 1315): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 09:59:34.536 I/ActivityTaskManager(  555): START u0 {flg=0x20000 cmp=com.mylo.browser/.PrivateActivity} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 09:59:34.630 I/ActivityManager(  555): Start proc 4944:com.mylo.browser:private/u0a209 for next-top-activity {com.mylo.browser/com.mylo.browser.PrivateActivity}
+10-05 09:59:35.021 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: PAUSED
+10-05 09:59:36.021 D/ActivityManager(  555): freezing 4408 com.mylo.browser.test
+10-05 09:59:36.286 D/ActivityManager(  555): freezing 1674 com.android.keychain
+10-05 09:59:38.000 I/ActivityTaskManager(  555): Displayed com.mylo.browser/.PrivateActivity for user 0: +3s466ms
+10-05 09:59:38.747 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: STOPPED
+10-05 09:59:38.877 D/ActivityManager(  555): freezing 1623 android.process.acore
+10-05 09:59:39.361 I/ImeTracker(  555): com.mylo.browser:a6eef305: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-05 09:59:39.361 I/ImeTracker(  555): com.mylo.browser:a6eef305: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 09:59:39.368 I/GoogleInputMethodService( 1315): GoogleInputMethodService.onFinishInput():3157 
+10-05 09:59:39.427 I/GoogleInputMethodService( 1315): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 0, locked = false
+10-05 09:59:39.427 I/GoogleInputMethodService( 1315): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.mylo.browser, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-05 09:59:39.427 I/GoogleInputMethodService( 1315): GoogleInputMethodService.updateDeviceLockedStatus():2248 repeatCheckTimes = 1, locked = false
+10-05 09:59:42.752 D/ActivityManager(  555): freezing 1558 com.google.android.googlequicksearchbox:search
+10-05 09:59:42.753 D/ActivityManager(  555): freezing 3693 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+10-05 09:59:44.821 I/ActivityTaskManager(  555): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.mylo.browser.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-05 09:59:45.000 D/ActivityManager(  555): sync unfroze 3578 com.google.android.webview:webview_service for 6
+10-05 09:59:45.019 D/ActivityManager(  555): quick sync unfreeze 4408 for 1
+10-05 09:59:45.051 D/ActivityManager(  555): sync unfroze 4408 com.mylo.browser.test for 1
+10-05 09:59:45.096 D/ActivityManager(  555): sync unfroze 1558 com.google.android.googlequicksearchbox:search for 6
+10-05 09:59:45.097 D/ActivityManager(  555): sync unfroze 3693 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0 for 6
+10-05 09:59:45.341 D/LifecycleMonitor( 4854): Lifecycle status change: com.mylo.browser.MainActivity@fdca3ca in: DESTROYED
+10-05 09:59:45.748 I/ActivityTaskManager(  555): Displayed com.mylo.browser.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity for user 0: +883ms
+10-05 09:59:45.809 I/ActivityManager(  555): Force stopping com.mylo.browser appid=10209 user=0: finished inst
+10-05 09:59:45.809 I/AndroidRuntime( 4839): VM exiting with result code 0.
+10-05 09:59:45.815 E/ActivityManager(  555): Unable to freeze binder for 4854: -11
+10-05 09:59:45.847 E/ActivityManager(  555): Unable to freeze binder for 4944: -11
+10-05 09:59:45.893 I/ActivityManager(  555): Killing 4854:com.mylo.browser/u0a209 (adj 0): stop com.mylo.browser due to finished inst
+10-05 09:59:45.902 I/ActivityManager(  555): Killing 4944:com.mylo.browser:private/u0a209 (adj 0): stop com.mylo.browser due to finished inst
+10-05 09:59:45.913 W/ActivityTaskManager(  555): Force removing ActivityRecord{ff11740 u0 com.mylo.browser/.PrivateActivity t13 f}}: app died, no saved state
+10-05 09:59:45.997 W/ActivityTaskManager(  555): Unable to send transaction to client proc com.mylo.browser:private: no app thread
+10-05 09:59:46.033 W/ActivityManager(  555): pid 555 system sent binder code 2 with flags 0 to frozen apps and got error -32
+10-05 09:59:46.034 I/ActivityManager(  555): Failure reporting to instrumentation watcher: comp=ComponentInfo{com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner} results=Bundle[mParcelledData.dataSize=92]
+10-05 09:59:46.139 I/ImeTracker(  555): com.mylo.browser:970b2aa: onRequestHide at ORIGIN_SERVER reason HIDE_REMOVE_CLIENT fromUser false
+10-05 09:59:46.140 I/ImeTracker(  555): com.mylo.browser:970b2aa: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-05 09:59:46.155 W/ActivityManager(  555): setHasOverlayUi called on unknown pid: 4944

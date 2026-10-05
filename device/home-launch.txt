@@ -1,0 +1,7 @@
+Starting: Intent { cmp=com.mylo.browser/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.mylo.browser/.MainActivity
+TotalTime: 2909
+WaitTime: 2923
+Complete
