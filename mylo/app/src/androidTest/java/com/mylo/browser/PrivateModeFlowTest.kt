@@ -56,7 +56,7 @@ class PrivateModeFlowTest {
             context.getSharedPreferences("mylo_browser", 0).edit().remove("history").commit()
             ActivityScenario.launch(MainActivity::class.java).use {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
-                typeInto(waitFor(By.desc("Search or enter address"), "Home search"), NORMAL_PAGE)
+                typeInto(By.desc("Search or enter address"), "Home search", NORMAL_PAGE)
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
                 shot(dir, "01-normal-tab.png"); steps.put("normal tab visit 1")
@@ -71,7 +71,7 @@ class PrivateModeFlowTest {
 
                 // 3. Enter Private Session → a private new tab; the same test page sees no normal cookie.
                 device.findObject(By.res("private-enter")).click()
-                typeInto(waitFor(By.res("private-search-input"), "the private search box"), PRIVATE_PAGE)
+                typeInto(By.res("private-search-input"), "the private search box", PRIVATE_PAGE)
                 shot(dir, "03-private-new-tab.png"); steps.put("private new tab")
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "a fresh cookie jar in Private Mode", 20_000)
@@ -95,7 +95,7 @@ class PrivateModeFlowTest {
                 waitFor(By.textContains("Private session cleared"), "the burn message")
                 shot(dir, "06-burned.png"); steps.put("burned")
                 device.findObject(By.res("private-enter")).click()
-                typeInto(waitFor(By.res("private-search-input"), "the private search box after burning"), PRIVATE_PAGE)
+                typeInto(By.res("private-search-input"), "the private search box after burning", PRIVATE_PAGE)
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser (cookie) · storage visit 1"), "cookie and storage cleared by the burn", 20_000)
                 shot(dir, "07-after-burn-fresh-storage.png"); steps.put("fresh cookie and storage after burn")
@@ -155,7 +155,7 @@ class PrivateModeFlowTest {
                 shot(dir, "02-lock-on.png")
                 device.pressBack()
                 device.findObject(By.res("private-enter")).click()
-                typeInto(waitFor(By.res("private-search-input"), "the private search box"), PRIVATE_PAGE)
+                typeInto(By.res("private-search-input"), "the private search box", PRIVATE_PAGE)
                 submit()
                 waitFor(By.textContains("in this browser"), "the private page", 20_000)
 
@@ -198,15 +198,33 @@ class PrivateModeFlowTest {
     private fun <T> recording(dir: File, block: () -> T): T = try { block() } catch (failure: Throwable) {
         runCatching { device.takeScreenshot(File(dir, "failure.png")) }
         runCatching { File(dir, "failure-hierarchy.xml").outputStream().use { device.dumpWindowHierarchy(it) } }
+        runCatching { File(dir, "failure-activities.txt").writeText(shell("dumpsys activity activities").lines().filter { "Activity" in it || "mResumed" in it || "mFocused" in it }.take(80).joinToString("\n")) }
         throw failure
     }
 
-    /** Types like a person: focus the field, then the keyboard's own key events (Android's `input text`). */
-    private fun typeInto(field: UiObject2, text: String) {
-        field.click()
+    /**
+     * Fills a text field: first through the field's own accessibility "set text" action (what Mylo's search
+     * tests use; no key events for the keyboard or a busy emulator to drop), then, if the field didn't take
+     * it, with Android's key events. Go is pressed only once the whole address is in the field.
+     */
+    private fun typeInto(selector: BySelector, what: String, text: String) {
+        waitFor(selector, what).click()
         SystemClock.sleep(600)
+        runCatching { waitFor(selector, what).text = text }
+        if (fieldShows(selector, text, 3_000)) return
+        runCatching { waitFor(selector, what).clear() }
         shell("input text " + text.replace("&", "\\&"))
-        SystemClock.sleep(600)
+        if (fieldShows(selector, text, 15_000)) return
+        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"")
+    }
+
+    private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
+        val deadline = SystemClock.uptimeMillis() + timeout
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
+            SystemClock.sleep(200)
+        }
+        return false
     }
 
     private fun shell(command: String): String =
