@@ -162,11 +162,11 @@ class VoiceModeFlowTest {
 
                 // A page action that needs the page asks first; Allow once is used up by that question.
                 waitFor(By.res("voice-chat-close"), "close chat").click()
-                waitFor(By.res("voice-action-sitesafety"), "Is this site safe?").click()
+                waitFor(By.res("voice-action-explain"), "Explain this page").click()
                 waitFor(By.res("voice-chat-ask"), "Mylo asking to read the page")
                 shot(dir, "05-asks-before-reading.png"); steps.put("asked before reading the page")
                 waitFor(By.res("voice-ask-allow"), "Allow once").click()
-                waitFor(By.textContains("Check this page for red flags."), "the safety question answered with the page", 30_000)
+                waitFor(By.textContains("I can see the page “Mylo Plans”"), "the question answered with the page", 30_000)
                 waitFor(By.textStartsWith("Privacy receipt: Current Page shared"), "the receipt for the one-time grant")
                 waitFor(By.res("voice-chat-close"), "close chat").click()
                 waitFor(CURRENT_PAGE_OFF, "Current Page back off after the one-time grant")
@@ -368,7 +368,8 @@ class VoiceModeFlowTest {
                 waitFor(By.res("translate-to-en"), "English").click()
                 waitFor(By.res("translate-go"), "Translate").click()
                 waitFor(By.textStartsWith("Translated from Spanish to English on this phone."), "the translated note", 180_000)
-                val translated = waitFor(By.textContains("month"), "English text on the page", 20_000)
+                val translated = waitFor(By.text("Prices"), "the heading translated to English", 20_000)
+                waitFor(By.textStartsWith("Choose the plan"), "the first paragraph in English")
                 evidence.put("translatedSample", translated.text)
                 shot(dir, "04-translated.png"); steps.put("translated Spanish to English on the phone")
                 waitFor(By.text("Mylo"), "the Mylo button").click()
