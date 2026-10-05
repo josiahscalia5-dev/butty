@@ -309,4 +309,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Evidence for $GITHUB_REF_NAME @ ${GITHUB_SHA::7} (${{ inputs.scope }})"
-          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-ci-evidence
+          # The latest run of any scope, plus one branch per scope so parallel runs keep their own evidence.
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-ci-evidence HEAD:refs/heads/mylo-ci-evidence-${{ inputs.scope || 'full' }}
