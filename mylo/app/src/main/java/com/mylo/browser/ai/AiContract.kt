@@ -99,7 +99,7 @@ object AiContract {
             }
             "action" -> {
                 val type = json.optString("type")
-                if (type !in tools) null else AiEvent.Proposal(type, json.optString("target"), json.optString("query").ifBlank { null })
+                if (type !in tools) null else AiEvent.Proposal(type, json.optString("target"), if (json.isNull("query")) null else json.optString("query").ifBlank { null })
             }
             "done" -> AiEvent.Done
             "error" -> AiEvent.Failure(json.optString("code", "error"), json.optString("message", "Mylo AI couldn't answer."))

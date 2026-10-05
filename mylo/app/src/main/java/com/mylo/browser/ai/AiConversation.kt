@@ -122,6 +122,9 @@ class AiConversation(
         add(ChatMessage(nextId++, AiTurn.Role.Assistant, reply, local = true))
     }
 
+    /** A short note from Mylo about something done on the phone (an action's result); never sent. */
+    fun note(text: String) { add(ChatMessage(nextId++, AiTurn.Role.Assistant, text.trim(), local = true)) }
+
     /** Stops the answer being written (the part already shown stays, marked as stopped). */
     fun stop() {
         val running = job ?: return

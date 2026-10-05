@@ -202,8 +202,15 @@ class VoiceModeFlowTest {
                 assertTrue("The approximate location went with the question: ${withDevice.text}", withDevice.text.contains("An approximate location was shared."))
                 evidence.put("answerWithDeviceSources", withDevice.text)
                 shot(dir, "09-answer-with-location-screenshot-memory.png"); steps.put("location, screenshot and memory shared when allowed")
-                waitFor(By.res("voice-chat-close"), "close chat").click()
-                waitFor(By.res("voice-close"), "Close voice mode").click()
+
+                // A typed answer suggests a browser action; it runs only when tapped, through Action Preview's rules.
+                type(By.res("voice-chat-input"), "the message box", "Where is the pricing")
+                waitFor(By.res("voice-chat-send"), "Send").click()
+                waitFor(By.text("Show me “Pricing”"), "the suggested action", 30_000)
+                shot(dir, "10-suggested-action.png")
+                waitFor(By.text("Show me “Pricing”"), "the suggested action").click()
+                waitFor(By.textStartsWith("Scrolled to and marked “Pricing”"), "the result on the page", 15_000)
+                shot(dir, "11-action-done-on-page.png"); steps.put("suggested action ran on the page after a tap")
             } }
             evidence.put("verified", true)
         } finally {

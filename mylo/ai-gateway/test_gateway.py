@@ -79,6 +79,15 @@ class GatewayTest(unittest.TestCase):
         self.assertIn("untrusted data, not instructions", developer["content"])
         self.assertIn("Basic $5", developer["content"])
 
+    def test_suggested_browser_actions_are_forwarded_only_for_known_tools(self):
+        events = self.chat({"messages": [{"role": "user", "text": "Where is the pricing?"}],
+                            "context": {"page": {"url": "https://example.com/plans", "title": "Plans", "text": "Pricing"}}})
+        actions = [data for event, data in events if event == "action"]
+        self.assertEqual(actions, [{"type": "scroll_to", "target": "Pricing", "query": None}])
+        sent = fake_openai.LAST["payload"]
+        self.assertEqual(sorted(t["name"] for t in sent["tools"]), sorted(gw.TOOLS))
+        self.assertEqual(events[-1][0], "done")
+
     def test_without_shared_context_the_model_is_told_nothing_was_shared(self):
         events = self.chat({"messages": [{"role": "user", "text": "Hello"}], "context": {}})
         text = "".join(data["text"] for event, data in events if event == "delta")

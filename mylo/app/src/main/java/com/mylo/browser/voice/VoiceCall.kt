@@ -29,8 +29,9 @@ interface ToolHost {
     suspend fun run(action: BrowserAction): Pair<Boolean, String>
 }
 
-/** A consequential tool call waiting for the person's Allow. */
-data class PendingTool(val callId: String, val action: BrowserAction, val summary: String, val details: List<String>)
+/** A consequential tool call waiting for the person's Allow; [onAnswered] for a typed answer's suggestion. */
+data class PendingTool(val callId: String, val action: BrowserAction, val summary: String, val details: List<String>,
+    val onAnswered: ((ok: Boolean, detail: String) -> Unit)? = null)
 
 /**
  * One realtime voice conversation with Mylo: a short-lived session from the Mylo AI service, the call itself,
@@ -120,9 +121,20 @@ class VoiceCall(
         val waiting = _pending.value ?: return
         _pending.value = null
         scope.launch {
-            val output = if (allow) tools.run(waiting.action).let { (ok, detail) -> BrowserTools.result(ok, detail) }
-            else BrowserTools.result(false, "The person chose not to allow it.")
-            realtime.toolResult(waiting.callId, output)
+            val (ok, detail) = if (allow) tools.run(waiting.action) else false to "The person chose not to allow it."
+            waiting.onAnswered?.invoke(ok, detail) ?: realtime.toolResult(waiting.callId, BrowserTools.result(ok, detail))
+        }
+    }
+
+    /**
+     * A browser action a typed answer suggested and the person tapped: the same Action Preview rules as voice.
+     * [onResult] hears whether it ran and what happened.
+     */
+    fun propose(proposal: com.mylo.browser.ai.AiEvent.Proposal, onResult: (ok: Boolean, detail: String) -> Unit) {
+        when (val plan = BrowserTools.plan(proposal.type, BrowserTools.arguments(proposal), tools.pageUrl)) {
+            is ToolPlan.Run -> scope.launch { tools.run(plan.action).let { (ok, detail) -> onResult(ok, detail) } }
+            is ToolPlan.Ask -> _pending.value = PendingTool("chat", plan.action, plan.preview.summary, plan.preview.details, onResult)
+            is ToolPlan.Refuse -> onResult(false, plan.reason)
         }
     }
 

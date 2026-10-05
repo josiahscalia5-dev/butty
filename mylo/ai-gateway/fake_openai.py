@@ -119,10 +119,15 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         send("response.created", {"response": {"id": "resp_test"}})
+        tool = None
+        if "pricing" in reply.lower() and "where" in reply.lower():
+            tool = {"type": "function_call", "name": "scroll_to", "call_id": "call_chat_1", "arguments": json.dumps({"target": "Pricing"})}
         words = reply.split(" ")
         for index, word in enumerate(words):
             send("response.output_text.delta", {"delta": word + ("" if index == len(words) - 1 else " ")})
             time.sleep(self.server.delay)
+        if tool:
+            send("response.output_item.done", {"item": tool})
         send("response.completed", {"response": {"id": "resp_test", "status": "completed"}})
 
 

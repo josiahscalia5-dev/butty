@@ -184,7 +184,9 @@ def responses_request(config, body):
         # The picture of the page goes with the person's question (it is untrusted data too).
         items[-1] = {"role": "user", "content": [{"type": "input_text", "text": items[-1]["content"]},
                                                  {"type": "input_image", "image_url": "data:image/jpeg;base64," + data.replace("\n", "")}]}
-    return {"model": config.chat_model, "instructions": PERSONA, "input": items, "stream": True, "store": False}
+    # The model may suggest browser actions; the app shows them as buttons and runs them only through Action Preview.
+    return {"model": config.chat_model, "instructions": PERSONA, "input": items, "stream": True, "store": False,
+            "tools": tool_definitions(), "tool_choice": "auto", "parallel_tool_calls": False}
 
 
 def tool_definitions():
@@ -331,6 +333,15 @@ class Handler(BaseHTTPRequestHandler):
                             text = text[:MAX_ANSWER_CHARS - sent]
                             sent += len(text)
                             self.event("delta", {"text": text})
+                    elif event == "response.output_item.done" and (data.get("item") or {}).get("type") == "function_call":
+                        item = data["item"]
+                        try:
+                            arguments = json.loads(item.get("arguments") or "{}")
+                        except ValueError:
+                            arguments = {}
+                        if item.get("name") in TOOLS and isinstance(arguments, dict):
+                            self.event("action", {"type": item["name"], "target": str(arguments.get("target", ""))[:300],
+                                                  "query": str(arguments.get("query") or arguments.get("language") or "")[:300] or None})
                     elif event == "response.completed":
                         finished = True
                         self.event("done", {})

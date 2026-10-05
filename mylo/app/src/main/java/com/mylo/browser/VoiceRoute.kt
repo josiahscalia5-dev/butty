@@ -273,7 +273,14 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
             // During a voice call the typed words join the same conversation and Mylo answers aloud.
             onSend = { if (inCall) call.type(it) else conversation.send(it) }, onStop = conversation::stop, onAnswerAsk = { conversation.answerAsk(it); accessVersion++ },
             onNewChat = conversation::clear, onAdjust = { sheet = VoiceSheet.Access }, onClose = { sheet = null },
-            onCoach = if (hasPage) ({ text: String -> sheet = null; page.coach(com.mylo.browser.ai.PageCoach.steps(text)); close() }) else null)
+            onCoach = if (hasPage) ({ text: String -> sheet = null; page.coach(com.mylo.browser.ai.PageCoach.steps(text)); close() }) else null,
+            onProposal = { proposal ->
+                call.propose(proposal) { ok, detail ->
+                    // Done on the page: show it there. Refused or not possible: say so in the conversation.
+                    if (ok && proposal.type != "read_aloud") { sheet = null; page.note(detail.substringBefore(" It says:")); close() }
+                    else conversation.note(detail)
+                }
+            })
         VoiceSheet.Access -> AccessSheet(switchboard, accessVersion, { source, grant ->
             switchboard.set(source, grant); accessVersion++
             // Location needs Android's (approximate) location permission; asked for when it is turned on.
@@ -336,6 +343,7 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
     onAdjust: () -> Unit,
     onClose: () -> Unit,
     onCoach: ((String) -> Unit)? = null,
+    onProposal: ((com.mylo.browser.ai.AiEvent.Proposal) -> Unit)? = null,
 ) {
     VoiceSheetFrame("Chat with Mylo", "voice-chat", onClose, actions = {
         if (messages.isNotEmpty()) TextButton(onClick = onNewChat, modifier = Modifier.testTag("voice-chat-new")) { Text("New chat", color = SheetAccent) }
@@ -351,13 +359,14 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
                 Text("Ask Mylo anything about this page, or about the web in general. Mylo reads only what What Mylo can see allows.",
                     Modifier.padding(6.dp).testTag("voice-chat-empty"), color = SheetMuted, fontSize = 14.sp, lineHeight = 19.sp)
             }
-            items(messages, key = { it.id }) { message -> ChatRow(message, onAnswerAsk, onAdjust, onCoach) }
+            items(messages, key = { it.id }) { message -> ChatRow(message, onAnswerAsk, onAdjust, onCoach, onProposal) }
         }
         ChatInput(busy, onSend, onStop)
     }
 }
 
-@Composable private fun ChatRow(message: ChatMessage, onAnswerAsk: (Boolean) -> Unit, onAdjust: () -> Unit, onCoach: ((String) -> Unit)? = null) {
+@Composable private fun ChatRow(message: ChatMessage, onAnswerAsk: (Boolean) -> Unit, onAdjust: () -> Unit, onCoach: ((String) -> Unit)? = null,
+    onProposal: ((com.mylo.browser.ai.AiEvent.Proposal) -> Unit)? = null) {
     if (message.role == AiTurn.Role.User) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
             Text(message.text, Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp)).background(UserBubble)
@@ -394,6 +403,12 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
                 if (!ask.answered) TextButton(onClick = onAdjust) { Text("Change What Mylo can see", color = SheetAccent, fontSize = 13.sp) }
             }
             message.receipt?.let { ReceiptRow(it) }
+            // Suggested actions run only when tapped, through Action Preview's rules.
+            if (onProposal != null && message.state == ChatMessage.State.Done) message.proposals.forEach { proposal ->
+                OutlinedButton(onClick = { onProposal(proposal) }, Modifier.padding(top = 6.dp).testTag("voice-chat-action")) {
+                    Text(com.mylo.browser.voice.BrowserTools.label(proposal), color = SheetInk, fontSize = 13.sp)
+                }
+            }
             if (onCoach != null && message.state == ChatMessage.State.Done && com.mylo.browser.ai.PageCoach.steps(message.text).size >= 2)
                 TextButton(onClick = { onCoach(message.text) }, Modifier.testTag("voice-chat-coach")) { Text("Coach me through these steps on the page", color = SheetAccent, fontSize = 13.sp) }
         }

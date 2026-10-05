@@ -53,6 +53,28 @@ object BrowserTools {
         }
     }
 
+    /** The arguments of a suggestion from a typed answer, in the voice tools' shape. */
+    fun arguments(proposal: com.mylo.browser.ai.AiEvent.Proposal): JSONObject = JSONObject().apply {
+        put("target", proposal.target); put("label", proposal.target)
+        proposal.query?.let { put("query", it); put("language", it) }
+        if (proposal.query == null && proposal.type in setOf("find", "search")) put("query", proposal.target)
+    }
+
+    /** A button label for a suggested action. */
+    fun label(proposal: com.mylo.browser.ai.AiEvent.Proposal): String {
+        val what = proposal.target.ifBlank { proposal.query.orEmpty() }.take(40)
+        return when (proposal.type) {
+            "scroll_to" -> "Show me “$what”"
+            "highlight", "find" -> "Mark “$what” on the page"
+            "read_aloud" -> "Show “$what”"
+            "go_back" -> "Go back"
+            "search" -> "Search for “${proposal.query ?: what}”"
+            "open_link" -> "Open the link"
+            "translate" -> "Translate this page"
+            else -> "Do this"
+        }
+    }
+
     /** What the model is told happened. */
     fun result(ok: Boolean, detail: String): JSONObject = JSONObject().put("ok", ok).put("detail", detail)
 }
