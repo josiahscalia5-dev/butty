@@ -1,10 +1,6 @@
 package com.mylo.browser
 
 import android.os.SystemClock
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performImeAction
-import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,7 +17,6 @@ import org.json.JSONObject
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -36,9 +31,6 @@ class VoiceModeFlowTest {
     private val context get() = instrumentation.targetContext
     private val device get() = UiDevice.getInstance(instrumentation)
     private val arguments get() = InstrumentationRegistry.getArguments()
-
-    /** Compose's test API for Home's search box, as Mylo's search tests use it (no keyboard timing on a busy emulator). */
-    @get:Rule val compose = createEmptyComposeRule()
 
     @Before fun setUp() {
         AiPreferences(context).setTestService(null)
@@ -123,9 +115,8 @@ class VoiceModeFlowTest {
         val steps = JSONArray()
         try {
             ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
-                waitFor(By.desc("Search or enter address"), "Home search")
-                compose.onNodeWithTag("search-input").performTextReplacement(PLANS_PAGE)
-                compose.onNodeWithTag("search-input").performImeAction()
+                type(By.desc("Search or enter address"), "Home search", PLANS_PAGE)
+                waitFor(By.desc("Go"), "the Go button").click()
                 waitFor(By.text("Mylo Plans"), "the test page", 20_000)
                 steps.put("opened the plans page")
 
@@ -189,7 +180,7 @@ class VoiceModeFlowTest {
         SystemClock.sleep(600)
         runCatching { waitFor(selector, what).text = text }
         if (fieldShows(selector, text, 3_000)) return
-        runCatching { waitFor(selector, what).clear() }
+        runCatching { device.findObject(selector)?.clear() }
         shell("input text " + text.replace(" ", "%s"))
         if (fieldShows(selector, text, 15_000)) return
         throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"")
@@ -198,7 +189,8 @@ class VoiceModeFlowTest {
     private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
         val deadline = SystemClock.uptimeMillis() + timeout
         while (SystemClock.uptimeMillis() < deadline) {
-            if (runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
+            // Found by the text too: a filled field may no longer match a description selector.
+            if (device.hasObject(By.text(text)) || runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
             SystemClock.sleep(200)
         }
         return false
