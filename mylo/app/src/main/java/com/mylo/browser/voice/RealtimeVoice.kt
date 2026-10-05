@@ -194,6 +194,8 @@ class RealtimeVoice(private val context: Context, private val onEvent: (Realtime
         else savedAudioMode?.let { audio.mode = it; @Suppress("DEPRECATION") run { audio.isSpeakerphoneOn = false }; savedAudioMode = null }
     }
 
+    private fun lost() { if (ready || _state.value.phase != CallState.Phase.Connecting) _state.value = _state.value.copy(problem = "Mylo’s voice lost the connection.") }
+
     private fun handle(event: RealtimeEvent) {
         val now = _state.value
         _state.value = when (event) {
@@ -231,8 +233,12 @@ class RealtimeVoice(private val context: Context, private val onEvent: (Realtime
     private inner class Observer : PeerConnection.Observer {
         override fun onSignalingChange(state: PeerConnection.SignalingState?) = Unit
         override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-            if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.DISCONNECTED) scope.launch {
-                _state.value = _state.value.copy(problem = "Mylo’s voice lost the connection.")
+            // A brief disconnection often recovers on its own; only a lasting one (or a failure) is reported.
+            if (state == PeerConnection.IceConnectionState.FAILED) scope.launch { lost() }
+            if (state == PeerConnection.IceConnectionState.DISCONNECTED) scope.launch {
+                delay(5_000)
+                val now = connection?.iceConnectionState()
+                if (now == PeerConnection.IceConnectionState.DISCONNECTED || now == PeerConnection.IceConnectionState.FAILED) lost()
             }
         }
         override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit

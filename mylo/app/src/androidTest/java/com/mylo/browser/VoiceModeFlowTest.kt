@@ -185,13 +185,12 @@ class VoiceModeFlowTest {
                 shot(dir, "07-saved-memory.png")
                 waitFor(By.res("voice-settings-close"), "close settings").click()
                 waitFor(By.res("voice-access-adjust"), "Adjust").click()
-                val list = waitFor(By.res("voice-access-list"), "the switchboard list")
-                list.scrollUntil(Direction.DOWN, Until.findObject(By.res("access-location-once")))
+                scrollToRow("access-location-once")
                 waitFor(By.res("access-location-once"), "Location: Allow once").click()
                 waitFor(By.res("com.android.permissioncontroller:id/permission_allow_foreground_only_button"), "Android's location prompt", 20_000).click()
-                list.scrollUntil(Direction.UP, Until.findObject(By.res("access-screenshot-once")))
+                scrollToRow("access-screenshot-once")
                 waitFor(By.res("access-screenshot-once"), "Screenshot: Allow once").click()
-                list.scrollUntil(Direction.DOWN, Until.findObject(By.res("access-mylomemory-always")))
+                scrollToRow("access-mylomemory-always")
                 waitFor(By.res("access-mylomemory-always"), "Saved Mylo Memory: Always").click()
                 shot(dir, "08-location-screenshot-memory-on.png")
                 waitFor(By.res("voice-access-close"), "close switchboard").click()
@@ -238,7 +237,7 @@ class VoiceModeFlowTest {
                 waitFor(By.res("voice-talk"), "the microphone").click()
                 waitFor(By.res("com.android.permissioncontroller:id/permission_allow_foreground_only_button"), "Android's microphone prompt", 20_000).click()
                 waitFor(By.res("voice-mute"), "the call's Mute control", 30_000)
-                waitFor(By.res("voice-mic-live"), "the microphone-on indicator")
+                waitFor(By.res("voice-mic-live"), "the microphone-on indicator", 40_000)
                 shot(dir, "01-call-listening.png"); steps.put("call open, microphone on")
 
                 // The test provider "hears" a question, answers aloud and asks to show the pricing; Mylo runs it.
@@ -365,6 +364,14 @@ class VoiceModeFlowTest {
             evidence.put("verified", true)
         } finally {
             File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+        }
+    }
+
+    /** Scrolls the switchboard sheet (found afresh: it redraws after Android's permission prompt) until [res] shows. */
+    private fun scrollToRow(res: String) {
+        for (direction in listOf(Direction.DOWN, Direction.UP)) {
+            if (device.hasObject(By.res(res))) return
+            runCatching { waitFor(By.res("voice-access-list"), "the switchboard list").scrollUntil(direction, Until.findObject(By.res(res))) }
         }
     }
 

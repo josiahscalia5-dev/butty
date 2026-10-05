@@ -65,14 +65,19 @@ class VoiceCall(
         if (active) return
         starting = scope.launch {
             try {
-                val session = service.voiceSession(voice, private)
-                realtime.open(session, handsFree)
-                if (state.value.problem != null) return@launch
+                // Networks sometimes fail to connect a call the first time: one more try with a fresh session.
+                var attempt = 0
+                while (true) {
+                    realtime.open(service.voiceSession(voice, private), handsFree)
+                    val connected = state.value.problem == null && withTimeoutOrNull(15_000) { while (!realtime.ready) delay(100); true } == true
+                    if (connected) break
+                    if (++attempt >= 2) { realtime.fail("Mylo’s voice couldn’t connect. Check your connection and try again."); return@launch }
+                }
                 // Voice calls take the switchboard's text sources; a screenshot is only sent with typed questions.
                 val gathered = gather(switchboard.authorize(AiConversation.DEFAULT_WANTS - AiDataSource.Screenshot))
                 val (context, hidden) = AiPrivacy.prepare(gathered.context.copy(screenshot = null))
                 _receipt.value = PrivacyReceipt(context.used, hidden, gathered.unavailable)
-                AiContract.contextBlock(context)?.let { block -> waitForChannel(); realtime.addContext(block) }
+                AiContract.contextBlock(context)?.let { block -> realtime.addContext(block) }
             } catch (e: AiException) {
                 realtime.fail(e.problem.message)
             }
