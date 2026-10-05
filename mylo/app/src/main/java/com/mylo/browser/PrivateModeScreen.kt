@@ -210,7 +210,7 @@ internal class PrivateEntrance(val corgiDrop: Animatable<Float, *>, val corgiAlp
 
 @Composable private fun rememberPrivateEntrance(play: Boolean): PrivateEntrance {
     val e = remember {
-        PrivateEntrance(Animatable(if (play) -18f else 0f), Animatable(if (play) 0f else 1f), Animatable(if (play) 0f else 1f),
+        PrivateEntrance(Animatable(if (play) -18f else 0f), Animatable(if (play) .3f else 1f), Animatable(if (play) 0f else 1f),
             Animatable(if (play) 0f else 1f), Animatable(if (play) 0f else 1f))
     }
     if (play) LaunchedEffect(Unit) {
