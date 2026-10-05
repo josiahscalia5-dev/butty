@@ -227,7 +227,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           # A test-only follow-up can reuse the completed provider evidence.
-          MYLO_POLISH_CASES: ${{ contains(github.event.head_commit.message, '[navigation-only]') && 'browserBackForward shieldState' || '' }}
+          MYLO_POLISH_CASES: ${{ contains(github.event.head_commit.message, '[navigation-only]') && 'shieldState browserBackForward' || '' }}
         with:
           api-level: 35
           arch: x86_64

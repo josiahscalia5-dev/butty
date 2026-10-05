@@ -2,7 +2,6 @@ package com.mylo.browser
 
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.view.KeyEvent
 import android.webkit.CookieManager
 import android.net.Uri
 import android.os.SystemClock
@@ -57,8 +56,9 @@ class SettingsSearchFlowTest {
             assertFalse("Forward starts disabled", toolbarButton("Forward").isEnabled)
             val next = "https://example.com/?mylo=toolbar-navigation-long-address-check"
             node(By.desc("Browser address")).click()
-            device.pressKeyCode(KeyEvent.KEYCODE_A, KeyEvent.META_CTRL_ON)
-            device.executeShellCommand("input text '$next'")
+            // Replace text through the real editable node. UiAutomation's shell
+            // command does not strip shell quotes and can drop rapid key events.
+            node(By.clazz("android.widget.EditText").pkg("com.mylo.browser").focused(true)).text = next
             node(By.text(next).pkg("com.mylo.browser"))
             capture(folder, "05-edit-long-address.png")
             node(By.desc("Go")).click()
