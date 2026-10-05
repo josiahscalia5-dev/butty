@@ -87,8 +87,8 @@ if [[ "${MYLO_SCOPE:-full}" == "private" ]]; then
     timeout "$limit" adb shell am instrument -w -r -e class "com.mylo.browser.PrivateModeFlowTest#$method" \
       com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
     # Android's own record of activities, windows and input during the case (no page content).
-    timeout 30 adb logcat -d -b events -v time 2> /dev/null | grep -E ' (wm|am)_' | tail -n 300 > "$private_dir/$method-android-events.txt" || true
-    timeout 30 adb logcat -d -v time 2> /dev/null | grep -E 'ActivityTaskManager|ActivityManager|WindowManager|InputDispatcher|AndroidRuntime|InputMethod|mylo' | tail -n 400 > "$private_dir/$method-android-system.txt" || true
+    timeout 30 adb logcat -d -b events -v time 2> /dev/null | grep -E '(wm|am)_[a-z_]+' | tail -n 300 > "$private_dir/$method-android-events.txt" || true
+    timeout 30 adb logcat -d -v time 2> /dev/null | grep -E 'ActivityTaskManager|ActivityManager|InputDispatcher|AndroidRuntime|InputMethod|ImeTracker|LifecycleMonitor' | grep -vE 'AppsFilter|WindowManagerShell' | tail -n 400 > "$private_dir/$method-android-system.txt" || true
     local result
     if grep -q '^OK (1 test)' "$output"; then result=passed; else result=failed; private_status=1; fi
     echo "$method: $result" | tee -a "$private_summary"

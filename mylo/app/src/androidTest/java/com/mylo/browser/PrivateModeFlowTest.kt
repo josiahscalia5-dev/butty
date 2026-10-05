@@ -2,6 +2,10 @@ package com.mylo.browser
 
 import android.content.Intent
 import android.os.SystemClock
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -17,6 +21,7 @@ import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -31,6 +36,9 @@ class PrivateModeFlowTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
     private val device get() = UiDevice.getInstance(instrumentation)
+
+    /** Compose's test API for Home (in this process), as Mylo's search tests use it; Private Mode is driven through UiAutomator. */
+    @get:Rule val compose = createEmptyComposeRule()
 
     @Before fun setUp() {
         context.getSharedPreferences(PrivateActivity.TEST_PREFS, 0).edit().putBoolean(PrivateActivity.ALLOW_SCREENSHOTS, true).commit()
@@ -52,14 +60,15 @@ class PrivateModeFlowTest {
         val dir = artifacts("session")
         val evidence = JSONObject().put("verified", false)
         val steps = JSONArray()
-        try { recording(dir) {
+        try {
             context.getSharedPreferences("mylo_browser", 0).edit().remove("history").commit()
-            ActivityScenario.launch(MainActivity::class.java).use {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
                 waitFor(By.desc("Search or enter address"), "Home search")
                 shot(dir, "00-home.png")
-                typeInto(By.desc("Search or enter address"), "Home search", NORMAL_PAGE)
-                submit()
+                // Home's box through Compose's test API (no keyboard timing on a busy emulator), then its Search key.
+                compose.onNodeWithTag("search-input").performTextReplacement(NORMAL_PAGE)
+                compose.onNodeWithTag("search-input").performImeAction()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
                 shot(dir, "01-normal-tab.png"); steps.put("normal tab visit 1")
                 device.pressBack()
@@ -107,7 +116,7 @@ class PrivateModeFlowTest {
                 waitFor(By.text("Leave and burn"), "the leave confirmation").click()
                 waitFor(By.desc("Search or enter address"), "normal Home after leaving", 20_000)
                 shot(dir, "08-back-home.png"); steps.put("left private mode")
-            }
+            } }
 
             // 7. Nothing private reached normal history; the normal tab's visit is there.
             SystemClock.sleep(1_000)
@@ -120,7 +129,7 @@ class PrivateModeFlowTest {
             assertFalse("The private process ended after the burn", shell("pidof ${context.packageName}:private").isNotBlank())
             evidence.put("privateProcessEnded", true)
             evidence.put("verified", true)
-        } } finally {
+        } finally {
             File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
         }
     }
@@ -212,8 +221,6 @@ class PrivateModeFlowTest {
     private fun typeInto(selector: BySelector, what: String, text: String) {
         waitFor(selector, what).click()
         SystemClock.sleep(600)
-        runCatching { device.takeScreenshot(File(context.getExternalFilesDir(null), "test-artifacts/private/typing-${what.replace(' ', '-')}.png")) }
-        waitFor(selector, "$what after focusing it")
         runCatching { waitFor(selector, what).text = text }
         if (fieldShows(selector, text, 3_000)) return
         runCatching { waitFor(selector, what).clear() }
