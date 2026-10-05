@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -60,7 +61,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -89,6 +93,8 @@ fun MyloPanel(
     onSelectTab: (BrowserTab) -> Unit,
     onNewTab: () -> Unit,
     onOpenShield: () -> Unit = {},
+    onCloseTab: (BrowserTab) -> Unit = { store.closeTab(it.id) },
+    favicon: (BrowserTab) -> android.graphics.Bitmap? = { null },
 ) {
     var currentPanel by remember(panel) { mutableStateOf(panel) }
     var showAddBookmark by remember { mutableStateOf(false) }
@@ -181,8 +187,9 @@ fun MyloPanel(
                                     title = tab.title.ifBlank { "New tab" },
                                     subtitle = if (tab.privateMode) "Private · ${tab.url.ifBlank { "Ready to explore" }}" else tab.url.ifBlank { "Ready to explore" },
                                     onClick = { onClose(); onSelectTab(tab) },
+                                    image = favicon(tab)?.asImageBitmap(),
                                     trailing = {
-                                        IconButton(onClick = { store.closeTab(tab.id) }) {
+                                        IconButton(onClick = { onCloseTab(tab) }) {
                                             Icon(Icons.Outlined.Close, "Close ${tab.title.ifBlank { "tab" }}", tint = PanelMuted)
                                         }
                                     },
@@ -299,10 +306,13 @@ private fun PanelLinkRow(
     subtitle: String,
     onClick: () -> Unit,
     trailing: (@Composable () -> Unit)? = null,
+    /** The page's own icon, when it has one (open tabs). */
+    image: ImageBitmap? = null,
 ) {
     Surface(color = PanelCard, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.clickable(onClick = onClick).padding(start = 16.dp, end = if (trailing == null) 16.dp else 4.dp, top = 14.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, Modifier.size(24.dp), tint = PanelAccent)
+            if (image != null) Image(image, null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+            else Icon(icon, null, Modifier.size(24.dp), tint = PanelAccent)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, color = PanelText, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)

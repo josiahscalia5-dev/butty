@@ -74,6 +74,12 @@ import com.mylo.browser.shield.ExitStatus
 import com.mylo.browser.shield.MyloShield
 import com.mylo.browser.shield.ShieldProblem
 import com.mylo.browser.shield.ShieldState
+import com.mylo.browser.web.EngineEvent
+import com.mylo.browser.web.Origins
+import com.mylo.browser.web.PageNotice
+import com.mylo.browser.web.TabEngine
+import android.view.ViewGroup
+import android.widget.FrameLayout
 
 val Night = Color(0xFF09142E)
 private val Lavender = Color(0xFFCEC5FF)
@@ -107,13 +113,16 @@ class MyloApplication : Application() {
 
 class BrowserSession(application: Application) : AndroidViewModel(application) {
     val store = BrowserStore(application)
-    val tabStates = mutableMapOf<Long, Bundle>()
-    val pendingNavigations = mutableMapOf<Long, String>()
+    /** Every normal tab's page, whichever search provider or link opened it. */
+    val engine = TabEngine(application, store)
+
+    override fun onCleared() = engine.destroyAll()
 }
 
 class MainActivity : ComponentActivity() {
     /** Counts "open Mylo Shield" requests from the Shield notification. */
     private val shieldRequests = mutableIntStateOf(0)
+    private var engine: TabEngine? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,8 +135,24 @@ class MainActivity : ComponentActivity() {
             window.isStatusBarContrastEnforced = false
         }
         val session = ViewModelProvider(this)[BrowserSession::class.java]
+        engine = session.engine.also { it.attach(this) }
         if (savedInstanceState == null && intent?.action == MyloShield.ACTION_OPEN_SHIELD) shieldRequests.intValue++
         setContent { MyloTheme { MyloApp(session, shieldRequests.intValue) } }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        engine?.onActivityResume()
+    }
+
+    override fun onPause() {
+        engine?.onActivityPause()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        engine?.detach(this)
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -138,6 +163,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable fun MyloApp(session: BrowserSession, shieldRequest: Int = 0) {
     val store = session.store
+    val engine = session.engine
     val context = LocalContext.current
     var panel by rememberSaveable { mutableStateOf<String?>(null) }
     val shield = remember { MyloShield.get(context) }
@@ -163,7 +189,7 @@ class MainActivity : ComponentActivity() {
         val tab = store.navigateInCurrentTab(currentTab, input)
         if (tab == null) { error = "Enter a website address or search words."; return }
         // A Home submission is a navigation in the existing tab, never an implicit new tab.
-        session.pendingNavigations[tab.id] = tab.url
+        engine.load(tab.id, tab.url)
         currentTab = tab.id
         home = false
         query = ""
@@ -185,6 +211,15 @@ class MainActivity : ComponentActivity() {
                 .addOnFailureListener { error = unavailable }
         }.onFailure { error = unavailable }
     }
+    // Pages opening windows (pop-ups, target=_blank) show their new tab; a closing pop-up returns to its opener.
+    LaunchedEffect(engine) {
+        engine.events.collect { event ->
+            when (event) {
+                is EngineEvent.ShowTab -> { dismissInput(); panel = null; currentTab = event.tabId; home = false }
+                EngineEvent.ShowHome -> showHome()
+            }
+        }
+    }
     val onHome = home || store.tabs.none { it.id == currentTab }
     val homeVpn = homeVpnStatus(shieldState, vpn)
     // Mylo Shield replaces the browser while open; tabs keep their saved navigation state meanwhile.
@@ -193,6 +228,7 @@ class MainActivity : ComponentActivity() {
         return
     }
     // Home draws its artwork behind the status bar; browser pages do not.
+    Box(Modifier.fillMaxSize()) {
     MyloViewport(edgeToEdgeHome = onHome) {
             Box(Modifier.weight(1f)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
@@ -203,15 +239,21 @@ class MainActivity : ComponentActivity() {
                         vpnLocation = homeVpn.location, vpnDetail = homeVpn.detail, onScan = scanCode)
                 } else {
                     key(tab.id) {
-                        BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" })
+                        BrowserScreen(tab, engine, store, ::showHome, { panel = "bookmarks" }, { error = it })
                     }
                 }
             }
             BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { panel = "mylo" })
     }
+    // Full-screen video sits above everything, with the page still attached underneath.
+    engine.fullscreen?.let { FullscreenHost(it, engine::exitFullscreen) }
+    }
+    WebPromptHost(engine)
+    FileChooserHost(engine)
     panel?.let { selected -> MyloPanel(selected, store, { panel = null }, { open(it) }, {
-        dismissInput(); currentTab = it.id; home = it.url.isBlank()
-    }, { currentTab = store.createTab().id; searchFromHome() }, onOpenShield = { shieldOpen = true }) }
+        dismissInput(); currentTab = it.id; home = it.url.isBlank() && !engine.isLive(it.id)
+    }, { currentTab = store.createTab().id; searchFromHome() }, onOpenShield = { shieldOpen = true },
+        onCloseTab = { engine.closeTab(it.id) }, favicon = { engine.page(it.id).favicon }) }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null }, title = { Text("Mylo") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
 }
 
@@ -248,116 +290,84 @@ private fun homeVpnStatus(shield: ShieldState, androidVpn: Boolean): HomeVpn {
     return active
 }
 
-@SuppressLint("SetJavaScriptEnabled")
-@Composable private fun BrowserScreen(tab: BrowserTab, session: BrowserSession, onHome: () -> Unit, onBookmarks: () -> Unit) {
-    val store = session.store
-    var address by remember(tab.id) { mutableStateOf(tab.url) }
+@Composable private fun BrowserScreen(
+    tab: BrowserTab,
+    engine: TabEngine,
+    store: BrowserStore,
+    onHome: () -> Unit,
+    onBookmarks: () -> Unit,
+    onMessage: (String) -> Unit,
+) {
+    val page = engine.page(tab.id)
+    val context = LocalContext.current
+    var address by remember(tab.id) { mutableStateOf(page.url.ifBlank { tab.url }) }
     var editingAddress by remember(tab.id) { mutableStateOf(false) }
-    var webView by remember(tab.id) { mutableStateOf<WebView?>(null) }
-    var loading by remember(tab.id) { mutableStateOf(false) }
-    var pageError by remember(tab.id) { mutableStateOf<String?>(null) }
-    var canForward by remember(tab.id) { mutableStateOf(false) }
-    var active by remember(tab.id) { mutableStateOf(true) }
+    var menuOpen by remember(tab.id) { mutableStateOf(false) }
+    var siteSettings by remember(tab.id) { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
-    val latestOnHome by rememberUpdatedState(onHome)
+    val currentUrl = page.url.ifBlank { tab.url }
+    LaunchedEffect(currentUrl) { if (!editingAddress) address = currentUrl }
 
     fun back() {
         focus.clearFocus(); keyboard?.hide()
-        val view = webView
-        if (view?.canGoBack() == true) view.goBack() else latestOnHome()
+        // Back in the page's history; a pop-up with none closes back to the page that opened it.
+        if (!engine.back(tab.id)) onHome()
     }
     fun submitAddress() {
         val url = resolveInput(address, store.provider)
-        if (url == null) { pageError = "Enter a website address or search words."; return }
-        webView?.stopLoading()
+        if (url == null) { onMessage("Enter a website address or search words."); return }
         address = url
         store.updateTab(tab.id, url, url)
-        webView?.loadUrl(url)
+        engine.load(tab.id, url)
         focus.clearFocus(); keyboard?.hide()
     }
+    fun otherBrowser() = openInOtherBrowser(context, currentUrl) { onMessage("No other browser on this device can open this page.") }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
-            IconButton(onClick = { webView?.goForward() }, enabled = canForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
+            IconButton(onClick = { engine.webViewIfLive(tab.id)?.goForward() }, enabled = page.canGoForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
             OutlinedTextField(address, { address = it }, Modifier.weight(1f).padding(vertical = 5.dp).onFocusChanged { editingAddress = it.isFocused }.semantics { contentDescription = "Browser address" }, textStyle = TextStyle(fontSize = 13.sp), singleLine = true, shape = RoundedCornerShape(20.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { submitAddress() }))
-            IconButton(onClick = { webView?.reload() }) { Icon(Icons.Rounded.Refresh, "Reload") }
-            IconButton(onClick = { webView?.let { store.addBookmark(it.url.orEmpty(), it.title.orEmpty()) }; onBookmarks() }) { Icon(Icons.Rounded.BookmarkAdd, "Bookmark this page") }
+            IconButton(onClick = { engine.reload(tab) }) { Icon(Icons.Rounded.Refresh, "Reload") }
+            IconButton(onClick = { store.addBookmark(currentUrl, page.title.ifBlank { tab.title }); onBookmarks() }) { Icon(Icons.Rounded.BookmarkAdd, "Bookmark this page") }
+            Box {
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "More page options") }
+                DropdownMenu(menuOpen, { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("Open in another browser") }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, null) },
+                        onClick = { menuOpen = false; otherBrowser() })
+                    DropdownMenuItem(text = { Text("Site settings") }, leadingIcon = { Icon(Icons.Rounded.Tune, null) },
+                        onClick = { menuOpen = false; siteSettings = true })
+                }
+            }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Lavender)
-        pageError?.let { Text(it, modifier = Modifier.padding(16.dp), color = Color(0xFFFFCCCF)) }
-        key(tab.id) {
-            AndroidView(factory = { ctx ->
-                WebView(ctx).apply {
-                    webView = this
-                    contentDescription = "Mylo web page"
-                    setBackgroundColor(android.graphics.Color.WHITE)
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.useWideViewPort = true
-                    settings.loadWithOverviewMode = true
-                    settings.allowFileAccess = false
-                    settings.allowContentAccess = false
-                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    settings.safeBrowsingEnabled = true
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = request.url.scheme !in listOf("http", "https")
-                        override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                            if (!active) return
-                            loading = true; pageError = null
-                        }
-                        override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
-                            if (active) canForward = view.canGoForward()
-                        }
-                        override fun onPageFinished(view: WebView, url: String) {
-                            if (!active || url != view.url) return
-                            loading = false; canForward = view.canGoForward()
-                            if (!editingAddress) address = url
-                            store.updateTab(tab.id, url, view.title.orEmpty())
-                            if (pageError == null) store.recordVisit(url, view.title.orEmpty())
-                        }
-                        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                            if (active && request.isForMainFrame) { loading = false; pageError = "This page couldn't load. Check your connection and try Reload." }
-                        }
-                        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
-                            if (active && request.isForMainFrame && errorResponse.statusCode >= 400) {
-                                pageError = "The website returned an error (${errorResponse.statusCode}). Try Reload or another search engine."
-                            }
-                        }
+        if (page.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Lavender)
+        page.error?.let { Text(it, modifier = Modifier.padding(16.dp), color = Color(0xFFFFCCCF)) }
+        page.notice?.let { notice ->
+            PageNoticeBar(notice, onDismiss = { engine.dismissNotice(tab.id) }, onAllowPopups = {
+                (notice as? PageNotice.PopupBlocked)?.origin?.let(engine::allowPopups)
+                engine.page(tab.id).notice = PageNotice.Info("Pop-ups are allowed on ${Origins.host(currentUrl)}. Tap the link again.")
+            }, onOtherBrowser = { engine.dismissNotice(tab.id); otherBrowser() })
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            if (page.crashed) CrashedPage { engine.reload(tab) }
+            else key(tab.id) {
+                // The tab's long-lived WebView is shown here and only detached (never destroyed) when hidden.
+                AndroidView(factory = { ctx ->
+                    FrameLayout(ctx).apply {
+                        val view = engine.webView(tab)
+                        (view.parent as? ViewGroup)?.removeView(view)
+                        addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                     }
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onReceivedTitle(view: WebView, title: String?) {
-                            if (active && !view.url.isNullOrBlank()) store.updateTab(tab.id, view.url!!, title.orEmpty())
-                        }
-                    }
-                    val requested = session.pendingNavigations.remove(tab.id)
-                    val restored = session.tabStates[tab.id]?.let { restoreState(it) }
-                    if (requested != null) {
-                        loadUrl(requested)
-                    } else if (restored == null) loadUrl(tab.url)
-                    canForward = canGoForward()
-                }
-            }, update = { view ->
-                // A submission while this tab stays on screen (a bookmark or history entry)
-                // is consumed once, without recreating the view or losing its navigation list.
-                session.pendingNavigations.remove(tab.id)?.let { url ->
-                    view.stopLoading()
-                    address = url
-                    view.loadUrl(url)
-                }
-            }, modifier = Modifier.weight(1f).fillMaxWidth())
+                }, onRelease = { it.removeAllViews() }, modifier = Modifier.fillMaxSize())
+            }
         }
     }
+    if (siteSettings) SiteSettingsSheet(engine, currentUrl) { siteSettings = false }
     BackHandler { back() }
-    DisposableEffect(tab.id) { onDispose {
-        active = false
-        webView?.apply {
-            if (store.tabs.any { it.id == tab.id }) session.tabStates[tab.id] = Bundle().also { saveState(it) }
-            else { session.tabStates.remove(tab.id); session.pendingNavigations.remove(tab.id) }
-            stopLoading(); destroy()
-        }
-        webView = null
-    } }
+    DisposableEffect(tab.id) {
+        engine.setVisible(tab.id)
+        onDispose { if (engine.visibleTab == tab.id) engine.setVisible(null) }
+    }
 }
 
 /** Separate process and WebView storage directory keep private cookies apart from normal tabs. */

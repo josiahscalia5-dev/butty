@@ -96,7 +96,8 @@ private fun normalizeWebUrl(value: String): String? = runCatching {
 
 data class Bookmark(val url: String, val title: String, val addedAt: Long)
 data class HistoryEntry(val url: String, val title: String, val visitedAt: Long)
-data class BrowserTab(val id: Long, val title: String, val url: String, val privateMode: Boolean)
+/** [openerId]: the tab whose page opened this one as a new window (a pop-up or target=_blank link). */
+data class BrowserTab(val id: Long, val title: String, val url: String, val privateMode: Boolean, val openerId: Long? = null)
 
 /**
  * Small local browser model. Bookmarks, normal history and the selected search
@@ -169,6 +170,14 @@ class BrowserStore(context: Context) {
         val safeUrl = if (url.isBlank()) "" else normalizeWebUrl(url) ?: ""
         val tab = BrowserTab(nextTabId++, if (privateMode) "Private tab" else "New tab", safeUrl, privateMode)
         tabs.add(tab)
+        return tab
+    }
+
+    /** A tab a page opened as a new window; it sits next to its opener, which stays open behind it. */
+    fun createChildTab(openerId: Long): BrowserTab {
+        val tab = BrowserTab(nextTabId++, "New window", "", privateMode = false, openerId = openerId)
+        val index = tabs.indexOfFirst { it.id == openerId }
+        if (index < 0) tabs.add(tab) else tabs.add(index + 1, tab)
         return tab
     }
 
