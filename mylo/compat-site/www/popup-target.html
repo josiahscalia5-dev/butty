@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo new window</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>New window opened</h1>
+<div id="info" class="result"></div>
+<button id="reply">Message the opener</button>
+<button id="close" class="secondary">Close this window</button>
+<script>
+show('info', 'via: ' + param('via') + '\nopener: ' + (window.opener ? 'present' : 'none'));
+document.getElementById('reply').onclick = () => window.opener && window.opener.postMessage('hello from ' + param('via'), location.origin);
+document.getElementById('close').onclick = () => window.close();
+</script>
+</body></html>

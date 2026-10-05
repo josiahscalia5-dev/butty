@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Returning to Mylo test app</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Returning to the app…</h1>
+<div id="info" class="result"></div>
+<script>
+const result = { code: param('code'), error: param('error'), state: param('state') };
+show('info', JSON.stringify(result));
+if (window.opener) { window.opener.postMessage(result, location.origin); setTimeout(() => window.close(), 400); }
+else show('info', 'no opener: the sign-in window lost its link to the app');
+</script>
+</body></html>

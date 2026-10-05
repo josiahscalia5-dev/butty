@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo ID sign-in</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Mylo ID</h1>
+<p>Sign in to <b>Mylo test app</b>? This page is served by a different site (the sign-in server).</p>
+<div id="info" class="result"></div>
+<button id="approve">Continue as Mylo tester</button>
+<button id="deny" class="secondary">Cancel</button>
+<script>
+show('info', 'origin: ' + location.origin + '\nopener: ' + (window.opener ? 'present' : 'none'));
+const state = encodeURIComponent(param('state') || '');
+document.getElementById('approve').onclick = () => location.href = '/oauth/approve?state=' + state;
+document.getElementById('deny').onclick = () => location.href = '/oauth/deny?state=' + state;
+</script>
+</body></html>

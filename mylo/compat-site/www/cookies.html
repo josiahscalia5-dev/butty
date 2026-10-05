@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo cookies and storage</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Cookies &amp; storage</h1>
+<p>A server session cookie (HttpOnly), a page cookie, localStorage, sessionStorage and IndexedDB.</p>
+<button id="login">Sign in (server session)</button>
+<button id="reload" class="secondary">Reload page</button>
+<div id="report" class="result">checking…</div>
+<script>
+async function report() {
+  document.cookie = 'mylo_client=1; path=/; SameSite=Lax';
+  localStorage.setItem('mylo-visits', Number(localStorage.getItem('mylo-visits') || 0) + 1);
+  sessionStorage.setItem('mylo-tab-visits', Number(sessionStorage.getItem('mylo-tab-visits') || 0) + 1);
+  let idb = 'missing';
+  try {
+    idb = await new Promise((ok, bad) => { const r = indexedDB.open('mylo-test', 1); r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => ok('works'); r.onerror = () => bad(r.error); });
+  } catch (e) { idb = 'error ' + e; }
+  const who = await (await fetch('/api/whoami', { credentials: 'same-origin' })).json();
+  show('report', ['cookies enabled: ' + navigator.cookieEnabled, 'page cookie: ' + (document.cookie.includes('mylo_client=1') ? 'set' : 'missing'),
+    'server session: ' + (who.user || 'signed out'), 'localStorage visits: ' + localStorage.getItem('mylo-visits'),
+    'sessionStorage visits: ' + sessionStorage.getItem('mylo-tab-visits'), 'IndexedDB: ' + idb].join('\n'));
+}
+document.getElementById('login').onclick = async () => { await fetch('/api/login', { credentials: 'same-origin' }); report(); };
+document.getElementById('reload').onclick = () => location.reload();
+report();
+</script>
+</body></html>

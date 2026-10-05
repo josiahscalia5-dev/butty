@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo download test</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Download</h1>
+<p>The server sends an attachment; it should be saved to Android's Downloads folder with the page's session.</p>
+<a id="download" class="button" href="/files/mylo-sample.txt">Download mylo-sample.txt</a>
+<a id="blob-download" class="button secondary" href="#">Save a file the page creates (blob:)</a>
+<script>
+document.getElementById('blob-download').onclick = e => {
+  e.preventDefault();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['made by the page\n'], { type: 'text/plain' }));
+  a.download = 'page-made.txt'; document.body.appendChild(a); a.click();
+};
+</script>
+</body></html>

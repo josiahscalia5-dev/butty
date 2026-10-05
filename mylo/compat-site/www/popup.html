@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo new windows</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>New windows</h1>
+<p>Links with target="_blank" and window.open() must open a new Mylo tab, not disappear.</p>
+<a id="blank-link" class="button" href="/popup-target.html?via=target-blank" target="_blank">Open with target="_blank"</a>
+<button id="open-window">Open with window.open()</button>
+<div id="status" class="result">waiting</div>
+<script>
+document.getElementById('open-window').onclick = () => {
+  const w = window.open('/popup-target.html?via=window.open', 'mylo-window');
+  show('status', w ? 'window.open returned a window' : 'window.open returned null');
+};
+// Without a tap, a page may not open windows (Chrome blocks these too).
+if (param('auto') === '1') setTimeout(() => {
+  const w = window.open('/popup-target.html?via=auto');
+  show('status', w ? 'automatic pop-up opened' : 'automatic pop-up blocked');
+}, 800);
+addEventListener('message', e => { if (e.origin === location.origin) show('status', 'message from new window: ' + e.data); });
+</script>
+</body></html>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo camera, microphone and location</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Camera, microphone, location</h1>
+<p>Each button asks the browser; Mylo must ask you first and then Android.</p>
+<button id="camera">Use camera</button>
+<div id="camera-result" class="result">not requested</div>
+<video id="preview" autoplay muted playsinline style="height:120px"></video>
+<button id="microphone">Use microphone</button>
+<div id="microphone-result" class="result">not requested</div>
+<button id="location">Share location</button>
+<div id="location-result" class="result">not requested</div>
+<script>
+async function media(kind) {
+  show(kind + '-result', 'asking…');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(kind === 'camera' ? { video: true } : { audio: true });
+    const track = stream.getTracks()[0];
+    if (kind === 'camera') document.getElementById('preview').srcObject = stream;
+    const s = track.getSettings ? track.getSettings() : {};
+    show(kind + '-result', kind + ': live (' + track.label + (s.width ? ', ' + s.width + 'x' + s.height : '') + ')');
+  } catch (e) { show(kind + '-result', kind + ': ' + e.name + ' ' + e.message); }
+}
+document.getElementById('camera').onclick = () => media('camera');
+document.getElementById('microphone').onclick = () => media('microphone');
+document.getElementById('location').onclick = () => {
+  show('location-result', 'asking…');
+  navigator.geolocation.getCurrentPosition(
+    p => show('location-result', 'location: ' + p.coords.latitude.toFixed(4) + ', ' + p.coords.longitude.toFixed(4)),
+    e => show('location-result', 'location: error ' + e.code + ' ' + e.message),
+    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+};
+</script>
+</body></html>

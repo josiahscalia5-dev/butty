@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo upload test</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Upload</h1>
+<p>A standard file input opens Android's file picker; the chosen file is read and uploaded.</p>
+<input id="file" type="file" accept=".txt,text/plain" style="font-size:17px;margin:12px 0;width:100%">
+<div id="result" class="result">no file chosen</div>
+<script>
+document.getElementById('file').onchange = async e => {
+  const file = e.target.files[0];
+  if (!file) return show('result', 'no file chosen');
+  const text = await file.text();
+  const body = new FormData(); body.append('file', file);
+  const sent = await (await fetch('/api/upload', { method: 'POST', body })).json();
+  show('result', 'chosen: ' + file.name + ' (' + file.size + ' bytes)\ncontent: ' + text.trim().slice(0, 80) + '\nuploaded: ' + sent.received + ' bytes');
+};
+</script>
+</body></html>

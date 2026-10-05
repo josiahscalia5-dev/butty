@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo dialogs</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Dialogs</h1>
+<button id="alert">alert()</button>
+<button id="confirm">confirm()</button>
+<button id="prompt">prompt()</button>
+<div id="result" class="result">none yet</div>
+<script>
+document.getElementById('alert').onclick = () => { alert('Hello from the page'); show('result', 'alert closed'); };
+document.getElementById('confirm').onclick = () => show('result', 'confirm: ' + confirm('Keep going?'));
+document.getElementById('prompt').onclick = () => show('result', 'prompt: ' + prompt('Your name?', 'Mylo'));
+</script>
+</body></html>

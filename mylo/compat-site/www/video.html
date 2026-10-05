@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo full-screen video</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Full-screen video</h1>
+<p>An HTML5 video element (playing an animation drawn by the page) and the standard Fullscreen API.</p>
+<video id="video" autoplay muted playsinline></video>
+<button id="fullscreen">Play full screen</button>
+<div id="status" class="result">inline</div>
+<canvas id="canvas" width="320" height="180" style="display:none"></canvas>
+<script>
+const canvas = document.getElementById('canvas'), g = canvas.getContext('2d');
+let t = 0;
+(function draw() {
+  t++; g.fillStyle = '#1b1f3a'; g.fillRect(0, 0, 320, 180);
+  g.fillStyle = '#cec5ff'; g.beginPath(); g.arc(160 + 110 * Math.sin(t / 20), 90, 34, 0, 7); g.fill();
+  g.fillStyle = '#fff'; g.font = '20px sans-serif'; g.fillText('Mylo video ' + Math.floor(t / 30), 12, 28);
+  requestAnimationFrame(draw);
+})();
+const video = document.getElementById('video');
+video.srcObject = canvas.captureStream(30);
+document.getElementById('fullscreen').onclick = () => video.requestFullscreen().catch(e => show('status', 'refused: ' + e.message));
+document.addEventListener('fullscreenchange', () => show('status', document.fullscreenElement ? 'full screen' : 'inline'));
+</script>
+</body></html>

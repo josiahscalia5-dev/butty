@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo SPA</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1 id="heading">Mylo SPA</h1>
+<p>Client-side routing with history.pushState, data from fetch(), state in localStorage.</p>
+<nav><a id="nav-home" href="?view=home">Home</a><a id="nav-list" href="?view=list">List</a><a id="nav-item-2" href="?view=item&amp;id=2">Item 2</a><a id="nav-static" href="/index.html">Static page</a></nav>
+<button id="add">Add a saved item</button>
+<div id="view" class="result"></div>
+<div id="saved" class="result"></div>
+<script>
+const saved = () => Number(localStorage.getItem('mylo-spa-saved') || 0);
+function showSaved() { show('saved', 'saved items: ' + saved()); }
+async function render() {
+  const view = param('view') || 'home';
+  document.title = 'Mylo SPA · ' + view;
+  if (view === 'home') return show('view', 'view: home');
+  const items = (await (await fetch('/api/items')).json()).items;
+  if (view === 'list') return show('view', 'view: list (' + items.length + ' items from fetch)');
+  const item = items.find(i => String(i.id) === param('id'));
+  show('view', 'view: item ' + (item ? item.name : 'missing'));
+}
+document.querySelectorAll('nav a[href^="?"]').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault(); history.pushState({}, '', a.getAttribute('href')); render();
+}));
+addEventListener('popstate', render);
+document.getElementById('add').onclick = () => { localStorage.setItem('mylo-spa-saved', saved() + 1); showSaved(); };
+render(); showSaved();
+</script>
+</body></html>

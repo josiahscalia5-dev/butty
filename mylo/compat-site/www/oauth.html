@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo sign-in test</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/mylo.css"><script src="/mylo.js"></script></head>
+<body>
+<h1>Mylo test app</h1>
+<p>"Sign in with Mylo ID" opens the sign-in server (a different site) in a pop-up, like Google or GitHub sign-in.</p>
+<button id="signin">Sign in with Mylo ID</button>
+<div id="status" class="result">signed out</div>
+<script>
+let popup = null;
+const state = 'st-' + Math.random().toString(36).slice(2, 8);
+document.getElementById('signin').onclick = () => {
+  const redirect = location.origin + '/callback.html';
+  popup = window.open('http://127.0.0.1:8081/authorize.html?client_id=mylo-test&state=' + state + '&redirect_uri=' + encodeURIComponent(redirect),
+    'mylo-id', 'width=480,height=640');
+  show('status', popup ? 'sign-in window open' : 'sign-in window was blocked');
+  const timer = setInterval(() => { if (popup && popup.closed) { clearInterval(timer); document.body.dataset.popupClosed = '1'; } }, 300);
+};
+addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || e.data.state !== state) return;
+  show('status', e.data.code ? 'signed in (code ' + e.data.code + ')' : 'sign-in cancelled (' + e.data.error + ')');
+});
+</script>
+</body></html>
