@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings)"
+        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings); private = Private Mode (screen, private browsing, tracker blocking, Burn, Lock tabs, entrance recording); build = compile, unit tests and Layoutlib renders only (no emulator)"
         type: choice
-        options: [full, search-flow, shield, compat]
+        options: [full, search-flow, shield, compat, private, build]
         default: full
   push:
     branches: ["mylo-development"]
@@ -95,7 +95,7 @@ jobs:
       - name: Render the production Home against the approved reference
         id: home_layoutlib
         continue-on-error: true
-        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest
+        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest --tests com.mylo.browser.PrivateModePreviewTest
       - name: Upload Android Home reference renders
         if: always()
         uses: actions/upload-artifact@v4
@@ -129,8 +129,9 @@ jobs:
   android-preview:
     name: Verify the APK on a Pixel emulator
     needs: build
+    if: inputs.scope != 'build'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || 25 }}
+    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || inputs.scope == 'private' && 30 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -217,7 +218,7 @@ jobs:
           import base64, glob, io, os
           from PIL import Image
           root = "mylo/dist/preview"
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png")):
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png") + glob.glob(f"{root}/private/*/*.png")):
               name = "/".join(path.split("/")[-2:])
               im = Image.open(path).convert("RGB")
               im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
@@ -229,7 +230,7 @@ jobs:
           for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json") + glob.glob(f"{root}/compat/*/*.json")):
               name = "/".join(path.split("/")[-2:])
               print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
-          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt"):
+          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt", f"{root}/private-test.txt"):
               if os.path.exists(summary):
                   print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
           PY
@@ -257,3 +258,55 @@ jobs:
           if [[ -n "$HOME_ARTIFACT_URL" ]]; then
             echo "[Download portrait Home screenshots and measurements]($HOME_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  evidence:
+    # Screenshots, renders and reports in a git branch, for reviewers (and tools) that can fetch git but
+    # cannot download Actions artifacts. One commit per run; each run replaces the last.
+    name: Publish screenshots to the mylo-ci-evidence branch
+    needs: [build, android-preview]
+    if: always() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download Layoutlib renders
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-Home-reference-renders
+          path: evidence/renders
+      - name: Download emulator evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-Android-preview
+          path: evidence/device
+      - name: Keep images and reports; turn recordings into frames
+        run: |
+          command -v ffmpeg > /dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null; }
+          for video in $(find evidence -name '*.mp4' 2> /dev/null); do
+            frames="${video%.mp4}-frames"; mkdir -p "$frames"
+            ffmpeg -loglevel error -i "$video" -vf "fps=8,scale=540:-2" -q:v 4 "$frames/frame-%03d.jpg" || true
+          done
+          find evidence -type f ! \( -name '*.png' -o -name '*.jpg' -o -name '*.json' -o -name '*.txt' -o -name '*.tsv' -o -name '*.xml' \) -delete
+          find evidence -type f -name '*logcat*' -delete
+          {
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Commit: $GITHUB_SHA"
+            echo "Scope: ${{ inputs.scope }}"
+            echo "Build: ${{ needs.build.result }} · Emulator: ${{ needs.android-preview.result }}"
+          } > evidence/RUN.txt
+          du -sh evidence; cat evidence/RUN.txt
+      - name: Push to mylo-ci-evidence
+        working-directory: evidence
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q -b mylo-ci-evidence
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Evidence for $GITHUB_REF_NAME @ ${GITHUB_SHA::7} (${{ inputs.scope }})"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-ci-evidence

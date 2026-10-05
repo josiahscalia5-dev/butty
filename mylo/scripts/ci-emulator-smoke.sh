@@ -65,6 +65,56 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
   exit 1
 fi
 
+# Private Mode: the approved screen, private browsing on the local test site (tracker blocking, separate
+# cookies, Burn, no history), Lock tabs with a real screen lock, and a recording of the entrance animation.
+if [[ "${MYLO_SCOPE:-full}" == "private" ]]; then
+  private_status=0
+  private_dir="$evidence_dir/private"
+  private_summary="$evidence_dir/private-test.txt"
+  mkdir -p "$private_dir"
+  : > "$private_summary"
+  python3 "$script_dir/../compat-site/serve.py" > "$private_dir/test-site.log" 2>&1 &
+  site_pid=$!
+  adb reverse tcp:8080 tcp:8080
+  adb reverse tcp:8081 tcp:8081
+  sleep 2
+  curl -sf http://localhost:8080/trackers.html > /dev/null || { echo 'The test site did not start.' >&2; exit 1; }
+  run_private() {
+    local method="$1" limit="$2"
+    timeout 15 adb shell am force-stop "$app_package" || true
+    local output="$private_dir/$method.txt"
+    timeout "$limit" adb shell am instrument -w -r -e class "com.mylo.browser.PrivateModeFlowTest#$method" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
+    local result
+    if grep -q '^OK (1 test)' "$output"; then result=passed; else result=failed; private_status=1; fi
+    echo "$method: $result" | tee -a "$private_summary"
+    [[ "$result" == passed ]] || grep -E '^(INSTRUMENTATION_(STATUS: stack|RESULT|CODE|ABORTED)|java\.|junit\.|Process crashed)' "$output" \
+      | cut -c1-500 | head -n 8 | sed 's/^/    /' >> "$private_summary" || true
+    timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/private/. "$private_dir/" > /dev/null 2>&1 || true
+  }
+  run_private privateSessionIsSeparateBlocksTrackersAndBurns 300
+  run_private lockTabsNeedsTheScreenLock 240
+  # The entrance animation needs Android's animations, which the emulator runs with off.
+  for setting in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global "$setting" 1; done
+  timeout 15 adb shell rm -f /sdcard/Movies/private-entrance.mp4 || true
+  adb shell screenrecord --bit-rate 6000000 --time-limit 25 /sdcard/Movies/private-entrance.mp4 > /dev/null 2>&1 &
+  recorder=$!
+  sleep 1
+  run_private entranceAnimation 120
+  timeout 10 adb shell pkill -INT screenrecord > /dev/null 2>&1 || true
+  sleep 2
+  kill "$recorder" 2> /dev/null || true
+  for setting in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global "$setting" 0; done
+  timeout 60 adb pull /sdcard/Movies/private-entrance.mp4 "$private_dir/private-entrance.mp4" > /dev/null 2>&1 || true
+  kill "$site_pid" 2> /dev/null || true
+  { echo 'Crash and memory events during the Private Mode run:'
+    timeout 30 adb logcat -d -v threadtime | grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |ANR in|Process com\.mylo\.browser.* has died' | cut -c1-300 | tail -n 20 || echo '  none recorded'
+  } >> "$private_summary"
+  if (( private_status )); then echo 'Private Mode device checks failed. See private evidence.' >&2; exit 1; fi
+  echo 'Every Private Mode device check passed.'
+  exit 0
+fi
+
 # Website compatibility: the shared engine against the local test site (two origins through adb reverse)
 # and real, unrelated websites reached from every search provider. Each case runs in a fresh app process
 # with a screen recording; evidence is pulled after every case.

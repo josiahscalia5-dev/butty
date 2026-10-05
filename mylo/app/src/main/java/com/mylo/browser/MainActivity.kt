@@ -110,9 +110,19 @@ private val Line = Color(0xFF303F67)
 }
 
 class MyloApplication : Application() {
+    /** Private Mode's session; exists only in the separate private process. */
+    val privateSession: com.mylo.browser.privacy.PrivateSession by lazy { com.mylo.browser.privacy.PrivateSession(this) }
+
     override fun onCreate() {
         super.onCreate()
-        if (Application.getProcessName().endsWith(":private")) WebView.setDataDirectorySuffix("private")
+        if (Application.getProcessName().endsWith(":private")) {
+            WebView.setDataDirectorySuffix(com.mylo.browser.privacy.PrivateDataJanitor.SUFFIX)
+            // A new private process is a new session: nothing from an earlier one (even one Android ended
+            // without warning) may carry over. No WebView exists yet, so its files can be removed.
+            com.mylo.browser.privacy.PrivateDataJanitor.wipe(this)
+        } else {
+            com.mylo.browser.privacy.PrivateDataJanitor.wipeIfPrivateProcessGone(this)
+        }
     }
 }
 
@@ -239,12 +249,13 @@ class MainActivity : ComponentActivity() {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
                 if (home || tab == null) {
                     HomeScreen(query, { query = it }, { open(query) }, voiceSearch, { if (it == "vpn") shieldOpen = true else panel = it }, { open(it) }, {
-                        context.startActivity(Intent(context, PrivateActivity::class.java))
+                        // Reopens a private session that is still running (Burn session on exit off) instead of starting another.
+                        context.startActivity(Intent(context, PrivateActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                     }, homeVpn.active, focusSearch = focusHomeSearch, onSearchFocused = { focusHomeSearch = false },
                         vpnLocation = homeVpn.location, vpnDetail = homeVpn.detail, onScan = scanCode)
                 } else {
                     key(tab.id) {
-                        BrowserScreen(tab, engine, store, ::showHome, { panel = "bookmarks" }, { error = it })
+                        BrowserScreen(tab, engine, store, store.provider, ::showHome, { url, title -> store.addBookmark(url, title); panel = "bookmarks" }, { error = it })
                     }
                 }
             }
@@ -293,232 +304,4 @@ private fun homeVpnStatus(shield: ShieldState, androidVpn: Boolean): HomeVpn {
         onDispose { manager.unregisterNetworkCallback(callback) }
     }
     return active
-}
-
-@Composable private fun BrowserScreen(
-    tab: BrowserTab,
-    engine: TabEngine,
-    store: BrowserStore,
-    onHome: () -> Unit,
-    onBookmarks: () -> Unit,
-    onMessage: (String) -> Unit,
-) {
-    val page = engine.page(tab.id)
-    val context = LocalContext.current
-    var address by remember(tab.id) { mutableStateOf(page.url.ifBlank { tab.url }) }
-    var editingAddress by remember(tab.id) { mutableStateOf(false) }
-    var menuOpen by remember(tab.id) { mutableStateOf(false) }
-    var siteSettings by remember(tab.id) { mutableStateOf(false) }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val focus = LocalFocusManager.current
-    val currentUrl = page.url.ifBlank { tab.url }
-    LaunchedEffect(currentUrl) { if (!editingAddress) address = currentUrl }
-
-    fun back() {
-        focus.clearFocus(); keyboard?.hide()
-        // Back in the page's history; a pop-up with none closes back to the page that opened it.
-        if (!engine.back(tab.id)) onHome()
-    }
-    fun submitAddress() {
-        val url = resolveInput(address, store.provider)
-        if (url == null) { onMessage("Enter a website address or search words."); return }
-        address = url
-        store.updateTab(tab.id, url, url)
-        engine.load(tab.id, url)
-        focus.clearFocus(); keyboard?.hide()
-    }
-    fun otherBrowser() = openInOtherBrowser(context, currentUrl) { onMessage("No other browser on this device can open this page.") }
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = ::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
-            IconButton(onClick = { engine.webViewIfLive(tab.id)?.goForward() }, enabled = page.canGoForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
-            OutlinedTextField(address, { address = it }, Modifier.weight(1f).padding(vertical = 5.dp).onFocusChanged { editingAddress = it.isFocused }.semantics { contentDescription = "Browser address" }, textStyle = TextStyle(fontSize = 13.sp), singleLine = true, shape = RoundedCornerShape(20.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { submitAddress() }))
-            IconButton(onClick = { engine.reload(tab) }) { Icon(Icons.Rounded.Refresh, "Reload") }
-            IconButton(onClick = { store.addBookmark(currentUrl, page.title.ifBlank { tab.title }); onBookmarks() }) { Icon(Icons.Rounded.BookmarkAdd, "Bookmark this page") }
-            Box {
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "More page options") }
-                DropdownMenu(menuOpen, { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Open in another browser") }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, null) },
-                        onClick = { menuOpen = false; otherBrowser() })
-                    DropdownMenuItem(text = { Text("Site settings") }, leadingIcon = { Icon(Icons.Rounded.Tune, null) },
-                        onClick = { menuOpen = false; siteSettings = true })
-                }
-            }
-        }
-        if (page.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Lavender)
-        page.error?.let { Text(it, modifier = Modifier.padding(16.dp), color = Color(0xFFFFCCCF)) }
-        page.notice?.let { notice ->
-            PageNoticeBar(notice, onDismiss = { engine.dismissNotice(tab.id) }, onAllowPopups = {
-                (notice as? PageNotice.PopupBlocked)?.origin?.let(engine::allowPopups)
-                engine.page(tab.id).notice = PageNotice.Info("Pop-ups are allowed on ${Origins.host(currentUrl)}. Tap the link again.")
-            }, onOtherBrowser = { engine.dismissNotice(tab.id); otherBrowser() })
-        }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            if (page.crashed) CrashedPage { engine.reload(tab) }
-            else key(tab.id) {
-                // The tab's long-lived WebView is shown here and only detached (never destroyed) when hidden.
-                AndroidView(factory = { ctx ->
-                    FrameLayout(ctx).apply {
-                        val view = engine.webView(tab)
-                        (view.parent as? ViewGroup)?.removeView(view)
-                        addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                    }
-                }, onRelease = { it.removeAllViews() }, modifier = Modifier.fillMaxSize())
-            }
-        }
-    }
-    if (siteSettings) SiteSettingsSheet(engine, currentUrl) { siteSettings = false }
-    BackHandler { back() }
-    DisposableEffect(tab.id) {
-        engine.setVisible(tab.id)
-        onDispose { if (engine.visibleTab == tab.id) engine.setVisible(null) }
-    }
-}
-
-/**
- * Separate process and WebView storage directory keep private browsing apart from normal tabs. It is stricter
- * than normal browsing, and says so when that stops a site feature instead of failing silently: cookies and
- * site storage are blocked, pop-ups open in this same page, and camera, microphone, location and downloads
- * are off. Links follow the same safety policy as normal tabs, and every link to another app is confirmed.
- */
-class PrivateActivity : ComponentActivity() {
-    private var privateWebView: WebView? = null
-    private val notice = mutableStateOf<String?>(null)
-    private val pageError = mutableStateOf<String?>(null)
-    private val crashed = mutableStateOf(false)
-    private val externalTarget = mutableStateOf<ExternalTarget?>(null)
-    private val fileChooser = mutableStateOf<FileChooserRequest?>(null)
-
-    @SuppressLint("SetJavaScriptEnabled")
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        enableEdgeToEdge()
-        CookieManager.getInstance().removeAllCookies(null)
-        CookieManager.getInstance().setAcceptCookie(false)
-        WebStorage.getInstance().deleteAllData()
-        setContent { MyloTheme {
-            var query by rememberSaveable { mutableStateOf("") }
-            var url by rememberSaveable { mutableStateOf<String?>(null) }
-            val provider = remember { BrowserStore(this).provider }
-            val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                fileChooser.value?.complete(FileChoices.parse(result.resultCode, result.data))
-                fileChooser.value = null
-            }
-            LaunchedEffect(fileChooser.value) {
-                val request = fileChooser.value ?: return@LaunchedEffect
-                if (request.launched) return@LaunchedEffect
-                request.launched = true
-                runCatching { picker.launch(FileChoices.intent(request.params)) }.onFailure { request.complete(null); fileChooser.value = null }
-            }
-            BackHandler { if (privateWebView?.canGoBack() == true) privateWebView?.goBack() else finish() }
-            val keyboard = LocalSoftwareKeyboardController.current
-            fun go(target: String) {
-                pageError.value = null
-                if (privateWebView == null || crashed.value) { crashed.value = false; url = target; privateWebView?.loadUrl(target) } else privateWebView?.loadUrl(target)
-            }
-            Surface(color = Night, modifier = Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { finish() }) { Icon(Icons.Rounded.Close, "Close private session") }
-                        Text("Private browsing", fontWeight = FontWeight.SemiBold)
-                    }
-                    OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(16.dp), placeholder = { Text("Search or enter address") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { resolveInput(query, provider)?.let { go(it); keyboard?.hide() } }))
-                    pageError.value?.let { Text(it, modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFFFCCCF)) }
-                    notice.value?.let { message ->
-                        PageNoticeBar(PageNotice.Info(message), onDismiss = { notice.value = null }, onAllowPopups = {}, onOtherBrowser = {})
-                    }
-                    if (url == null) {
-                        Column(Modifier.verticalScroll(rememberScrollState()).padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Icon(Icons.Rounded.Masks, null, tint = Lavender, modifier = Modifier.size(48.dp))
-                            Text("A little space of your own", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            Text("Mylo won't save this session to history. Cookies are blocked and website storage is separate from your regular tabs. Some sites may not work with cookies blocked.", color = Muted)
-                            Text("Private browsing is stricter: sign-ins that need cookies won't work, pop-ups open in this same page, and camera, microphone, location and downloads are off.", color = Muted, fontSize = 13.sp)
-                            Text("Private browsing doesn't hide your activity from websites, your network, or your internet provider.", color = Muted, fontSize = 13.sp)
-                        }
-                    } else if (crashed.value) {
-                        Box(Modifier.weight(1f)) { CrashedPage { go(url!!) } }
-                    } else AndroidView(factory = { ctx -> WebView(ctx).apply {
-                        privateWebView = this
-                        clearCache(true); clearHistory()
-                        settings.javaScriptEnabled = true; settings.domStorageEnabled = false; settings.cacheMode = WebSettings.LOAD_NO_CACHE
-                        settings.allowFileAccess = false; settings.allowContentAccess = false
-                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.safeBrowsingEnabled = true
-                        settings.setSupportZoom(true); settings.builtInZoomControls = true; settings.displayZoomControls = false
-                        settings.useWideViewPort = true; settings.loadWithOverviewMode = true
-                        // Without multiple-window support, target=_blank and window.open load in this page.
-                        settings.setSupportMultipleWindows(false)
-                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
-                        webViewClient = PrivateClient()
-                        webChromeClient = PrivateChrome()
-                        setDownloadListener { _, _, _, _, _ -> notice.value = "Downloads are off in private browsing, so nothing is left on this device." }
-                        loadUrl(url!!)
-                    } }, modifier = Modifier.weight(1f).fillMaxWidth())
-                }
-            }
-            externalTarget.value?.let { target ->
-                AlertDialog(onDismissRequest = { externalTarget.value = null }, title = { Text("Leave private browsing?") },
-                    text = { Text("This link opens ${target.kind.label} outside Mylo. The other app can see what you open.") },
-                    confirmButton = { TextButton(onClick = {
-                        externalTarget.value = null
-                        when (val outcome = ExternalApps.launch(this@PrivateActivity, target)) {
-                            is ExternalApps.Outcome.LoadInMylo -> go(outcome.url)
-                            ExternalApps.Outcome.NoApp -> notice.value = "No app on this device can open this ${target.kind.label} link."
-                            ExternalApps.Outcome.Launched -> Unit
-                        }
-                    }) { Text("Open") } },
-                    dismissButton = { TextButton(onClick = { externalTarget.value = null }) { Text("Cancel") } })
-            }
-        } }
-    }
-
-    private inner class PrivateClient : WebViewClient() {
-        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-            when (val decision = WebPolicy.decide(request.url.toString(), request.isForMainFrame, request.hasGesture(), request.isRedirect)) {
-                NavigationDecision.LoadInMylo -> false
-                is NavigationDecision.OpenExternal -> { externalTarget.value = decision.target; true }
-                is NavigationDecision.Blocked -> true
-            }
-        override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { pageError.value = null }
-        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-            if (request.isForMainFrame) pageError.value = "This page couldn't load. Check your connection and try again."
-        }
-        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: android.net.http.SslError) {
-            handler.cancel()
-            pageError.value = "Mylo stopped loading this page because its security certificate couldn't be verified."
-        }
-        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-            (view.parent as? ViewGroup)?.removeView(view)
-            view.destroy()
-            if (privateWebView === view) privateWebView = null
-            crashed.value = true
-            return true
-        }
-    }
-
-    private inner class PrivateChrome : WebChromeClient() {
-        override fun onPermissionRequest(request: PermissionRequest) {
-            request.deny()
-            notice.value = "Camera and microphone are off in private browsing. Use a regular tab for this site."
-        }
-        override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
-            callback.invoke(origin, false, false)
-            notice.value = "Location is off in private browsing. Use a regular tab for this site."
-        }
-        override fun onShowFileChooser(webView: WebView, filePathCallback: ValueCallback<Array<android.net.Uri>>, fileChooserParams: FileChooserParams): Boolean {
-            fileChooser.value?.complete(null)
-            fileChooser.value = FileChooserRequest(0, fileChooserParams, filePathCallback)
-            return true
-        }
-        override fun onConsoleMessage(consoleMessage: ConsoleMessage) = true
-    }
-
-    override fun onDestroy() {
-        fileChooser.value?.complete(null)
-        privateWebView?.apply { stopLoading(); clearCache(true); clearHistory(); destroy() }
-        CookieManager.getInstance().removeAllCookies(null)
-        WebStorage.getInstance().deleteAllData()
-        super.onDestroy()
-    }
 }

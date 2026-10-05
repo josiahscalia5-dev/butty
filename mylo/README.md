@@ -4,6 +4,24 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 
 ## Current verification status
 
+**Private Mode (Milestone 1)** — verified on a real Android 35 emulator (Pixel 6) by `PrivateModeFlowTest` in the
+workflow's `private` scope ([run 37261817092](https://github.com/josiahscalia5-dev/butty/actions/runs/37261817092)),
+all three cases passed:
+
+- The approved Private Mode screen opens from Home's Private card, in its own process. Layoutlib renders and the
+  device screenshot match `design/reference/private-mode-reference.png` (`design/previews/claude-ui/09-…`).
+- A normal tab and a private tab load the same local test page (`compat-site/www/trackers.html`): each sees
+  "visit 1", so private cookies and storage are separate. On the private page all four third-party tracker requests
+  (Google Analytics, DoubleClick, Facebook Pixel, Bing Ads) were blocked and listed in Block trackers.
+- Burn on Exit → Clear now cleared tabs, cookies and storage (the page saw a fresh cookie and storage afterwards);
+  leaving through Home burned the session and the private process ended. Normal history contained only the normal
+  tab's visit.
+- Lock tabs: turning it on required Android's screen lock (a test PIN); after leaving Mylo and coming back, the
+  private tabs stayed hidden until the PIN was entered.
+- The entrance animation was recorded on the device (`13-…`).
+
+Screens: `design/previews/claude-ui/09-…` to `13-…`. Earlier verification (search provider flow) follows.
+
 `claude-ui` at `aa63420` (Settings-only search provider):
 
 - Local build: debug APK, instrumentation APK and all 16 URL resolver/state unit tests pass. Layoutlib (Paparazzi) Home renders at 393×851 and 360×640 dp are pixel-identical to the approved B+C Home before the search change.
@@ -48,7 +66,23 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 - URLs open in Android WebView; words open the real results page of the provider saved in Settings (Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage). Only HTTP(S) navigation is accepted.
 - Bookmarks and normal browsing history persist locally. Tabs can be created, selected and closed; per-tab WebView navigation state is retained while the app process lives and through rotation. Tabs are not restored after process death.
 - Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
-- Private browsing runs in a separate process and WebView data directory, blocks cookies, disables persistent web storage and disk caching, clears private website data when opened/closed, and does not write Mylo history. It is not network anonymity; some websites need cookies.
+- **Private Mode** (Home's Private card): the approved Private Mode screen with its entrance animation (the
+  sunglasses corgi settles onto the moon, the lenses catch the light, the shield pulses, Active fades in; instant when
+  Android's animations are off). Private tabs run on the same browser engine as normal tabs, in a separate process
+  and WebView data directory: first-party cookies and storage work for the session only, third-party cookies are
+  blocked, site permissions last only for the session, nothing is written to Mylo history, bookmarks and downloads
+  are off, and screenshots/Recents previews are blocked.
+  - *Block trackers* blocks third-party ad, analytics, social and identity-tracking requests from Mylo's built-in
+    list (`web/TrackerList.kt`, 114 domains; a company's trackers still load on its own sites) and shows what was
+    blocked.
+  - *Lock tabs* hides private tabs whenever Private Mode leaves the screen until Android's screen lock
+    (BiometricPrompt: fingerprint, face, PIN, pattern or password) is passed; it can only be turned on after the
+    lock is confirmed.
+  - *Burn session on exit* (on by default) and *Burn on Exit → Clear everything now* destroy the session's tabs,
+    cookies, storage, cache, permissions, tracker log and anything other features register for the session; the
+    private process then ends. If Android ends Mylo first, the private profile's files are deleted the next time
+    Mylo starts.
+  - Private Mode never claims to hide activity from websites, employers/schools or internet providers, and says so.
 - **Mylo Shield** ([docs/shield](docs/shield/README.md)): a WireGuard VPN client on Android's `VpnService`, with a disclosure, Android's VPN permission, a foreground service, real connection states, reconnect/renewal, server switching, fastest-server measurement, auto-connect and Always-on/kill-switch guidance. **No gateway is configured yet**, so the app shows *VPN unavailable · Server setup required* and never shows a location, speed or protection it doesn't have. One real test gateway is set up with [`shield-gateway/`](shield-gateway/README.md). The planned differentiators are in [docs/ROADMAP.md](docs/ROADMAP.md).
 - Tools open search preferences, Android downloads, Mylo Shield and app settings. Mylo opens a local about/preferences panel.
 

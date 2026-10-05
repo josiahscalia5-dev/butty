@@ -40,12 +40,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.mylo.browser.BrowserStore
 import com.mylo.browser.BrowserTab
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import org.json.JSONTokener
+import java.io.ByteArrayInputStream
+import java.util.concurrent.ConcurrentHashMap
 
 /** Observable state of one tab's page, updated from WebView callbacks on the main thread. */
 class PageState(val tabId: Long) {
@@ -60,6 +61,8 @@ class PageState(val tabId: Long) {
     /** The page's renderer process ended; the tab needs a reload. */
     var crashed by mutableStateOf(false)
     var notice by mutableStateOf<PageNotice?>(null)
+    /** Tracker requests blocked on the current page. */
+    var trackersBlocked by mutableIntStateOf(0)
     internal var loadingUrl: String? = null
     internal var dialogsShown = 0
     internal var dialogsSuppressed = false
@@ -177,12 +180,20 @@ sealed interface EngineEvent {
 }
 
 /**
- * Mylo's browser engine for normal browsing: one long-lived [WebView] per tab, configured once for every
- * site and every search provider. Pages may open windows (target=_blank, window.open, sign-in pop-ups),
- * which become Mylo tabs linked to their opener and close back to it. Sensitive requests become
- * [prompts]; nothing sensitive is granted without the user.
+ * Mylo's browser engine: one long-lived [WebView] per tab, configured once for every site and every search
+ * provider. Pages may open windows (target=_blank, window.open, sign-in pop-ups), which become Mylo tabs
+ * linked to their opener and close back to it. Sensitive requests become [prompts]; nothing sensitive is
+ * granted without the user. The same engine runs normal browsing and Private Mode ([mode]); with [trackers]
+ * it blocks third-party trackers for every page.
  */
-class TabEngine(private val app: Application, private val store: BrowserStore) {
+class TabEngine(
+    private val app: Application,
+    private val store: TabHost,
+    val mode: EngineMode = EngineMode.Normal,
+    val trackers: TrackerBlocker? = null,
+    /** Private Mode: site permissions kept in memory for the session only. */
+    sessionPermissions: SessionValues? = null,
+) {
     private class LiveTab(val id: Long, val webView: WebView, val context: MutableContextWrapper, var openerId: Long?)
 
     private val live = LinkedHashMap<Long, LiveTab>(16, .75f, true)
@@ -191,7 +202,13 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
     private val pending = mutableMapOf<Long, String>()
     private var activity: Activity? = null
 
-    val permissions = SitePermissionStore.from(app)
+    val permissions = if (sessionPermissions != null) SitePermissionStore(sessionPermissions) else SitePermissionStore.from(app)
+    /** Tracker requests blocked by this engine since it started or was last reset. */
+    var trackersBlocked by mutableIntStateOf(0)
+        private set
+    /** Each tab's current page, for decisions WebView asks off the main thread. */
+    private val pageUrls = ConcurrentHashMap<Long, String>()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
     val prompts = mutableStateListOf<WebPrompt>()
     var fileChooser by mutableStateOf<FileChooserRequest?>(null)
         private set
@@ -276,6 +293,7 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
         live.remove(tabId)?.let(::destroy)
         live.values.filter { it.openerId == tabId }.forEach { it.openerId = null }
         pages.remove(tabId)
+        pageUrls.remove(tabId)
         savedStates.remove(tabId)
         pending.remove(tabId)
         prompts.filter { it.tabId == tabId }.forEach(::dismiss)
@@ -302,6 +320,24 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
         live.values.toList().forEach(::destroy)
         live.clear()
     }
+
+    /**
+     * Private Mode's Burn: every tab, page state, saved navigation, pending prompt and file request is
+     * dropped, and the tracker counts start again. Cookies and storage are cleared by the session.
+     */
+    fun burn() {
+        prompts.toList().forEach(::dismiss)
+        finishFileChooser(null)
+        exitFullscreen()
+        live.keys.toList().forEach(::release)
+        live.clear(); pages.clear(); savedStates.clear(); pending.clear(); pageUrls.clear()
+        visibleTab = null
+        trackers?.reset()
+        trackersBlocked = 0
+    }
+
+    /** Counts are reset when the user turns blocking off and on again, never silently. */
+    fun resetTrackerCount() { trackers?.reset(); trackersBlocked = 0 }
 
     fun answered(prompt: WebPrompt) { prompts.remove(prompt) }
 
@@ -331,7 +367,9 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
             configure(this)
             webViewClient = Client(tabId)
             webChromeClient = Chrome(tabId)
-            setDownloadListener(Downloads(tabId))
+            setDownloadListener(if (mode == EngineMode.Private) DownloadListener { _, _, _, _, _ ->
+                page(tabId).notice = PageNotice.Info("Downloads are off in Private Mode, so nothing is left on this device. Use a regular tab to download.")
+            } else Downloads(tabId))
         }
         return LiveTab(tabId, view, context, openerId).also { live[tabId] = it }
     }
@@ -357,11 +395,12 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
         }
-        // Normal browsing matches Chrome's defaults so sign-in, SSO and embedded services work:
-        // first- and third-party cookies are accepted. Private browsing blocks cookies entirely.
+        // Normal browsing matches Chrome's defaults so sign-in, SSO and embedded services work: first- and
+        // third-party cookies are accepted. Private Mode keeps first-party cookies for the session only (its
+        // own process and data directory) and blocks third-party cookies.
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
-            setAcceptThirdPartyCookies(view, true)
+            setAcceptThirdPartyCookies(view, mode == EngineMode.Normal)
         }
     }
 
@@ -408,8 +447,17 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
             }
         }
 
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+            val blocker = trackers ?: return null
+            blocker.shouldBlock(request.url.toString(), pageUrls[tabId], request.isForMainFrame) ?: return null
+            main.post { trackersBlocked++; pages[tabId]?.let { it.trackersBlocked++ } }
+            return WebResourceResponse("text/plain", "utf-8", 403, "Blocked by Mylo", mapOf("Cache-Control" to "no-store"), ByteArrayInputStream(ByteArray(0)))
+        }
+
         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+            pageUrls[tabId] = url
             page(tabId).apply {
+                trackersBlocked = 0
                 loading = true
                 error = null
                 if (notice !is PageNotice.Info) notice = null
@@ -422,6 +470,7 @@ class TabEngine(private val app: Application, private val store: BrowserStore) {
         }
 
         override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+            pageUrls[tabId] = url
             page(tabId).apply {
                 this.url = url
                 canGoBack = view.canGoBack()
