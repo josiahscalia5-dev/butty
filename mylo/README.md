@@ -4,9 +4,16 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 
 ## Current verification status
 
-The committed version `2e3bcf3edd80c52c3cf7cf1538825f5f388bc1b2` built in [CI run 37232720149](https://github.com/josiahscalia5-dev/butty/actions/runs/37232720149), producing a debug APK. All 16 URL resolver unit tests and all eight Home test cases passed before the latest visual correction. Real search results were verified for Google, DuckDuckGo and Bing; Brave Search and Startpage presented CAPTCHAs. Google result-link selection and tab-test synchronization issues leave full browser verification incomplete.
+`claude-ui` at `aa63420` (Settings-only search provider):
 
-The latest working-tree visual correction has **not been compiled or rendered**. Earlier test results do not validate this correction. Local Gradle/Android SDK setup remains blocked; see [BLOCKERS.md](BLOCKERS.md). The user has authorized verification commits on `mylo-development` so GitHub can produce the Android renders. The visual correction remains under verification until the side-by-side review is complete.
+- Local build: debug APK, instrumentation APK and all 16 URL resolver/state unit tests pass. Layoutlib (Paparazzi) Home renders at 393×851 and 360×640 dp are pixel-identical to the approved B+C Home before the search change.
+- Real Android 35 emulator, [CI run 37245994561](https://github.com/josiahscalia5-dev/butty/actions/runs/37245994561) (`search-flow` scope, `SettingsSearchFlowTest`), all four cases passed:
+  - Settings → Google, "Facebook" typed in the Home box, keyboard Search → `https://www.google.com/search?q=Facebook`, "Facebook - Google Search", fully loaded.
+  - Settings → Yahoo, same steps → `https://search.yahoo.com/search?p=Facebook`, "Facebook - Yahoo Search Results".
+  - App stopped and relaunched without touching Settings → Yahoo still used for the same search.
+  - `facebook.com` typed in the Home box → `https://facebook.com` opened directly (loaded as `m.facebook.com`, "Facebook - log in or sign up"; the CI screenshot was taken before Facebook's page painted).
+  - Screens: `design/previews/claude-ui/07-…` and `08-…`.
+- Not yet run on this flow: the `full` device scope (portrait layout matrix, tabs, Back/Forward, every provider live). Earlier full runs found Brave Search and Startpage showing CAPTCHAs to CI's datacenter network; see [BLOCKERS.md](BLOCKERS.md).
 
 ## Current visual correction (claude-ui)
 
@@ -48,7 +55,7 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 ## Focused validation after setup
 
 1. Build the latest correction, rerun unit tests and render both 393×851 dp portrait cases using the build script. Compare the full reference-state portrait with `1-3751.jpg` before considering the visual correction complete.
-2. Open a direct URL, then search words using each provider. Submit a second URL before the first finishes. Verify Back returns through page history.
+2. Open a direct URL, then choose each provider in Settings and search words from the Home box. Submit a second URL before the first finishes. Verify Back returns through page history.
 3. Add/remove a bookmark, revisit history, clear history with confirmation, create/select/close tabs, and rotate the device.
 4. Check 360×640, 393×851 and 412×915 dp portrait layouts with gesture and three-button navigation. Focus search and verify IME resizing, scroll access and bottom-navigation insets.
 5. Open and close Private twice, confirming normal-session cookies and Mylo history remain separate. VPN status should follow the device's actual VPN.

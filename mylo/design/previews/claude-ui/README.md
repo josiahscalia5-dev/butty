@@ -11,6 +11,8 @@ Renders of the production Home and search composables from `tools/home-preview` 
 | `04-home-polish-options-A-B-C.jpg` | Polish options A, B and C |
 | `05-home-BC-focused-search-provider-sheet.jpg` | Implemented B+C Home, focused search with keyboard, provider sheet |
 | `06-home-status-bar-30dp-vs-44dp.jpg` | Home with a 30 dp and a 44 dp status bar |
+| `07-device-settings-provider-google-yahoo.jpg` | Real emulator: Settings → Google / Yahoo, "Facebook" typed in the Home box, real results |
+| `08-device-relaunch-and-direct-domain.jpg` | Real emulator: Yahoo kept after relaunch; `facebook.com` opened directly |
 
 `03` and `05` show an earlier search-provider direction ("Search with …" control and per-search sheet). It was
 replaced: the provider is now chosen only in Settings, and Home's own search box submits to it.
