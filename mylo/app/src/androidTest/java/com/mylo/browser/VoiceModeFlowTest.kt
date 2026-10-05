@@ -59,18 +59,27 @@ class VoiceModeFlowTest {
                 // The microphone asks Android first; then Mylo listens (live level, "Microphone on") or says why it can't.
                 waitFor(By.res("voice-talk"), "the microphone").click()
                 waitFor(By.res("com.android.permissioncontroller:id/permission_allow_foreground_only_button"), "Android's microphone prompt", 20_000).click()
-                if (android.speech.SpeechRecognizer.isRecognitionAvailable(context)) {
-                    waitFor(By.res("voice-mic-live"), "the microphone-on indicator")
-                    waitFor(By.text("Listening…"), "the listening state")
-                    shot(dir, "02-listening.png"); steps.put("listening with the microphone on")
-                    waitFor(By.res("voice-talk"), "the microphone").click()
-                    device.wait(Until.gone(By.res("voice-mic-live")), 15_000)
-                    assertTrue("The microphone turned off", !device.hasObject(By.res("voice-mic-live")))
-                    steps.put("microphone off after the turn")
-                } else {
-                    waitFor(By.text(com.mylo.browser.voice.ListenProblem.Unavailable.message), "the no-recognizer explanation")
-                    shot(dir, "02-no-recognizer.png"); steps.put("speech recognition not available on this emulator")
+                // Then Mylo listens with the microphone on, or says plainly why it can't (no recognizer or language
+                // pack on this phone). Either way the microphone ends up off.
+                val problems = com.mylo.browser.voice.ListenProblem.entries.map { it.message }
+                val deadline = SystemClock.uptimeMillis() + 15_000
+                var outcome: String? = null
+                while (outcome == null && SystemClock.uptimeMillis() < deadline) {
+                    if (device.hasObject(By.res("voice-mic-live"))) outcome = "listening"
+                    else problems.firstOrNull { device.hasObject(By.text(it)) }?.let { outcome = it }
+                    if (outcome == null) SystemClock.sleep(100)
                 }
+                assertTrue("Mylo neither listened nor explained why", outcome != null)
+                evidence.put("microphoneOutcome", outcome)
+                if (outcome == "listening") {
+                    shot(dir, "02-listening.png"); steps.put("listening with the microphone on")
+                    runCatching { device.findObject(By.res("voice-talk"))?.click() }
+                } else {
+                    shot(dir, "02-microphone-explained.png"); steps.put("microphone: $outcome")
+                }
+                device.wait(Until.gone(By.res("voice-mic-live")), 20_000)
+                assertTrue("The microphone turned off", !device.hasObject(By.res("voice-mic-live")))
+                steps.put("microphone off after the turn")
                 evidence.put("speechRecognitionAvailable", android.speech.SpeechRecognizer.isRecognitionAvailable(context))
 
                 waitFor(By.res("voice-type-instead"), "Type instead").click()

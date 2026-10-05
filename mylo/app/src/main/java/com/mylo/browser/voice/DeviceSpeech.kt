@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 enum class ListenProblem(val message: String) {
     NoPermission("Mylo needs microphone permission to listen. You can allow it in Android Settings."),
     Unavailable("Speech recognition isn’t available on this phone. You can type instead."),
+    LanguageMissing("Speech recognition for your language isn’t installed on this phone yet. You can type instead, or add it in Android’s speech settings."),
     NothingHeard("I didn’t catch that. Tap the microphone and try again."),
     Busy("The microphone is busy with another app. Try again in a moment."),
     Network("Speech recognition needs a connection right now. You can type instead."),
@@ -41,6 +42,8 @@ class DeviceSpeech(private val context: Context, private val onWords: (String) -
     val state: StateFlow<ListenState> = _state.asStateFlow()
     private var recognizer: SpeechRecognizer? = null
     private var gotWords = false
+    private var holdToTalk = false
+    private var usingOnDevice = false
 
     val available: Boolean get() = SpeechRecognizer.isRecognitionAvailable(context) || onDeviceAvailable
 
@@ -51,18 +54,25 @@ class DeviceSpeech(private val context: Context, private val onWords: (String) -
     fun start(holdToTalk: Boolean) {
         cancel()
         if (!available) { _state.value = ListenState(problem = ListenProblem.Unavailable); return }
+        this.holdToTalk = holdToTalk
+        begin(onDevice = onDeviceAvailable)
+    }
+
+    /** Starts a recognizer: on-device first; Android's standard recognizer when the phone lacks the language. */
+    private fun begin(onDevice: Boolean) {
         val created = runCatching {
-            if (onDeviceAvailable && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            if (onDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
             else SpeechRecognizer.createSpeechRecognizer(context)
         }.getOrNull()
         if (created == null) { _state.value = ListenState(problem = ListenProblem.Unavailable); return }
         recognizer = created
+        usingOnDevice = onDevice
         gotWords = false
         created.setRecognitionListener(Listener(created))
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, onDevice)
             .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
         if (holdToTalk) {
             // Press and hold: pauses don't end the turn; releasing does.
@@ -120,6 +130,14 @@ class DeviceSpeech(private val context: Context, private val onWords: (String) -
             if ((error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) && partial.isNotEmpty()) {
                 end(null); onWords(partial); return
             }
+            // The phone has on-device recognition but not this language: use Android's standard recognizer.
+            if (usingOnDevice && error in LANGUAGE_ERRORS) {
+                recognizer = null
+                runCatching { owner.destroy() }
+                _state.value = ListenState(listening = true)
+                begin(onDevice = false)
+                return
+            }
             end(problemFor(error))
         }
         override fun onEvent(eventType: Int, params: Bundle?) = Unit
@@ -134,9 +152,13 @@ class DeviceSpeech(private val context: Context, private val onWords: (String) -
             SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> ListenProblem.NothingHeard
             SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_AUDIO -> ListenProblem.Busy
             SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER -> ListenProblem.Network
-            else -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) ListenProblem.Unavailable
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && error == SpeechRecognizer.ERROR_SERVER_DISCONNECTED) ListenProblem.Network
-            else ListenProblem.Failed
+            in LANGUAGE_ERRORS -> ListenProblem.LanguageMissing
+            ERROR_SERVER_DISCONNECTED -> ListenProblem.Network
+            else -> ListenProblem.Failed
         }
+
+        /** Android 12's "language not supported" (12) and "language unavailable" (13). */
+        private val LANGUAGE_ERRORS = setOf(12, 13)
+        private const val ERROR_SERVER_DISCONNECTED = 11
     }
 }
