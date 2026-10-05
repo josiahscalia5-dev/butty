@@ -56,7 +56,7 @@ class PrivateModeFlowTest {
             context.getSharedPreferences("mylo_browser", 0).edit().remove("history").commit()
             ActivityScenario.launch(MainActivity::class.java).use {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
-                typeInto(waitFor(By.desc("Search or enter address"), "Home search"), NORMAL_PAGE)
+                typeInto(By.desc("Search or enter address"), "Home search", NORMAL_PAGE)
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
                 shot(dir, "01-normal-tab.png"); steps.put("normal tab visit 1")
@@ -71,7 +71,7 @@ class PrivateModeFlowTest {
 
                 // 3. Enter Private Session → a private new tab; the same test page sees no normal cookie.
                 device.findObject(By.res("private-enter")).click()
-                typeInto(waitFor(By.res("private-search-input"), "the private search box"), PRIVATE_PAGE)
+                typeInto(By.res("private-search-input"), "the private search box", PRIVATE_PAGE)
                 shot(dir, "03-private-new-tab.png"); steps.put("private new tab")
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "a fresh cookie jar in Private Mode", 20_000)
@@ -95,7 +95,7 @@ class PrivateModeFlowTest {
                 waitFor(By.textContains("Private session cleared"), "the burn message")
                 shot(dir, "06-burned.png"); steps.put("burned")
                 device.findObject(By.res("private-enter")).click()
-                typeInto(waitFor(By.res("private-search-input"), "the private search box after burning"), PRIVATE_PAGE)
+                typeInto(By.res("private-search-input"), "the private search box after burning", PRIVATE_PAGE)
                 submit()
                 waitFor(By.textContains("Visit 1 in this browser (cookie) · storage visit 1"), "cookie and storage cleared by the burn", 20_000)
                 shot(dir, "07-after-burn-fresh-storage.png"); steps.put("fresh cookie and storage after burn")
@@ -155,7 +155,7 @@ class PrivateModeFlowTest {
                 shot(dir, "02-lock-on.png")
                 device.pressBack()
                 device.findObject(By.res("private-enter")).click()
-                typeInto(waitFor(By.res("private-search-input"), "the private search box"), PRIVATE_PAGE)
+                typeInto(By.res("private-search-input"), "the private search box", PRIVATE_PAGE)
                 submit()
                 waitFor(By.textContains("in this browser"), "the private page", 20_000)
 
@@ -202,11 +202,20 @@ class PrivateModeFlowTest {
     }
 
     /** Types like a person: focus the field, then the keyboard's own key events (Android's `input text`). */
-    private fun typeInto(field: UiObject2, text: String) {
-        field.click()
+    private fun typeInto(selector: BySelector, what: String, text: String) {
+        waitFor(selector, what).click()
         SystemClock.sleep(600)
         shell("input text " + text.replace("&", "\\&"))
-        SystemClock.sleep(600)
+        // Android delivers the key events after `input` returns; on a busy emulator the field can still be
+        // filling in, so Go is pressed only once the whole address is there.
+        val deadline = SystemClock.uptimeMillis() + 15_000
+        var shown: String? = null
+        while (SystemClock.uptimeMillis() < deadline) {
+            shown = runCatching { device.findObject(selector)?.text }.getOrNull()
+            if (shown == text) return
+            SystemClock.sleep(200)
+        }
+        throw AssertionError("Typing into $what did not finish: \"$shown\"")
     }
 
     private fun shell(command: String): String =
