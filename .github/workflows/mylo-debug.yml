@@ -55,8 +55,13 @@ jobs:
           cache-read-only: false
       - name: Ensure Android 35 build tools
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Build APK and run URL resolver tests
-        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest --tests 'com.mylo.browser.web.*'
+      - name: Build APK and run URL resolver, AI and voice tests
+        env:
+          # Optional: a Mylo AI service for this debug build, from repository secrets (never the repository). The
+          # development token only exists in debug builds; without these the app says Mylo AI isn't connected.
+          MYLO_AI_API_BASE_URL: ${{ secrets.MYLO_AI_API_BASE_URL }}
+          MYLO_AI_DEV_TOKEN: ${{ secrets.MYLO_AI_DEV_TOKEN }}
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest --tests 'com.mylo.browser.web.*' --tests 'com.mylo.browser.ai.*' --tests 'com.mylo.browser.voice.*'
       - name: Verify and package debug APK
         run: |
           mkdir -p dist
