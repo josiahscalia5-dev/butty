@@ -97,7 +97,7 @@ enum class VoiceAction(val title: String, val subtitle: String) {
     Explain("Explain this page", "Give me a simple summary"),
     FindPricing("Find the pricing section", "Scroll there for me"),
     HelpCancel("Help me cancel", "Guide me step by step"),
-    CompareTabs("Compare this with my other tab", "Show key differences"),
+    CompareTabs("Compare this with\nmy other tab", "Show key differences"),
     SiteSafety("Is this site safe?", "Check for red flags"),
     Translate("Translate this page", "To another language"),
 }
@@ -236,7 +236,7 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
         }
         Box(Modifier.matchParentSize().clearAndSetSemantics { contentDescription = "Mylo the corgi wearing glowing headphones" })
         Image(rememberVectorPainter(HomeArt.Wordmark), "Mylo",
-            Modifier.offset(x = px(33f), y = shift + px(52f)).width(px(278f)).aspectRatio(HomeArt.WORDMARK_ASPECT))
+            Modifier.offset(x = px(33f), y = shift + px(53f)).width(px(268f)).aspectRatio(HomeArt.WORDMARK_ASPECT))
         Row(Modifier.offset(x = px(35f), y = shift + px(161f)), verticalAlignment = Alignment.CenterVertically) {
             Text("Your AI browsing buddy", fontSize = layout.sp(10f), fontWeight = FontWeight.Medium, color = Color(0xFFCDD0EE), maxLines = 1, softWrap = false)
             Icon(VoiceArt.Paw, null, tint = Color(0xFFC9B9FF), modifier = Modifier.padding(start = px(10f)).size(px(30f)))
@@ -260,14 +260,14 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
             }
         }
         // Handwritten notes.
-        Column(Modifier.offset(x = px(36f), y = shift + px(268f)).graphicsLayer { rotationZ = -14f; transformOrigin = TransformOrigin(0f, .5f) }) {
-            HandNote("Talk to Mylo", layout.sp(11.4f), Modifier.height(px(36f)))
-            HandNote("about any", layout.sp(11.4f), Modifier.height(px(36f)).padding(start = px(22f)))
-            HandNote("webpage!", layout.sp(11.4f), Modifier.height(px(36f)).padding(start = px(60f)))
+        Column(Modifier.offset(x = px(36f), y = shift + px(262f)).graphicsLayer { rotationZ = -16f; transformOrigin = TransformOrigin(0f, .5f) }) {
+            HandNote("Talk to Mylo", layout.sp(12.6f), Modifier.height(px(40f)))
+            HandNote("about any", layout.sp(12.6f), Modifier.height(px(40f)).padding(start = px(26f)))
+            HandNote("webpage!", layout.sp(12.6f), Modifier.height(px(40f)).padding(start = px(70f)))
         }
         Column(Modifier.offset(x = px(757f), y = shift + px(172f))) {
             listOf("Ask", "Explore", "Understand", "Get things done").forEachIndexed { i, line ->
-                HandNote(line, layout.sp(10.2f), Modifier.height(px(30f)).padding(start = px(4f * i)).graphicsLayer { rotationZ = -9f; transformOrigin = TransformOrigin(0f, .5f) })
+                HandNote(line, layout.sp(9.9f), Modifier.height(px(30f)).padding(start = px(4f * i)).graphicsLayer { rotationZ = -9f; transformOrigin = TransformOrigin(0f, .5f) })
             }
         }
         Canvas(Modifier.matchParentSize()) {
@@ -313,7 +313,7 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
 @Composable private fun SpeechBubble(layout: VoiceLayout, ui: VoiceModeUi) {
     fun px(v: Float) = layout.px(v)
     val text = when (ui.phase) {
-        VoicePhase.Idle -> "Ready when you are"
+        VoicePhase.Idle -> "Ready to help"
         VoicePhase.Listening -> "I’m listening…"
         VoicePhase.Thinking -> "Thinking…"
         VoicePhase.Speaking -> "Speaking…"
@@ -323,15 +323,10 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
         Canvas(Modifier.matchParentSize()) {
             val k = layout.k * density
             val body = androidx.compose.ui.geometry.RoundRect(6f * k, 0f, 270f * k, 104f * k, androidx.compose.ui.geometry.CornerRadius(52f * k))
-            val path = Path().apply {
-                addRoundRect(body)
-                moveTo(16f * k, 70f * k); lineTo(0f, 116f * k); lineTo(46f * k, 88f * k); close()
-            }
+            val tail = Path().apply { moveTo(20f * k, 68f * k); lineTo(2f * k, 116f * k); lineTo(52f * k, 92f * k); close() }
+            val path = Path.combine(androidx.compose.ui.graphics.PathOperation.Union, Path().apply { addRoundRect(body) }, tail)
             drawPath(path, Brush.verticalGradient(listOf(Color(0xF0142152), Color(0xF00E1940))))
-            drawPath(Path().apply {
-                moveTo(36f * k, 98f * k); lineTo(2f * k, 116f * k); lineTo(14f * k, 72f * k)
-            }, Color(0xFF6E6EF2), style = Stroke(2.8f * k))
-            drawRoundRect(Color(0xFF6E6EF2), Offset(6f * k, 0f), Size(264f * k, 104f * k), androidx.compose.ui.geometry.CornerRadius(52f * k), style = Stroke(2.8f * k))
+            drawPath(path, Brush.horizontalGradient(listOf(Color(0xFF6C6CF0), Color(0xFF7A72FF))), style = Stroke(2.8f * k))
         }
         AnimatedContent(text, Modifier.align(Alignment.TopCenter).padding(start = px(6f)).height(px(104f)), transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) }, label = "bubble") { t ->
             Box(Modifier.fillMaxHeight().width(px(264f)), contentAlignment = Alignment.Center) {
@@ -346,38 +341,18 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
     fun px(v: Float) = layout.px(v)
     val shape = RoundedCornerShape(px(42f))
     val glow = when (ui.phase) {
-        VoicePhase.Idle -> .45f + .1f * sin(breath * 2 * PI.toFloat())
-        VoicePhase.Listening -> .6f + .4f * level
-        VoicePhase.Thinking -> .55f + .3f * (.5f + .5f * sin(breath * 6 * PI.toFloat()))
-        VoicePhase.Speaking -> .6f + .4f * level
+        VoicePhase.Idle -> .7f + .12f * sin(breath * 2 * PI.toFloat())
+        VoicePhase.Listening -> .7f + .3f * level
+        VoicePhase.Thinking -> .55f + .35f * (.5f + .5f * sin(breath * 6 * PI.toFloat()))
+        VoicePhase.Speaking -> .7f + .3f * level
     }
-    Box(Modifier.padding(start = px(34f), end = px(VREF_W - 908f)).fillMaxWidth().height(layout.tall(V_MIC)).clip(shape)
-        .background(Brush.verticalGradient(listOf(Color(0xFF15234E), Color(0xFF101C43), Color(0xFF0E1A3E))))
-        .border(px(2.4f), Brush.verticalGradient(listOf(Color(0xFF3A4A8C), Color(0xFF24326A))), shape).testTag("voice-mic-card")) {
-        val center = Offset(436f, 79f)
+    Box(Modifier.padding(start = px(34f), end = px(VREF_W - 908f)).fillMaxWidth().height(layout.tall(V_MIC))) {
+        Box(Modifier.matchParentSize().clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF16254F), Color(0xFF111E45), Color(0xFF0F1B40))))
+            .border(px(2.4f), Brush.verticalGradient(listOf(Color(0xFF3B4B8E), Color(0xFF24326A))), shape).testTag("voice-mic-card"))
         // Live waveforms either side of the microphone.
-        Waveform(layout, Modifier.offset(x = px(195f), y = px(36f)).size(px(132f), px(78f)), level, ui.phase, breath, left = true)
-        Waveform(layout, Modifier.offset(x = px(546f), y = px(36f)).size(px(132f), px(78f)), level, ui.phase, breath, left = false)
-        // The microphone: a gradient ring with a glow that follows the conversation.
-        val talkLabel = when (ui.phase) { VoicePhase.Idle -> "Tap to talk with Mylo"; VoicePhase.Listening -> "Stop listening"; VoicePhase.Thinking -> "Mylo is thinking"; VoicePhase.Speaking -> "Stop Mylo speaking" }
-        Box(Modifier.offset(x = px(center.x - 100f), y = px(center.y - 100f)).size(px(200f)).clip(CircleShape)
-            .clickable(role = Role.Button, onClickLabel = talkLabel, onClick = onTalk)
-            .semantics { stateDescription = ui.phase.name }.testTag("voice-talk"), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.matchParentSize()) {
-                val k = layout.k * density
-                val c = Offset(size.width / 2, size.height / 2)
-                drawCircle(Brush.radialGradient(listOf(Color(0xFF7A5CFF).copy(alpha = .55f * glow), Color(0xFF3F7BFF).copy(alpha = .25f * glow), Color.Transparent), c, 100f * k), 100f * k, c)
-                drawCircle(Color(0xFF0C1535), 80f * k, c)
-                drawCircle(Brush.sweepGradient(listOf(Color(0xFF55C2FF), Color(0xFF7E63FF), Color(0xFFC452FF), Color(0xFF7E63FF), Color(0xFF55C2FF)), c), 80f * k, c, style = Stroke(9.5f * k))
-                drawCircle(Color.White.copy(alpha = .18f * glow), 86f * k, c, style = Stroke(3f * k))
-            }
-            Icon(VoiceArt.Mic, null, tint = Color.White, modifier = Modifier.size(px(84f)))
-        }
-        if (ui.micLive) Row(Modifier.align(Alignment.TopCenter).padding(top = px(10f)).background(Color(0xCC3A0F1E), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-live"), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(7.dp).background(Color(0xFFFF4D5E), CircleShape))
-            Text("Microphone on", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFFFE2E5))
-        }
+        Waveform(layout, Modifier.offset(x = px(193f), y = px(38f)).size(px(136f), px(76f)), level, ui.phase, breath, left = true)
+        Waveform(layout, Modifier.offset(x = px(544f), y = px(38f)).size(px(136f), px(76f)), level, ui.phase, breath, left = false)
         RoundControl(layout, VoiceArt.Keyboard, "Type\ninstead", Offset(97f, 126f), "voice-type-instead", onTypeInstead)
         RoundControl(layout, VoiceArt.Close, "Close\nvoice mode", Offset(778f, 126f), "voice-close", onClose)
         Column(Modifier.align(Alignment.TopCenter).padding(top = px(174f)).width(px(520f)), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -393,12 +368,61 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
                 color = Color(0xFFC6CAE6), textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = px(12f)).width(px(430f)).semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-caption"))
         }
+        // The microphone rises above the card's edge: a neon ring with a glow that follows the conversation.
+        val talkLabel = when (ui.phase) { VoicePhase.Idle -> "Tap to talk with Mylo"; VoicePhase.Listening -> "Stop listening"; VoicePhase.Thinking -> "Mylo is thinking"; VoicePhase.Speaking -> "Stop Mylo speaking" }
+        Box(Modifier.offset(x = px(436f - 110f), y = px(79f - 110f)).size(px(220f)), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.matchParentSize()) {
+                val k = layout.k * density
+                val c = Offset(size.width / 2, size.height / 2)
+                drawCircle(Brush.radialGradient(0f to Color(0xFF6E68FF).copy(alpha = .65f * glow), .55f to Color(0xFF4B7DFF).copy(alpha = .28f * glow), 1f to Color.Transparent,
+                    center = c, radius = 110f * k), 110f * k, c)
+                drawCircle(Brush.radialGradient(listOf(Color(0xFF1A2766), Color(0xFF0C1535)), c, 80f * k), 78f * k, c)
+                val ring = Brush.sweepGradient(listOf(Color(0xFF8C5BFF), Color(0xFF5FC7FF), Color(0xFF68D2FF), Color(0xFF8C5BFF), Color(0xFFC95BFF), Color(0xFF8C5BFF)), c)
+                drawCircle(ring, 82f * k, c, style = Stroke(16f * k), alpha = .35f * glow)
+                drawCircle(ring, 80f * k, c, style = Stroke(8f * k))
+                drawCircle(Color.White.copy(alpha = .35f), 76f * k, c, style = Stroke(1.6f * k))
+            }
+            Box(Modifier.size(px(168f)).clip(CircleShape).clickable(role = Role.Button, onClickLabel = talkLabel, onClick = onTalk)
+                .semantics { stateDescription = ui.phase.name }.testTag("voice-talk"), contentAlignment = Alignment.Center) {
+                MicGlyph(Modifier.size(px(78f)))
+            }
+        }
+        if (ui.micLive) Row(Modifier.align(Alignment.TopCenter).offset(y = px(-56f)).background(Color(0xE63A0F1E), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-live"), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(7.dp).background(Color(0xFFFF4D5E), CircleShape))
+            Text("Microphone on", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFFFE2E5))
+        }
+    }
+}
+
+/** The big microphone: a filled capsule on a stand. */
+@Composable private fun MicGlyph(modifier: Modifier) = Canvas(modifier) {
+    val w = size.width; val h = size.height
+    drawRoundRect(Color.White, Offset(w * .34f, h * .04f), Size(w * .32f, h * .56f), androidx.compose.ui.geometry.CornerRadius(w * .16f))
+    val stroke = Stroke(w * .075f, cap = StrokeCap.Round)
+    drawArc(Color.White, 0f, 180f, false, Offset(w * .2f, h * .22f), Size(w * .6f, h * .52f), style = stroke)
+    drawLine(Color.White, Offset(w * .5f, h * .74f), Offset(w * .5f, h * .94f), strokeWidth = w * .075f, cap = StrokeCap.Round)
+}
+
+/** A document with text lines (Find the pricing section; Current Page). */
+@Composable internal fun DocumentGlyph(modifier: Modifier, color: Color, lines: Color, outline: Boolean = false) = Canvas(modifier) {
+    val w = size.width; val h = size.height
+    val body = Path().apply {
+        moveTo(w * .26f, h * .1f); lineTo(w * .6f, h * .1f); lineTo(w * .78f, h * .28f); lineTo(w * .78f, h * .84f)
+        quadraticBezierTo(w * .78f, h * .92f, w * .7f, h * .92f); lineTo(w * .26f, h * .92f)
+        quadraticBezierTo(w * .18f, h * .92f, w * .18f, h * .84f); lineTo(w * .18f, h * .18f)
+        quadraticBezierTo(w * .18f, h * .1f, w * .26f, h * .1f); close()
+    }
+    if (outline) drawPath(body, color, style = Stroke(w * .08f, join = androidx.compose.ui.graphics.StrokeJoin.Round)) else drawPath(body, color)
+    val lineColor = if (outline) color else lines
+    listOf(.46f, .6f, .74f).forEachIndexed { i, y ->
+        drawLine(lineColor, Offset(w * .32f, h * y), Offset(w * if (i == 2) .52f else .64f, h * y), strokeWidth = w * .07f, cap = StrokeCap.Round)
     }
 }
 
 @Composable private fun RoundControl(layout: VoiceLayout, icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, center: Offset, tag: String, onClick: () -> Unit) {
     fun px(v: Float) = layout.px(v)
-    Column(Modifier.offset(x = px(center.x - 62f), y = px(center.y - 44f)).width(px(124f)).clip(RoundedCornerShape(px(30f)))
+    Column(Modifier.offset(x = px(center.x - 80f), y = px(center.y - 44f)).width(px(160f)).clip(RoundedCornerShape(px(30f)))
         .clickable(role = Role.Button, onClick = onClick).testTag(tag), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.padding(top = px(5f)).size(px(78f)).background(Color(0xFF172453), CircleShape).border(px(2.2f), Color(0xFF2E3D78), CircleShape), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(px(38f)))
@@ -413,16 +437,16 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
     Canvas(modifier.clearAndSetSemantics { }) {
         val n = pattern.size
         val step = size.width / n
-        val colors = if (left) listOf(Color(0xFFE277FF), Color(0xFF9C7BFF), Color(0xFF6F8BFF)) else listOf(Color(0xFF6F8BFF), Color(0xFF5BB7FF), Color(0xFF67D7FF))
+        val colors = if (left) listOf(Color(0xFFF07CFF), Color(0xFFA57CFF), Color(0xFF6E8CFF)) else listOf(Color(0xFF6E8CFF), Color(0xFF4FB4FF), Color(0xFF5FDCFF))
         val live = phase == VoicePhase.Listening || phase == VoicePhase.Speaking
         for (i in 0 until n) {
             val base = if (left) pattern[i] else pattern[n - 1 - i]
             val wobble = .5f + .5f * sin((breath * 2 * PI.toFloat() * 3) + i * .9f)
-            val amount = if (live) .18f + .82f * level * (.6f + .4f * wobble) else .32f + .06f * wobble
+            val amount = if (live) .3f + .7f * level * (.6f + .4f * wobble) else .8f + .12f * wobble
             val h = size.height * (base * amount).coerceIn(.08f, 1f)
             val x = step * i + step / 2
             drawLine(Brush.verticalGradient(colors, size.height / 2 - h / 2, size.height / 2 + h / 2), Offset(x, size.height / 2 - h / 2), Offset(x, size.height / 2 + h / 2),
-                strokeWidth = step * .38f, cap = StrokeCap.Round)
+                strokeWidth = step * .46f, cap = StrokeCap.Round)
         }
     }
 }
@@ -457,9 +481,9 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
             IconDisc(Modifier.matchParentSize())
             when (action) {
                 VoiceAction.Explain -> MagnifierGlyph(Modifier.size(px(52f)))
-                VoiceAction.FindPricing -> Icon(VoiceArt.Document, null, tint = Color(0xFF8C93FF), modifier = Modifier.size(px(50f)))
+                VoiceAction.FindPricing -> DocumentGlyph(Modifier.size(px(54f)), Color(0xFF8C93FF), Color(0xFF1B2366))
                 VoiceAction.HelpCancel -> CompassGlyph(Modifier.size(px(52f)))
-                VoiceAction.CompareTabs -> Icon(VoiceArt.Cart, null, tint = Color(0xFFA9B2FF), modifier = Modifier.size(px(48f)))
+                VoiceAction.CompareTabs -> Icon(VoiceArt.Cart, null, tint = Color(0xFFA9B2FF), modifier = Modifier.size(px(60f)))
                 VoiceAction.SiteSafety -> SafetyShieldGlyph(Modifier.size(px(50f)))
                 VoiceAction.Translate -> Icon(VoiceArt.Translate, null, tint = Color(0xFF6FAEFF), modifier = Modifier.size(px(52f)))
             }
@@ -502,21 +526,21 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
     val shape = RoundedCornerShape(px(28f))
     Row(modifier.height(layout.tall(84f)).clip(shape)
         .background(if (on) Brush.linearGradient(listOf(Color(0xFF123A40), Color(0xFF10303A))) else Brush.linearGradient(listOf(Color(0xFF1A2650), Color(0xFF172248))))
-        .border(px(2.4f), if (on) Color(0xFF2CCF9B) else Color(0xFF2B376B), shape)
+        .border(px(2.4f), if (on) Color(0xFF2CCF9B) else Color(0x662B376B), shape)
         .toggleable(on, role = Role.Switch, onValueChange = { onToggle() })
         .semantics { stateDescription = if (on) "On" else "Off" }.testTag("voice-access-${source.name.lowercase()}"),
         verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.padding(start = px(12f)).size(px(46f)).background(if (on) Brush.verticalGradient(listOf(Color(0xFF5CE8B6), Color(0xFF2CBF8E))) else Brush.verticalGradient(listOf(Color(0xFF2B3664), Color(0xFF232E58))), CircleShape),
+        Box(Modifier.padding(start = px(10f)).size(px(50f)).background(if (on) Brush.verticalGradient(listOf(Color(0xFF5CE8B6), Color(0xFF2CBF8E))) else Brush.verticalGradient(listOf(Color(0xFF2B3664), Color(0xFF232E58))), CircleShape),
             contentAlignment = Alignment.Center) {
             val tint = if (on) Color(0xFF0B3B33) else Color(0xFFC5CAE6)
             when (source) {
-                AiSource.CurrentPage -> Icon(VoiceArt.Document, null, tint = tint, modifier = Modifier.size(px(28f)))
-                AiSource.OtherTabs -> Icon(VoiceArt.Tabs, null, tint = tint, modifier = Modifier.size(px(28f)))
-                AiSource.History -> Icon(VoiceArt.Clock, null, tint = tint, modifier = Modifier.size(px(28f)))
-                AiSource.Location -> Icon(VoiceArt.Pin, null, tint = tint, modifier = Modifier.size(px(28f)))
+                AiSource.CurrentPage -> DocumentGlyph(Modifier.size(px(36f)), if (on) Color(0xFF0B3B33) else Color(0xFFC5CAE6), if (on) Color(0xFF5CE8B6) else Color(0xFF26315D), outline = true)
+                AiSource.OtherTabs -> Icon(VoiceArt.Tabs, null, tint = tint, modifier = Modifier.size(px(36f)))
+                AiSource.History -> Icon(VoiceArt.Clock, null, tint = tint, modifier = Modifier.size(px(36f)))
+                AiSource.Location -> Icon(VoiceArt.Pin, null, tint = tint, modifier = Modifier.size(px(36f)))
             }
         }
-        Column(Modifier.padding(start = px(10f), end = px(6f))) {
+        Column(Modifier.padding(start = px(9f), end = px(4f))) {
             Text(source.label, fontSize = layout.sp(7.9f), fontWeight = FontWeight.Medium, color = VoiceInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(if (on) "ON" else "OFF", fontSize = layout.sp(6.8f), fontWeight = FontWeight.Medium, color = if (on) Mint else Color(0xFF8E96BC), modifier = Modifier.padding(top = px(3f)))
         }

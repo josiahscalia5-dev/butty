@@ -102,11 +102,16 @@ internal object VoiceArt {
     }
 
     val Cart: ImageVector by lazy {
-        outline("Cart") {
-            moveTo(2.8f, 4f); lineTo(5.3f, 4f); lineTo(7.4f, 14.6f); quadTo(7.6f, 15.6f, 8.6f, 15.6f); lineTo(17.6f, 15.6f)
-            quadTo(18.5f, 15.6f, 18.8f, 14.7f); lineTo(20.6f, 8.3f); quadTo(20.8f, 7.4f, 19.9f, 7.4f); lineTo(6f, 7.4f)
-            moveTo(9.3f, 19.3f); lineTo(9.4f, 19.3f); moveTo(16.6f, 19.3f); lineTo(16.7f, 19.3f)
-        }
+        ImageVector.Builder("Cart", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(9.3f, 17.6f); arcToRelative(1.7f, 1.7f, 0f, true, true, 0f, 3.4f); arcToRelative(1.7f, 1.7f, 0f, true, true, 0f, -3.4f); close()
+                moveTo(16.6f, 17.6f); arcToRelative(1.7f, 1.7f, 0f, true, true, 0f, 3.4f); arcToRelative(1.7f, 1.7f, 0f, true, true, 0f, -3.4f); close()
+            }
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 2.2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+                moveTo(2.8f, 4f); lineTo(5.3f, 4f); lineTo(7.4f, 14.6f); quadTo(7.6f, 15.6f, 8.6f, 15.6f); lineTo(17.6f, 15.6f)
+                quadTo(18.5f, 15.6f, 18.8f, 14.7f); lineTo(20.6f, 8.3f); quadTo(20.8f, 7.4f, 19.9f, 7.4f); lineTo(6f, 7.4f)
+            }
+        }.build()
     }
 
     val ShieldCheck: ImageVector by lazy {
@@ -172,18 +177,18 @@ internal object VoiceArt {
     drawCircle(Color.White, s * .05f, Offset(s / 2, s / 2))
 }
 
-/** Is this site safe?: a mint shield with a check. */
+/** Is this site safe?: a mint shield with an inner shield. */
 @Composable internal fun SafetyShieldGlyph(modifier: Modifier) = Canvas(modifier) {
     val w = size.width * .8f
     val h = size.height
     val left = (size.width - w) / 2
-    drawPath(PrivateArt.shield(w, h, left), Brush.verticalGradient(listOf(Color(0xFF7CF0C8), Color(0xFF2CC395)), 0f, h))
-    val check = Path().apply { moveTo(size.width * .36f, h * .5f); lineTo(size.width * .47f, h * .61f); lineTo(size.width * .66f, h * .38f) }
-    drawPath(check, Color(0xFF0B3B32), style = Stroke(size.width * .08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawPath(PrivateArt.shield(w, h, left), Brush.verticalGradient(listOf(Color(0xFF8AF3D0), Color(0xFF3FD2A5)), 0f, h))
+    drawPath(PrivateArt.shield(w * .5f, h * .5f, left + w * .25f, h * .26f), Color(0xFF117A63))
+    drawPath(PrivateArt.shield(w * .5f, h * .5f, left + w * .25f, h * .26f), Color(0x4D000000), style = Stroke(1f))
 }
 
 /** A dark disc behind an action's icon. */
-@Composable internal fun IconDisc(modifier: Modifier, ring: Color = Color(0xFF1B2A57)) = Canvas(modifier) {
+@Composable internal fun IconDisc(modifier: Modifier, ring: Color = Color(0x661B2A57)) = Canvas(modifier) {
     drawCircle(Brush.radialGradient(listOf(Color(0xFF172654), Color(0xFF111D42)), Offset(size.width / 2, size.height / 2), size.minDimension / 2), size.minDimension / 2)
     drawCircle(ring, size.minDimension / 2 - 1f, style = Stroke(1.5f))
 }
