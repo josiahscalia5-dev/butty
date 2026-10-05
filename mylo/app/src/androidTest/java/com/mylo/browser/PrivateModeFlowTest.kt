@@ -52,12 +52,12 @@ class PrivateModeFlowTest {
         val dir = artifacts("session")
         val evidence = JSONObject().put("verified", false)
         val steps = JSONArray()
-        try {
+        try { recording(dir) {
             context.getSharedPreferences("mylo_browser", 0).edit().remove("history").commit()
             ActivityScenario.launch(MainActivity::class.java).use {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
                 typeInto(waitFor(By.desc("Search or enter address"), "Home search"), NORMAL_PAGE)
-                device.pressEnter()
+                submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
                 shot(dir, "01-normal-tab.png"); steps.put("normal tab visit 1")
                 device.pressBack()
@@ -73,7 +73,7 @@ class PrivateModeFlowTest {
                 device.findObject(By.res("private-enter")).click()
                 typeInto(waitFor(By.res("private-search-input"), "the private search box"), PRIVATE_PAGE)
                 shot(dir, "03-private-new-tab.png"); steps.put("private new tab")
-                device.pressEnter()
+                submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "a fresh cookie jar in Private Mode", 20_000)
                 waitFor(By.textContains("did not load"), "the tracker requests to finish")
                 val blockedOnPage = waitFor(By.res("private-page-trackers"), "the private strip").text
@@ -96,7 +96,7 @@ class PrivateModeFlowTest {
                 shot(dir, "06-burned.png"); steps.put("burned")
                 device.findObject(By.res("private-enter")).click()
                 typeInto(waitFor(By.res("private-search-input"), "the private search box after burning"), PRIVATE_PAGE)
-                device.pressEnter()
+                submit()
                 waitFor(By.textContains("Visit 1 in this browser (cookie) · storage visit 1"), "cookie and storage cleared by the burn", 20_000)
                 shot(dir, "07-after-burn-fresh-storage.png"); steps.put("fresh cookie and storage after burn")
 
@@ -118,7 +118,7 @@ class PrivateModeFlowTest {
             assertFalse("The private process ended after the burn", shell("pidof ${context.packageName}:private").isNotBlank())
             evidence.put("privateProcessEnded", true)
             evidence.put("verified", true)
-        } finally {
+        } } finally {
             File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
         }
     }
@@ -142,7 +142,7 @@ class PrivateModeFlowTest {
         val dir = artifacts("lock")
         val evidence = JSONObject().put("verified", false)
         shell("locksettings set-pin $PIN")
-        try {
+        try { recording(dir) {
             ActivityScenario.launch(MainActivity::class.java).use {
                 waitFor(By.text("Private"), "Home's Private card").click()
                 waitFor(By.res("private-mode-screen"), "the Private Mode screen", 20_000)
@@ -156,7 +156,7 @@ class PrivateModeFlowTest {
                 device.pressBack()
                 device.findObject(By.res("private-enter")).click()
                 typeInto(waitFor(By.res("private-search-input"), "the private search box"), PRIVATE_PAGE)
-                device.pressEnter()
+                submit()
                 waitFor(By.textContains("in this browser"), "the private page", 20_000)
 
                 // Leave Mylo and come back: the tabs are locked until the screen lock is passed.
@@ -172,7 +172,7 @@ class PrivateModeFlowTest {
                 shot(dir, "04-unlocked.png")
                 evidence.put("verified", true)
             }
-        } finally {
+        } } finally {
             shell("locksettings clear --old $PIN")
             File(dir, "evidence.json").writeText(evidence.toString(2))
         }
@@ -187,6 +187,16 @@ class PrivateModeFlowTest {
         SystemClock.sleep(300)
         device.pressEnter()
         SystemClock.sleep(1_500)
+    }
+
+    /** The search box's own Go button, which appears once something is typed. */
+    private fun submit() = waitFor(By.desc("Go"), "the Go button").click()
+
+    /** On failure: a screenshot and the screen's accessibility tree, for the evidence. */
+    private fun <T> recording(dir: File, block: () -> T): T = try { block() } catch (failure: Throwable) {
+        runCatching { device.takeScreenshot(File(dir, "failure.png")) }
+        runCatching { File(dir, "failure-hierarchy.xml").outputStream().use { device.dumpWindowHierarchy(it) } }
+        throw failure
     }
 
     private fun typeInto(field: UiObject2, text: String) {

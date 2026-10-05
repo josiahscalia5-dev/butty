@@ -8,6 +8,7 @@ and its headset can glow with the conversation:
   voice_hero_scene.webp    the night scene without words, status bar, controls, speech bubble or corgi
   voice_hero_corgi.webp    the headphone corgi on transparency, registered to the scene
   voice_hero_headset.webp  an alpha mask of the headset's glowing parts, for the light pulse
+  voice_nav_corgi.webp     the small corgi face of the bottom navigation's centre button
 
 All three share the reference's top 490 px (941 px wide), upscaled ×SCALE.
 
@@ -114,6 +115,26 @@ def headset_mask(rgb, corgi):
     return cv2.GaussianBlur(dilate(m, 2), (7, 7), 0)
 
 
+def corgi_face():
+    """The small corgi face in the bottom navigation's centre button, on transparency (×4, from a tiny source)."""
+    rgb = np.array(Image.open(REFERENCE).convert("RGB"))[1494:1574, 428:512]
+    f = rgb.astype(np.int32)
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    lum = luminance(rgb.astype(np.float32))
+    face = ((r > b + 5) | (lum > 165)).astype(np.uint8) * 255
+    face = cv2.morphologyEx(face, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(face)
+    if count > 1:
+        face = np.where(labels == 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA])), 255, 0).astype(np.uint8)
+    contours, _ = cv2.findContours(face, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    solid = np.zeros_like(face)
+    cv2.drawContours(solid, contours, -1, 255, -1)
+    alpha = cv2.GaussianBlur(solid, (3, 3), 0)
+    image = Image.fromarray(np.dstack([rgb, alpha]), "RGBA")
+    big = image.resize((image.width * 4, image.height * 4), Image.LANCZOS)
+    big.save(os.path.join(OUT, "voice_nav_corgi.webp"), quality=92, method=6)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug")
@@ -146,6 +167,7 @@ def main():
     art.upscale(Image.fromarray(np.dstack([clean, alpha]), "RGBA").crop(crop), "RGBA").save(os.path.join(OUT, "voice_hero_corgi.webp"), quality=92, method=6)
     art.upscale(Image.fromarray(np.dstack([np.full_like(headset, 255)] * 3 + [headset]), "RGBA").crop(crop), "RGBA").save(
         os.path.join(OUT, "voice_hero_headset.webp"), lossless=True, method=6)
+    corgi_face()
     print(f"scene {rgb.shape[1]}x{rgb.shape[0]} (x{art.SCALE}); corgi crop {crop} (x, y, right, bottom in reference px)")
     if args.debug:
         os.makedirs(args.debug, exist_ok=True)
