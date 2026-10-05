@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account security notice</title>
+  <link rel="stylesheet" href="mylo.css">
+</head>
+<body>
+  <!-- TEST PAGE ONLY: imitates common scam wording so Mylo's site check can be tested. It collects nothing. -->
+  <main>
+    <h1>Security alert</h1>
+    <p>Your account has been suspended because of unusual activity. Verify your account within 24 hours or it will be closed.</p>
+    <p>To restore access, pay the reactivation fee with a gift card or bitcoin.</p>
+    <form action="http://127.0.0.1:8081/collect" method="post" onsubmit="return false">
+      <label>Password <input type="password" name="password"></label>
+      <label>Card number <input name="card-number" autocomplete="cc-number"></label>
+      <button type="submit">Verify now</button>
+    </form>
+  </main>
+</body>
+</html>

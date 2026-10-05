@@ -345,6 +345,22 @@ class VoiceModeFlowTest {
                 waitFor(By.res("translate-original"), "Show original").click()
                 waitFor(By.text("Precios"), "the original Spanish again", 15_000)
                 shot(dir, "05-original.png"); steps.put("original restored")
+
+                // Is this site safe? A page imitating a scam is flagged by checks on the phone.
+                waitFor(By.text("Home"), "Home in the bottom bar").click()
+                type(By.desc("Search or enter address"), "Home search", SCAM_PAGE)
+                waitFor(By.desc("Go"), "the Go button").click()
+                waitFor(By.text("Security alert"), "the test scam page", 20_000)
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-action-sitesafety"), "Is this site safe?").click()
+                val summary = waitFor(By.res("safety-summary"), "the site check", 15_000)
+                assertTrue("The scam page is flagged: ${summary.text}", summary.text.startsWith("Be careful"))
+                val findings = waitFor(By.res("safety-list"), "the findings")
+                listOf("Password field without encryption", "A form sends to another site", "Unusual ways to pay or recover accounts", "Pressure to act quickly")
+                    .forEach { title -> if (!device.hasObject(By.text(title))) findings.scrollUntil(Direction.DOWN, Until.findObject(By.text(title))); waitFor(By.text(title), "the finding “$title”") }
+                evidence.put("safetySummary", summary.text)
+                shot(dir, "06-site-check.png"); steps.put("scam page flagged on the phone")
+                waitFor(By.res("voice-safety-close"), "close the site check").click()
             } }
             evidence.put("verified", true)
         } finally {
@@ -441,6 +457,7 @@ class VoiceModeFlowTest {
         const val TOKEN_ARG = "aiServiceToken"
         const val PLANS_PAGE = "http://localhost:8080/plans.html"
         const val SPANISH_PAGE = "http://localhost:8080/planes.html"
+        const val SCAM_PAGE = "http://localhost:8080/scam.html"
         val CURRENT_PAGE_OFF: BySelector = By.res("voice-access-currentpage").hasDescendant(By.text("OFF"))
     }
 }

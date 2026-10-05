@@ -13,6 +13,8 @@ interface PageHelper {
     /** Translates on the phone; how many pieces of text were translated (0: nothing to translate). */
     suspend fun translate(source: String, target: String, onProgress: (Int, Int) -> Unit): Int
     suspend fun showOriginal()
+    /** What matters for "Is this site safe?" (field counts and form destinations, never what is typed). */
+    suspend fun signals(): com.mylo.browser.ai.PageSignals?
 }
 
 /** Words that mark the sections the page actions look for, in order of preference. */

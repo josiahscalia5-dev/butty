@@ -33,6 +33,30 @@ object PageActions {
   return JSON.stringify({found: true, text: (area.innerText || '').trim().slice(0, 600)});
 })(%s)"""
 
+    private const val SIGNALS = """(function(){
+  var pw = document.querySelectorAll('input[type=password]').length, cards = 0, targets = [];
+  document.querySelectorAll('input').forEach(function(i){
+    var hint = ((i.getAttribute('autocomplete') || '') + ' ' + (i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '')).toLowerCase();
+    if (/cc-|card|cvv|cvc|security code/.test(hint)) cards++;
+  });
+  document.querySelectorAll('form').forEach(function(f){ try { targets.push(new URL(f.getAttribute('action') || location.href, location.href).hostname); } catch (e) {} });
+  return JSON.stringify({url: location.href, text: (document.body ? document.body.innerText : '').slice(0, 20000), pw: pw, cards: cards, targets: targets,
+    scripts: Array.prototype.filter.call(document.scripts, function(s){ try { return s.src && new URL(s.src).hostname !== location.hostname; } catch (e) { return false; } }).length});
+})()"""
+
+    /** The page's safety signals: field counts and form destinations, never anything typed. Main thread only. */
+    suspend fun signals(view: WebView): com.mylo.browser.ai.PageSignals? {
+        val raw = withTimeoutOrNull(4_000) {
+            suspendCancellableCoroutine<String?> { done -> view.evaluateJavascript(SIGNALS) { if (done.isActive) done.resume(it) } }
+        } ?: return null
+        return runCatching {
+            val json = JSONObject(JSONArray("[$raw]").getString(0))
+            val targets = json.optJSONArray("targets") ?: JSONArray()
+            com.mylo.browser.ai.PageSignals(json.optString("url"), json.optString("text"), json.optInt("pw"), json.optInt("cards"),
+                (0 until targets.length()).map { targets.getString(it) }.filter { it.isNotBlank() }, json.optInt("scripts"))
+        }.getOrNull()
+    }
+
     /** Finds [what] on the page in [view], scrolls to it and marks it; the text found, or null. Main thread only. */
     suspend fun show(view: WebView, what: String): String? {
         val raw = withTimeoutOrNull(4_000) {

@@ -203,6 +203,8 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
             return count
         }
 
+        override suspend fun signals(): com.mylo.browser.ai.PageSignals? = view()?.let { com.mylo.browser.voice.PageActions.signals(it) }
+
         override suspend fun showOriginal() {
             val id = tabId() ?: return
             engine.webViewIfLive(id)?.let { com.mylo.browser.voice.PageTranslator.restore(it) }

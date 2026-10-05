@@ -88,7 +88,7 @@ private val NoteBack = Color(0xFF33290F)
 private val NoteInk = Color(0xFFFFDB91)
 private val OnMint = Color(0xFF52E0AE)
 
-private enum class VoiceSheet { Chat, Access, Settings, Translate }
+private enum class VoiceSheet { Chat, Access, Settings, Translate, Safety }
 
 
 
@@ -223,6 +223,8 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
                 }
             }
             VoiceAction.Translate -> sheet = VoiceSheet.Translate
+            // The site check runs on the phone; Mylo AI's reading can be added when it is connected.
+            VoiceAction.SiteSafety -> sheet = VoiceSheet.Safety
             else -> ask(action)
         }
     }
@@ -272,6 +274,13 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
             // Location needs Android's (approximate) location permission; asked for when it is turned on.
             if (source == AiDataSource.Location && grant != AiGrant.Off && !DeviceContext.hasLocationPermission(context))
                 askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }, onClose = { sheet = null })
+        VoiceSheet.Safety -> SafetySheet(page, aiAvailable = connectedHost != null, onAskAi = { report ->
+            val (prompt, needs) = voicePrompt(VoiceAction.SiteSafety)
+            val findings = report.findings.filter { it.concern != com.mylo.browser.ai.Concern.Good }.joinToString("; ") { it.title }
+            conversation.send(prompt + if (findings.isNotEmpty()) " Mylo's own check found: $findings." else " Mylo's own check found no red flags.",
+                wants = AiConversation.DEFAULT_WANTS + needs, needs = needs)
+            sheet = VoiceSheet.Chat
         }, onClose = { sheet = null })
         VoiceSheet.Translate -> TranslateSheet(page, onDone = { message -> sheet = null; page.note(message); close() }, onClose = { sheet = null })
         VoiceSheet.Settings -> VoiceSettingsSheet(preferences, connectedHost, onServiceChanged = { connectedHost = MyloAi.connectedHost(context) },
@@ -416,6 +425,44 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
             modifier = Modifier.size(48.dp).testTag("voice-chat-stop")) { Icon(Icons.Rounded.Stop, "Stop answer", tint = SheetInk) }
         else FilledIconButton(onClick = ::send, enabled = text.isNotBlank(), colors = IconButtonDefaults.filledIconButtonColors(containerColor = SheetAccent, contentColor = UserInk),
             modifier = Modifier.size(48.dp).testTag("voice-chat-send")) { Icon(Icons.AutoMirrored.Rounded.Send, "Send") }
+    }
+}
+
+// Is this site safe? -----------------------------------------------------------------------------------
+
+@Composable private fun SafetySheet(page: PageHelper, aiAvailable: Boolean, onAskAi: (com.mylo.browser.ai.SiteReport) -> Unit, onClose: () -> Unit) {
+    var report by remember { mutableStateOf<com.mylo.browser.ai.SiteReport?>(null) }
+    var failed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { page.signals()?.let { report = com.mylo.browser.ai.SiteCheck.check(it) } ?: run { failed = true } }
+    VoiceSheetFrame("Is this site safe?", "voice-safety", onClose) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 620.dp).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 18.dp).testTag("safety-list")) {
+            val current = report
+            when {
+                failed -> Text("Mylo couldn’t read this page to check it.", fontSize = 15.sp)
+                current == null -> Text("Checking the address, connection, forms and wording…", fontSize = 15.sp)
+                else -> {
+                    val color = when (current.level) { com.mylo.browser.ai.Concern.Warning -> Color(0xFFFF8A8A); com.mylo.browser.ai.Concern.Caution -> NoteInk; else -> OnMint }
+                    Text(current.summary, Modifier.testTag("safety-summary"), color = color, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    current.findings.forEach { finding ->
+                        Row(Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(SheetCard).padding(12.dp).testTag("safety-finding")) {
+                            val (mark, tint) = when (finding.concern) {
+                                com.mylo.browser.ai.Concern.Warning -> "!" to Color(0xFFFF8A8A)
+                                com.mylo.browser.ai.Concern.Caution -> "•" to NoteInk
+                                com.mylo.browser.ai.Concern.Good -> "✓" to OnMint
+                            }
+                            Text(mark, Modifier.width(22.dp), color = tint, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Column {
+                                Text(finding.title, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                                Text(finding.detail, Modifier.padding(top = 2.dp), color = SheetMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                            }
+                        }
+                    }
+                    if (aiAvailable) TextButton(onClick = { onAskAi(current) }, Modifier.padding(top = 8.dp).testTag("safety-ask-ai")) {
+                        Text("Ask Mylo AI for its reading too", color = SheetAccent)
+                    }
+                }
+            }
+        }
     }
 }
 
