@@ -139,6 +139,7 @@ class VoiceEntry {
                 shot(dir, "01-home.png"); steps.put("launched: Home")
                 repeat(2) { round ->
                     val n = round + 1
+                    dismissOtherAppsNotResponding()
                     val mylo = bottomMylo()
                     mylo.click(); steps.put("tapped the bottom navigation's Mylo (time $n)")
                     waitFor(By.res("voice-mode-screen"), "the Voice Mode screen (time $n)")
@@ -154,6 +155,7 @@ class VoiceEntry {
                         evidence.put("notConnectedStatus", waitFor(By.text(NOT_CONNECTED_CAPTION), "the truthful not-connected status").text)
                     }
                     shot(dir, "0${2 * n}-voice-mode-$n.png"); steps.put("Voice Mode screen open (time $n)")
+                    dismissOtherAppsNotResponding()
                     waitFor(By.res("voice-close"), "Close voice mode").click()
                     device.wait(Until.gone(By.res("voice-mode-screen")), 5_000)
                     assertTrue("Voice Mode closed", !device.hasObject(By.res("voice-mode-screen")))
@@ -167,7 +169,7 @@ class VoiceEntry {
             runCatching { device.takeScreenshot(File(dir, "failure.png")) }
             throw failure
         } finally {
-            File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsAnsweredWait", JSONArray(dismissed)).toString(2))
         }
     }
 
@@ -181,8 +183,32 @@ class VoiceEntry {
         return lowest
     }
 
-    private fun waitFor(selector: BySelector, what: String, timeout: Long = 10_000): UiObject2 =
-        device.wait(Until.findObject(selector), timeout) ?: throw AssertionError("Not on screen: $what")
+    /** Waits for [selector], answering another app's "isn't responding" dialog (the emulator's launcher) on the way. */
+    private fun waitFor(selector: BySelector, what: String, timeout: Long = 20_000): UiObject2 {
+        val deadline = SystemClock.uptimeMillis() + timeout
+        while (true) {
+            device.findObject(selector)?.let { return it }
+            dismissOtherAppsNotResponding()
+            if (SystemClock.uptimeMillis() > deadline) throw AssertionError("Not on screen: $what")
+            SystemClock.sleep(250)
+        }
+    }
+
+    /**
+     * A busy CI emulator sometimes shows "Pixel Launcher isn't responding" over Mylo. That dialog belongs to another
+     * app, so it is answered with Wait (and noted in the evidence); a dialog about Mylo itself is never dismissed, so
+     * a real Mylo freeze still fails the test.
+     */
+    private fun dismissOtherAppsNotResponding() {
+        val title = device.findObject(By.textEndsWith("isn't responding")) ?: device.findObject(By.textEndsWith("isn’t responding")) ?: return
+        val text = runCatching { title.text }.getOrNull().orEmpty()
+        if (text.contains("Mylo", ignoreCase = true)) return
+        device.findObject(By.text("Wait"))?.click()
+        dismissed += text
+        SystemClock.sleep(500)
+    }
+
+    private val dismissed = mutableListOf<String>()
 
     private fun shot(dir: File, name: String) {
         device.waitForIdle(800)
