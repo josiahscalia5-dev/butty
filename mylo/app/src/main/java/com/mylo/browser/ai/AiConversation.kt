@@ -153,7 +153,7 @@ class AiConversation(
             try {
                 val gathered = gather(switchboard.authorize(wants))
                 val (context, redactions) = AiPrivacy.prepare(gathered.context)
-                receipt = PrivacyReceipt(context.used, redactions)
+                receipt = PrivacyReceipt(context.used, redactions, gathered.unavailable)
                 service.chat(conversationId, turns, context, private).collect { event ->
                     when (event) {
                         is AiEvent.Delta -> update(answer.id) { it.copy(text = it.text + event.text) }
@@ -198,7 +198,8 @@ class AiConversation(
     }
 
     companion object {
-        val DEFAULT_WANTS = setOf(AiDataSource.CurrentPage, AiDataSource.SelectedText)
+        /** Every question may use whatever What Mylo can see allows; the switchboard decides. */
+        val DEFAULT_WANTS: Set<AiDataSource> = AiDataSource.entries.toSet()
     }
 }
 
@@ -220,7 +221,14 @@ object AiPrivacy {
             page = context.page?.let(::page),
             tabs = context.tabs.map(::page),
             history = context.history.map { (url, title) -> clean(url) to clean(title) },
+            memory = context.memory.map(::clean),
+            // Location is rounded on the phone to about a kilometre before it is used at all.
+            location = context.location?.let { (lat, lon) -> roundCoordinate(lat) to roundCoordinate(lon) },
+            screenshot = context.screenshot?.takeIf { it.length <= AiContract.MAX_SCREENSHOT_CHARS },
         )
         return prepared to hidden
     }
+
+    /** Two decimal places: roughly 1 km, enough for "near me" and never a street address. */
+    fun roundCoordinate(value: Double): Double = Math.round(value * 100.0) / 100.0
 }

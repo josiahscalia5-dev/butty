@@ -26,7 +26,13 @@ ISSUED = set()
 
 def scripted_reply(payload):
     developer = next((item["content"] for item in payload.get("input", []) if item.get("role") == "developer"), "")
-    question = next((item["content"] for item in reversed(payload.get("input", [])) if item.get("role") == "user"), "")
+    last = next((item["content"] for item in reversed(payload.get("input", [])) if item.get("role") == "user"), "")
+    images = 0
+    if isinstance(last, list):
+        images = sum(1 for part in last if part.get("type") == "input_image" and str(part.get("image_url", "")).startswith("data:image/jpeg;base64,"))
+        question = " ".join(part.get("text", "") for part in last if part.get("type") == "input_text")
+    else:
+        question = last
     title = re.search(r"CURRENT PAGE\nTitle: (.*)", developer)
     tabs = len(re.findall(r"OTHER TAB \d+", developer))
     redacted = len(re.findall(r"\[(?:card number|ID number|bank account|link with secret removed)\]", developer))
@@ -39,6 +45,13 @@ def scripted_reply(payload):
         parts.append("%d other tab%s shared." % (tabs, "" if tabs == 1 else "s"))
     if redacted:
         parts.append("%d detail%s arrived hidden." % (redacted, "" if redacted == 1 else "s"))
+    if "APPROXIMATE LOCATION" in developer:
+        parts.append("An approximate location was shared.")
+    memories = len(re.findall(r"\n- ", developer.split("THINGS THE PERSON ASKED MYLO TO REMEMBER", 1)[1])) if "THINGS THE PERSON ASKED MYLO TO REMEMBER" in developer else 0
+    if memories:
+        parts.append("%d remembered thing%s shared." % (memories, "" if memories == 1 else "s"))
+    if images:
+        parts.append("A screenshot of the page arrived.")
     parts.append("You asked: “%s”" % question.strip()[:120])
     return " ".join(parts)
 

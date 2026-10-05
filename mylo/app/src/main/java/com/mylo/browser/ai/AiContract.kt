@@ -19,6 +19,8 @@ data class AiContext(
     /** Approximate location, rounded on the device. */
     val location: Pair<Double, Double>? = null,
     val memory: List<String> = emptyList(),
+    /** A JPEG of the page on screen, base64, only when the switchboard allowed Screenshot for this question. */
+    val screenshot: String? = null,
 ) {
     /** For the Privacy Receipt: which sources this request actually used. */
     val used: Set<AiDataSource> get() = buildSet {
@@ -29,6 +31,7 @@ data class AiContext(
         if (history.isNotEmpty()) add(AiDataSource.History)
         if (location != null) add(AiDataSource.Location)
         if (memory.isNotEmpty()) add(AiDataSource.MyloMemory)
+        if (screenshot != null) add(AiDataSource.Screenshot)
     }
 }
 
@@ -45,10 +48,14 @@ sealed interface AiEvent {
     data class Failure(val code: String, val message: String) : AiEvent
 }
 
-/** After an answer: what was and wasn't shared, in the user's words. */
-data class PrivacyReceipt(val used: Set<AiDataSource>, val redactions: Int) {
+/** After an answer: what was and wasn't shared, in the user's words. [unavailable]: allowed, but the phone couldn't provide it. */
+data class PrivacyReceipt(val used: Set<AiDataSource>, val redactions: Int, val unavailable: Set<AiDataSource> = emptySet()) {
     fun lines(): List<String> = AiDataSource.entries.filter { it != AiDataSource.SelectedText || it in used }.map { source ->
-        if (source in used) "${source.label} used" else "${source.label} not shared"
+        when (source) {
+            in used -> "${source.label} used"
+            in unavailable -> "${source.label} allowed, but not available"
+            else -> "${source.label} not shared"
+        }
     } + if (redactions > 0) listOf("$redactions personal detail${if (redactions == 1) "" else "s"} hidden before sending") else emptyList()
 }
 
@@ -71,6 +78,7 @@ object AiContract {
             if (context.history.isNotEmpty()) put("history", JSONArray(context.history.map { (url, title) -> JSONObject().put("url", url).put("title", title) }))
             context.location?.let { (lat, lon) -> put("location", JSONObject().put("lat", lat).put("lon", lon)) }
             if (context.memory.isNotEmpty()) put("memory", JSONArray(context.memory))
+            context.screenshot?.let { put("screenshot", JSONObject().put("mime", "image/jpeg").put("data", it)) }
         })
         put("tools", JSONArray(tools))
     }.toString()
@@ -164,4 +172,6 @@ object AiContract {
     const val MAX_TURNS = 20
     const val MAX_PAGE_CHARS = 24_000
     const val MAX_SELECTION_CHARS = 4_000
+    /** A screenshot's base64 size limit (the app sends a downscaled JPEG well under it). */
+    const val MAX_SCREENSHOT_CHARS = 700_000
 }

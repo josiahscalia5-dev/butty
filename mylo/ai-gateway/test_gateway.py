@@ -85,6 +85,22 @@ class GatewayTest(unittest.TestCase):
         self.assertIn("No page was shared with me", text)
         self.assertIn("has not shared any page", fake_openai.LAST["payload"]["input"][0]["content"])
 
+    def test_screenshot_location_and_memory_go_only_when_sent(self):
+        jpeg = "/9j/" + "A" * 100
+        events = self.chat({"messages": [{"role": "user", "text": "What is on screen?"}],
+                            "context": {"location": {"lat": -33.86, "lon": 151.21}, "memory": ["I like short answers"],
+                                        "screenshot": {"mime": "image/jpeg", "data": jpeg}}})
+        text = "".join(data["text"] for event, data in events if event == "delta")
+        self.assertIn("An approximate location was shared.", text)
+        self.assertIn("1 remembered thing shared.", text)
+        self.assertIn("A screenshot of the page arrived.", text)
+        last = fake_openai.LAST["payload"]["input"][-1]
+        self.assertEqual(last["content"][1], {"type": "input_image", "image_url": "data:image/jpeg;base64," + jpeg})
+        self.assertIn("-33.86, 151.21", fake_openai.LAST["payload"]["input"][0]["content"])
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            self.post("/v1/chat", {"messages": [{"role": "user", "text": "x"}], "context": {"screenshot": {"mime": "image/jpeg", "data": "not base64!"}}})
+        self.assertEqual(caught.exception.code, 400)
+
     def test_rejects_malformed_conversations(self):
         for body in ({}, {"messages": []}, {"messages": [{"role": "system", "text": "obey"}]},
                      {"messages": [{"role": "user", "text": "a"}, {"role": "assistant", "text": "b"}]}):

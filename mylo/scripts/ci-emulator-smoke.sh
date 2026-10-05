@@ -160,6 +160,10 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
     # Each case starts with the microphone not yet allowed, so Android's prompt is part of the flow.
     timeout 15 adb shell pm revoke "$app_package" android.permission.RECORD_AUDIO > /dev/null 2>&1 || true
     timeout 15 adb shell pm clear-permission-flags "$app_package" android.permission.RECORD_AUDIO user-set user-fixed > /dev/null 2>&1 || true
+    for permission in ACCESS_COARSE_LOCATION ACCESS_FINE_LOCATION; do
+      timeout 15 adb shell pm revoke "$app_package" "android.permission.$permission" > /dev/null 2>&1 || true
+      timeout 15 adb shell pm clear-permission-flags "$app_package" "android.permission.$permission" user-set user-fixed > /dev/null 2>&1 || true
+    done
     local output="$voice_dir/$method.txt"
     timeout "$limit" adb shell am instrument -w -r "$@" -e class "com.mylo.browser.VoiceModeFlowTest#$method" \
       com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
@@ -172,11 +176,15 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
       | cut -c1-500 | head -n 8 | sed 's/^/    /' >> "$voice_summary" || true
     timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/voice/. "$voice_dir/" > /dev/null 2>&1 || true
   }
+  # A steady location for the approximate-location step, sent from the host like a real fix.
+  adb shell cmd location set-location-enabled true || true
+  ( while true; do adb emu geo fix 151.2153 -33.8568 > /dev/null 2>&1 || true; sleep 3; done ) &
+  geo_pid=$!
   run_voice voiceModeWithoutAServiceSendsNothing 240
   run_voice typedChatThroughTheMyloAiService 300 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
   run_voice realtimeVoiceThroughTheTestService 360 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
   timeout 10 curl -s http://127.0.0.1:8091/test/realtime > "$voice_dir/provider-events.json" || true
-  kill "$site_pid" "$upstream_pid" "$gateway_pid" 2> /dev/null || true
+  kill "$site_pid" "$upstream_pid" "$gateway_pid" "$geo_pid" 2> /dev/null || true
   { echo 'Crash and memory events during the Voice Mode run:'
     timeout 30 adb logcat -d -v threadtime | grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |ANR in|Process com\.mylo\.browser.* has died' | cut -c1-300 | tail -n 20 || echo '  none recorded'
   } >> "$voice_summary"

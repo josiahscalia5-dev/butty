@@ -133,6 +133,21 @@ class AiConversationTest {
     }
 }
 
+class AiDeviceSourcesTest {
+    @Test fun locationIsRoundedMemoryAndScreenshotsAreSharedOnlyWhenGathered() {
+        val (prepared, _) = AiPrivacy.prepare(AiContext(location = -33.858712 to 151.215312, memory = listOf("Card 4111 1111 1111 1111"), screenshot = "/9j/AAAA"))
+        assertEquals(-33.86 to 151.22, prepared.location)
+        assertEquals(listOf("Card [card number]"), prepared.memory)
+        assertEquals(setOf(AiDataSource.Location, AiDataSource.MyloMemory, AiDataSource.Screenshot), prepared.used)
+        val json = JSONObject(AiContract.chatRequest("c", listOf(AiTurn(AiTurn.Role.User, "Hi")), prepared, false)).getJSONObject("context")
+        assertEquals("/9j/AAAA", json.getJSONObject("screenshot").getString("data"))
+        assertEquals(-33.86, json.getJSONObject("location").getDouble("lat"), 0.0)
+        val receipt = PrivacyReceipt(setOf(AiDataSource.CurrentPage), 0, unavailable = setOf(AiDataSource.Location))
+        assertTrue(receipt.lines().contains("Location allowed, but not available"))
+        assertFalse(AiPrivacy.prepare(AiContext(screenshot = "x".repeat(AiContract.MAX_SCREENSHOT_CHARS + 1))).first.used.contains(AiDataSource.Screenshot))
+    }
+}
+
 class AiContractTest {
     @Test fun chatRequestCarriesOnlyTheGivenContext() {
         val json = JSONObject(AiContract.chatRequest("c1", listOf(AiTurn(AiTurn.Role.User, "Hi")), AiContext(page = PageContext("https://a.example", "A", "x".repeat(30_000))), private = true))

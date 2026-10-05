@@ -196,10 +196,22 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
             PageContext(tab.url, read?.title?.ifBlank { null } ?: tab.title, read?.text?.take(4_000).orEmpty())
         } else emptyList()
         val history = if (AiDataSource.History in allowed) store.history.take(30).map { it.url to it.title } else emptyList()
-        // Screenshot, location and saved memory aren't read by this version, whatever the switchboard says.
-        val unavailable = allowed.intersect(setOf(AiDataSource.Screenshot, AiDataSource.Location, AiDataSource.MyloMemory))
-        return Gathered(AiContext(page = page, tabs = tabs, history = history), unavailable)
+        val app = getApplication<Application>()
+        val location = if (AiDataSource.Location in allowed) com.mylo.browser.ai.DeviceContext.approximateLocation(app) else null
+        val memory = if (AiDataSource.MyloMemory in allowed) com.mylo.browser.ai.MyloMemory(app).items else emptyList()
+        val screenshot = if (AiDataSource.Screenshot in allowed && current != null) pageSnapshot else null
+        val unavailable = buildSet {
+            if (AiDataSource.Location in allowed && location == null) add(AiDataSource.Location)
+            if (AiDataSource.Screenshot in allowed && screenshot == null) add(AiDataSource.Screenshot)
+        }
+        return Gathered(AiContext(page = page, tabs = tabs, history = history, location = location, memory = memory, screenshot = screenshot), unavailable)
     }
+
+    /**
+     * A picture of the page the person opened Voice Mode from, kept in memory only while Voice Mode is open and
+     * sent only when Screenshot is allowed for a question.
+     */
+    var pageSnapshot: String? = null
 
     override fun onCleared() { voiceCall.destroy(); engine.destroyAll() }
 }
@@ -320,9 +332,10 @@ class MainActivity : ComponentActivity() {
     // Home draws its artwork behind the status bar; browser pages do not.
     Box(Modifier.fillMaxSize()) {
     if (voiceOpen) {
-        VoiceRoute(session.conversation, session.switchboard, session.voiceCall, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false },
+        VoiceRoute(session.conversation, session.switchboard, session.voiceCall, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false; session.pageSnapshot = null },
             onNav = { destination ->
                 voiceOpen = false
+                session.pageSnapshot = null
                 when (destination) {
                     VoiceNav.Home -> showHome()
                     VoiceNav.Search -> searchFromHome()
@@ -347,7 +360,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { dismissInput(); voiceOpen = true })
+            BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, {
+                dismissInput()
+                // The page as it looks now, in memory only; Mylo AI gets it only if Screenshot is allowed.
+                session.pageSnapshot = if (onHome) null else currentTab?.let { engine.webViewIfLive(it) }?.let { com.mylo.browser.ai.DeviceContext.snapshot(it) }
+                voiceOpen = true
+            })
     }
     }
     // Full-screen video sits above everything, with the page still attached underneath.

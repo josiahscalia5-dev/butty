@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -24,7 +25,7 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-MAX_BODY = 256 * 1024
+MAX_BODY = 1024 * 1024
 MAX_ANSWER_CHARS = 64 * 1024
 TOOLS = ["scroll_to", "highlight", "find", "read_aloud", "go_back", "search", "open_link", "translate"]
 
@@ -175,6 +176,14 @@ def responses_request(config, body):
         items.append({"role": message["role"], "content": text})
     if items[-1]["role"] != "user":
         raise ValueError("the last message must be the person's")
+    screenshot = (body.get("context") or {}).get("screenshot") if isinstance(body.get("context"), dict) else None
+    if isinstance(screenshot, dict) and screenshot.get("mime") == "image/jpeg" and isinstance(screenshot.get("data"), str):
+        data = screenshot["data"]
+        if len(data) > 700000 or not re.fullmatch(r"[A-Za-z0-9+/=\s]+", data):
+            raise ValueError("bad screenshot")
+        # The picture of the page goes with the person's question (it is untrusted data too).
+        items[-1] = {"role": "user", "content": [{"type": "input_text", "text": items[-1]["content"]},
+                                                 {"type": "input_image", "image_url": "data:image/jpeg;base64," + data.replace("\n", "")}]}
     return {"model": config.chat_model, "instructions": PERSONA, "input": items, "stream": True, "store": False}
 
 

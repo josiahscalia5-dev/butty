@@ -58,7 +58,9 @@ import com.mylo.browser.ai.AiPreferences
 import com.mylo.browser.ai.AiSwitchboard
 import com.mylo.browser.ai.AiTurn
 import com.mylo.browser.ai.ChatMessage
+import com.mylo.browser.ai.DeviceContext
 import com.mylo.browser.ai.MyloAi
+import com.mylo.browser.ai.MyloMemory
 import com.mylo.browser.ai.MyloVoice
 import com.mylo.browser.ai.PrivacyReceipt
 import com.mylo.browser.voice.CallState
@@ -83,8 +85,6 @@ private val OnMint = Color(0xFF52E0AE)
 
 private enum class VoiceSheet { Chat, Access, Settings }
 
-/** Sources Mylo AI can't read yet in this version, so the switchboard says so instead of implying it does. */
-private val notReadYet = setOf(AiDataSource.Screenshot, AiDataSource.Location, AiDataSource.MyloMemory)
 
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -146,6 +146,12 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
         holdPending = null
         if (!granted) problem = ListenProblem.NoPermission.message
         else if (hold == false) begin(hold = false)
+    }
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) {
+            switchboard.set(AiDataSource.Location, AiGrant.Off); accessVersion++
+            problem = "Location stays off: Android's location permission wasn't given."
+        }
     }
     LaunchedEffect(listen.problem) { listen.problem?.let { problem = it.message; speech.clearProblem() } }
     LaunchedEffect(callState.problem) { callState.problem?.let { problem = it } }
@@ -229,7 +235,12 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
             // During a voice call the typed words join the same conversation and Mylo answers aloud.
             onSend = { if (inCall) call.type(it) else conversation.send(it) }, onStop = conversation::stop, onAnswerAsk = { conversation.answerAsk(it); accessVersion++ },
             onNewChat = conversation::clear, onAdjust = { sheet = VoiceSheet.Access }, onClose = { sheet = null })
-        VoiceSheet.Access -> AccessSheet(switchboard, accessVersion, { source, grant -> switchboard.set(source, grant); accessVersion++ }, onClose = { sheet = null })
+        VoiceSheet.Access -> AccessSheet(switchboard, accessVersion, { source, grant ->
+            switchboard.set(source, grant); accessVersion++
+            // Location needs Android's (approximate) location permission; asked for when it is turned on.
+            if (source == AiDataSource.Location && grant != AiGrant.Off && !DeviceContext.hasLocationPermission(context))
+                askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }, onClose = { sheet = null })
         VoiceSheet.Settings -> VoiceSettingsSheet(preferences, connectedHost, onServiceChanged = { connectedHost = MyloAi.connectedHost(context) },
             onSample = { voice -> if (!inCall) call.sample(voice.id, VOICE_SAMPLE) }, sampling = inCall,
             onMoreSettings = { sheet = null; onMoreSettings() }, onClose = { sheet = null })
@@ -397,7 +408,6 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
     Column(Modifier.padding(vertical = 12.dp).testTag("access-${source.name.lowercase()}")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(source.label, Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            if (source in notReadYet) Text("Not used by Mylo yet", color = NoteInk, fontSize = 11.5.sp)
         }
         Text(source.explanation, Modifier.padding(top = 2.dp), color = SheetMuted, fontSize = 12.5.sp, lineHeight = 16.sp)
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -441,6 +451,8 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
                 else "Mylo answers in text until the Mylo AI voice service is connected; then you'll hear the voice you pick, and can play samples here.",
                 Modifier.padding(top = 8.dp), color = SheetMuted, fontSize = 12.5.sp, lineHeight = 17.sp)
             Spacer(Modifier.height(18.dp))
+            MemoryEditor()
+            Spacer(Modifier.height(18.dp))
             Text("Mylo AI service", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(if (connectedHost != null) "Connected to $connectedHost" else "Not connected in this build", Modifier.padding(top = 4.dp).testTag("voice-service-status"),
                 color = if (connectedHost != null) OnMint else NoteInk, fontSize = 14.sp)
@@ -451,6 +463,34 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
             TextButton(onClick = onMoreSettings, contentPadding = PaddingValues(0.dp)) { Text("More Mylo settings", color = SheetAccent, fontSize = 15.sp) }
             Spacer(Modifier.height(16.dp))
         }
+    }
+}
+
+/** Saved Mylo Memory: what the person asked Mylo to remember, on this phone only; used when allowed. */
+@Composable private fun MemoryEditor() {
+    val context = LocalContext.current
+    val memory = remember { MyloMemory(context) }
+    var items by remember { mutableStateOf(memory.items) }
+    var draft by rememberSaveable { mutableStateOf("") }
+    Text("Saved Mylo Memory", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    Text("Things Mylo can remember for you, kept on this phone. Mylo reads them only when Saved Mylo Memory is on in What Mylo can see.",
+        Modifier.padding(top = 4.dp), color = SheetMuted, fontSize = 12.5.sp, lineHeight = 17.sp)
+    items.forEach { item ->
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(12.dp)).background(SheetCard).padding(start = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(item, Modifier.weight(1f).padding(vertical = 10.dp), fontSize = 14.sp)
+            IconButton(onClick = { memory.remove(item); items = memory.items }, modifier = Modifier.testTag("memory-remove")) {
+                Icon(Icons.Rounded.Close, "Forget “$item”", tint = SheetMuted)
+            }
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        val colors = OutlinedTextFieldDefaults.colors(focusedTextColor = SheetInk, unfocusedTextColor = SheetInk, focusedBorderColor = SheetAccent,
+            unfocusedBorderColor = SheetLine, focusedLabelColor = SheetAccent, unfocusedLabelColor = SheetMuted)
+        OutlinedTextField(draft, { draft = it.take(MyloMemory.MAX_CHARS) }, Modifier.weight(1f).testTag("memory-input"), label = { Text("Something to remember") },
+            singleLine = true, colors = colors)
+        TextButton(onClick = { if (memory.add(draft)) { draft = ""; items = memory.items } }, enabled = draft.isNotBlank(),
+            modifier = Modifier.testTag("memory-add")) { Text("Remember", color = if (draft.isNotBlank()) SheetAccent else SheetMuted) }
     }
 }
 

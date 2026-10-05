@@ -68,8 +68,10 @@ class VoiceCall(
                 val session = service.voiceSession(voice, private)
                 realtime.open(session, handsFree)
                 if (state.value.problem != null) return@launch
-                val (context, hidden) = AiPrivacy.prepare(gather(switchboard.authorize(AiConversation.DEFAULT_WANTS)).context)
-                _receipt.value = PrivacyReceipt(context.used, hidden)
+                // Voice calls take the switchboard's text sources; a screenshot is only sent with typed questions.
+                val gathered = gather(switchboard.authorize(AiConversation.DEFAULT_WANTS - AiDataSource.Screenshot))
+                val (context, hidden) = AiPrivacy.prepare(gathered.context.copy(screenshot = null))
+                _receipt.value = PrivacyReceipt(context.used, hidden, gathered.unavailable)
                 AiContract.contextBlock(context)?.let { block -> waitForChannel(); realtime.addContext(block) }
             } catch (e: AiException) {
                 realtime.fail(e.problem.message)
