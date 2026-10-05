@@ -85,7 +85,7 @@ class VoiceModeFlowTest {
                 waitFor(By.res("voice-type-instead"), "Type instead").click()
                 waitFor(By.text("Mylo AI isn’t connected in this build"), "the not-connected status")
                 type(By.res("voice-chat-input"), "the message box", "Hello Mylo")
-                waitFor(By.res("voice-chat-send"), "Send").click()
+                send()
                 waitFor(By.textStartsWith("Mylo AI isn't connected in this build yet, so nothing was sent."), "the not-sent explanation")
                 waitFor(By.text("Not sent"), "the not-sent label")
                 shot(dir, "03-chat-not-connected.png"); steps.put("typed message not sent without a service")
@@ -110,7 +110,7 @@ class VoiceModeFlowTest {
             } }
             evidence.put("verified", true)
         } finally {
-            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).put("staleScreenReadsRefreshed", JSONArray(staleCache)).toString(2))
         }
     }
 
@@ -154,7 +154,7 @@ class VoiceModeFlowTest {
                 shot(dir, "03-current-page-off.png"); steps.put("current page off")
                 waitFor(By.res("voice-type-instead"), "Type instead").click()
                 type(By.res("voice-chat-input"), "the message box", "What is this page about")
-                waitFor(By.res("voice-chat-send"), "Send").click()
+                send()
                 val withoutPage = waitFor(By.textContains("No page was shared with me"), "an answer without the page", 30_000)
                 evidence.put("answerWithoutPage", withoutPage.text)
                 waitFor(By.textStartsWith("Privacy receipt: Nothing from your browser was shared"), "the empty receipt")
@@ -196,7 +196,7 @@ class VoiceModeFlowTest {
                 waitFor(By.res("voice-access-close"), "close switchboard").click()
                 waitFor(By.res("voice-type-instead"), "Type instead").click()
                 type(By.res("voice-chat-input"), "the message box", "What do you see")
-                waitFor(By.res("voice-chat-send"), "Send").click()
+                send()
                 val withDevice = waitFor(By.textContains("A screenshot of the page arrived."), "the answer with a screenshot", 30_000)
                 assertTrue("Saved memory went with the question: ${withDevice.text}", withDevice.text.contains("1 remembered thing shared."))
                 assertTrue("The approximate location went with the question: ${withDevice.text}", withDevice.text.contains("An approximate location was shared."))
@@ -205,7 +205,7 @@ class VoiceModeFlowTest {
 
                 // A typed answer suggests a browser action; it runs only when tapped, through Action Preview's rules.
                 type(By.res("voice-chat-input"), "the message box", "Where is the pricing")
-                waitFor(By.res("voice-chat-send"), "Send").click()
+                send()
                 waitFor(By.text("Show me “Pricing”"), "the suggested action", 30_000)
                 shot(dir, "10-suggested-action.png")
                 waitFor(By.text("Show me “Pricing”"), "the suggested action").click()
@@ -214,7 +214,7 @@ class VoiceModeFlowTest {
             } }
             evidence.put("verified", true)
         } finally {
-            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).put("staleScreenReadsRefreshed", JSONArray(staleCache)).toString(2))
             AiPreferences(context).setTestService(null)
         }
     }
@@ -272,7 +272,7 @@ class VoiceModeFlowTest {
                 waitFor(By.textContains("The pricing is on your screen now."), "the spoken answer in the conversation")
                 shot(dir, "04-conversation-has-the-call.png")
                 type(By.res("voice-chat-input"), "the message box", "Tell me a long story")
-                waitFor(By.res("voice-chat-send"), "Send").click()
+                send()
                 waitFor(By.res("voice-chat-close"), "close chat").click()
                 waitFor(By.text("Mylo is speaking · tap to interrupt"), "Mylo speaking the typed answer", 30_000)
                 shot(dir, "05-speaking.png")
@@ -301,7 +301,7 @@ class VoiceModeFlowTest {
             } }
             evidence.put("verified", true)
         } finally {
-            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).put("staleScreenReadsRefreshed", JSONArray(staleCache)).toString(2))
             AiPreferences(context).setTestService(null)
         }
     }
@@ -396,7 +396,7 @@ class VoiceModeFlowTest {
             } }
             evidence.put("verified", true)
         } finally {
-            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).put("staleScreenReadsRefreshed", JSONArray(staleCache)).toString(2))
         }
     }
 
@@ -462,27 +462,73 @@ class VoiceModeFlowTest {
     }
 
     private fun waitFor(selector: BySelector, what: String, timeout: Long = 15_000): UiObject2 {
-        val deadline = SystemClock.uptimeMillis() + timeout
+        val start = SystemClock.uptimeMillis()
+        val deadline = start + timeout
+        var cleared = 0L
         while (true) {
-            device.findObject(selector)?.let { return it }
+            device.findObject(selector)?.let { found ->
+                if (cleared > 0) staleCache += what
+                return found
+            }
             dismissOtherAppsNotResponding()
             if (SystemClock.uptimeMillis() > deadline) throw AssertionError("$what did not appear")
             SystemClock.sleep(250)
+            // UiAutomator keeps its own copy of the screen's accessibility nodes; when that copy misses an update
+            // (seen once with Page Coach's last step), it is dropped and read again. Each time it helped is noted.
+            val now = SystemClock.uptimeMillis()
+            if (android.os.Build.VERSION.SDK_INT >= 34 && now - start > 3_000 && now - cleared > 2_000) {
+                instrumentation.uiAutomation.clearCache(); cleared = now
+            }
+        }
+    }
+
+    private val staleCache = mutableListOf<String>()
+
+    /**
+     * Taps Send once the keyboard has finished moving the message box: a tap aimed at a still-moving button can
+     * land on the keyboard (it once opened Gboard's microphone prompt). If another app's prompt took the tap, it
+     * is answered No and Send is tapped again.
+     */
+    private fun send() {
+        repeat(2) {
+            var last: android.graphics.Rect? = null
+            var same = 0
+            val deadline = SystemClock.uptimeMillis() + 5_000
+            while (same < 2 && SystemClock.uptimeMillis() < deadline) {
+                val bounds = runCatching { waitFor(By.res("voice-chat-send"), "Send").visibleBounds }.getOrNull()
+                if (bounds != null && bounds == last) same++ else same = 0
+                last = bounds
+                SystemClock.sleep(250)
+            }
+            waitFor(By.res("voice-chat-send"), "Send").click()
+            SystemClock.sleep(800)
+            if (!dismissOtherAppsNotResponding()) return
         }
     }
 
     /**
      * A busy CI emulator sometimes shows "Pixel Launcher isn't responding" over Mylo, taking its touches and
      * keys. That dialog belongs to another app, so it is answered with Wait (and noted); a dialog about Mylo
-     * itself is never dismissed, so a real Mylo freeze still fails the test.
+     * itself is never dismissed, so a real Mylo freeze still fails the test. Whether a dialog was answered.
      */
-    private fun dismissOtherAppsNotResponding() {
-        val title = device.findObject(By.textEndsWith("isn't responding")) ?: device.findObject(By.textEndsWith("isn’t responding")) ?: return
+    private fun dismissOtherAppsNotResponding(): Boolean {
+        // Another app's microphone prompt (the keyboard's voice typing) is answered No; Mylo's own never is.
+        device.findObject(By.textContains("to record audio?"))?.let { prompt ->
+            val text = runCatching { prompt.text }.getOrNull().orEmpty()
+            if (text.contains("Mylo", ignoreCase = true)) return false
+            (device.findObject(By.res("com.android.permissioncontroller:id/permission_deny_button"))
+                ?: device.findObject(By.text("Don’t allow")) ?: device.findObject(By.text("Don't allow")))?.click()
+            dismissed += text
+            SystemClock.sleep(500)
+            return true
+        }
+        val title = device.findObject(By.textEndsWith("isn't responding")) ?: device.findObject(By.textEndsWith("isn’t responding")) ?: return false
         val text = runCatching { title.text }.getOrNull().orEmpty()
-        if (text.contains("Mylo", ignoreCase = true)) return
+        if (text.contains("Mylo", ignoreCase = true)) return false
         device.findObject(By.text("Wait"))?.click()
         dismissed += text
         SystemClock.sleep(500)
+        return true
     }
 
     private val dismissed = mutableListOf<String>()
