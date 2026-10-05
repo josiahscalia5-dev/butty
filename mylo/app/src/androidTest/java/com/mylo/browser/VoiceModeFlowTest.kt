@@ -56,9 +56,22 @@ class VoiceModeFlowTest {
                 waitFor(By.textStartsWith("Compare this with"), "Compare tabs")
                 shot(dir, "01-voice-mode.png"); steps.put("voice mode screen")
 
+                // The microphone asks Android first; then Mylo listens (live level, "Microphone on") or says why it can't.
                 waitFor(By.res("voice-talk"), "the microphone").click()
-                waitFor(By.text(VOICE_NOT_AVAILABLE), "the honest talking message")
-                shot(dir, "02-talk-not-available.png"); steps.put("talking not available yet")
+                waitFor(By.res("com.android.permissioncontroller:id/permission_allow_foreground_only_button"), "Android's microphone prompt", 20_000).click()
+                if (android.speech.SpeechRecognizer.isRecognitionAvailable(context)) {
+                    waitFor(By.res("voice-mic-live"), "the microphone-on indicator")
+                    waitFor(By.text("Listening…"), "the listening state")
+                    shot(dir, "02-listening.png"); steps.put("listening with the microphone on")
+                    waitFor(By.res("voice-talk"), "the microphone").click()
+                    device.wait(Until.gone(By.res("voice-mic-live")), 15_000)
+                    assertTrue("The microphone turned off", !device.hasObject(By.res("voice-mic-live")))
+                    steps.put("microphone off after the turn")
+                } else {
+                    waitFor(By.text(com.mylo.browser.voice.ListenProblem.Unavailable.message), "the no-recognizer explanation")
+                    shot(dir, "02-no-recognizer.png"); steps.put("speech recognition not available on this emulator")
+                }
+                evidence.put("speechRecognitionAvailable", android.speech.SpeechRecognizer.isRecognitionAvailable(context))
 
                 waitFor(By.res("voice-type-instead"), "Type instead").click()
                 waitFor(By.text("Mylo AI isn’t connected in this build"), "the not-connected status")
