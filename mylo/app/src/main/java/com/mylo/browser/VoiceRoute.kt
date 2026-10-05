@@ -1,6 +1,10 @@
 package com.mylo.browser
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +61,9 @@ import com.mylo.browser.ai.ChatMessage
 import com.mylo.browser.ai.MyloAi
 import com.mylo.browser.ai.MyloVoice
 import com.mylo.browser.ai.PrivacyReceipt
+import com.mylo.browser.voice.DeviceSpeech
+import com.mylo.browser.voice.ListenProblem
+import androidx.core.content.ContextCompat
 import java.util.Locale
 import kotlinx.coroutines.delay
 
@@ -77,8 +84,6 @@ private enum class VoiceSheet { Chat, Access, Settings }
 /** Sources Mylo AI can't read yet in this version, so the switchboard says so instead of implying it does. */
 private val notReadYet = setOf(AiDataSource.Screenshot, AiDataSource.Location, AiDataSource.MyloMemory)
 
-/** Talking (microphone, speech) is the next milestone; until then the screen says so plainly. */
-internal const val VOICE_NOT_AVAILABLE = "Talking with Mylo isn’t available in this version yet. Tap Type instead to chat."
 
 @OptIn(ExperimentalComposeUiApi::class)
 internal fun Modifier.voiceAutomation() = semantics { testTagsAsResourceId = true }
@@ -121,9 +126,36 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
         AiAccessUi(switchboard.allowed(AiDataSource.CurrentPage), switchboard.allowed(AiDataSource.OtherTabs),
             switchboard.allowed(AiDataSource.History), switchboard.allowed(AiDataSource.Location))
     }
-    val caption = messages.lastOrNull { it.role == AiTurn.Role.Assistant && it.text.isNotBlank() }?.let { "Mylo: " + it.text.trim().take(160) }
-    val ui = VoiceModeUi(phase = if (busy) VoicePhase.Thinking else VoicePhase.Idle, access = access, tabs = tabs, caption = caption, problem = problem)
-    fun close() { conversation.stop(); onClose() }
+    // The microphone: Android's speech recognizer (on-device where the phone has it) turns speech into the
+    // same conversation as typing. Mylo's realtime voice replaces it when the voice service is connected.
+    val speech = remember { DeviceSpeech(context.applicationContext) { words -> conversation.send(words) } }
+    val listen by speech.state.collectAsState()
+    DisposableEffect(speech) { onDispose { speech.cancel() } }
+    var holdPending by remember { mutableStateOf<Boolean?>(null) }
+    val askMicrophone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val hold = holdPending
+        holdPending = null
+        if (!granted) problem = ListenProblem.NoPermission.message
+        else if (hold == false) speech.start(holdToTalk = false)
+    }
+    LaunchedEffect(listen.problem) { listen.problem?.let { problem = it.message; speech.clearProblem() } }
+    fun startListening(hold: Boolean) {
+        problem = null
+        conversation.stop()
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) speech.start(holdToTalk = hold)
+        // A hold can't survive Android's permission dialog: after allowing, the next hold (or a tap) listens.
+        else { holdPending = hold; askMicrophone.launch(Manifest.permission.RECORD_AUDIO) }
+    }
+    val lastAnswer = messages.lastOrNull { it.role == AiTurn.Role.Assistant && (it.text.isNotBlank() || it.note != null) }
+    val caption = when {
+        listen.listening -> "You: " + listen.partial.ifBlank { "…" }.takeLast(160)
+        lastAnswer != null && lastAnswer.text.isNotBlank() -> "Mylo: " + lastAnswer.text.trim().take(160)
+        lastAnswer?.note != null -> lastAnswer.note
+        else -> null
+    }
+    val phase = when { listen.listening -> VoicePhase.Listening; busy -> VoicePhase.Thinking; else -> VoicePhase.Idle }
+    val ui = VoiceModeUi(phase = phase, level = listen.level, micLive = listen.listening, access = access, tabs = tabs, caption = caption, problem = problem)
+    fun close() { speech.cancel(); conversation.stop(); onClose() }
     fun runAction(action: VoiceAction) {
         val title = action.title.replace("\n", " ")
         val (prompt, needs) = voicePrompt(action)
@@ -136,9 +168,11 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
         VoiceModeScreen(
             ui = ui,
-            onTalk = { problem = VOICE_NOT_AVAILABLE },
-            onHoldStart = { problem = VOICE_NOT_AVAILABLE },
-            onTypeInstead = { sheet = VoiceSheet.Chat },
+            // Tap: listen until a pause; tap again while listening to send now, or while Mylo answers to stop it.
+            onTalk = { if (listen.listening) speech.finish() else startListening(hold = false) },
+            onHoldStart = { startListening(hold = true) },
+            onHoldEnd = { if (listen.listening) speech.finish() },
+            onTypeInstead = { speech.cancel(); sheet = VoiceSheet.Chat },
             onClose = ::close,
             onAction = ::runAction,
             onAdjustAccess = { sheet = VoiceSheet.Access },
@@ -153,7 +187,7 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
             },
             onModeMenu = { sheet = VoiceSheet.Chat },
             onSettings = { sheet = VoiceSheet.Settings },
-            onNav = { if (it == VoiceNav.Mylo) Unit else { conversation.stop(); onNav(it) } },
+            onNav = { if (it == VoiceNav.Mylo) Unit else { speech.cancel(); conversation.stop(); onNav(it) } },
         )
     }
     when (sheet) {
@@ -352,7 +386,7 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
                     if (voice == option) Icon(Icons.Rounded.Check, "Selected", tint = OnMint)
                 }
             }
-            Text("Samples of each voice play from the Mylo AI voice service, which arrives with voice conversations.",
+            Text("Mylo answers in text for now. Spoken replies, and a sample of each voice, play from the Mylo AI voice service once it is connected.",
                 Modifier.padding(top = 8.dp), color = SheetMuted, fontSize = 12.5.sp, lineHeight = 17.sp)
             Spacer(Modifier.height(18.dp))
             Text("Mylo AI service", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)

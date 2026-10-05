@@ -6,10 +6,10 @@ val app = rootDir.resolve("../../app/src")
 /** Pure-Kotlin sources (no android.* imports) and their tests. */
 val logic = listOf(
     "web/WebPolicy.kt", "web/SitePermissions.kt", "web/TrackerBlocker.kt", "web/TrackerList.kt",
-    "ai/AiSwitchboard.kt", "ai/Redactor.kt", "ai/ActionGate.kt", "ai/AiContract.kt", "ai/AiConversation.kt", "ai/MyloAiService.kt",
+    "ai/AiSwitchboard.kt", "ai/Redactor.kt", "ai/ActionGate.kt", "ai/AiContract.kt", "ai/AiConversation.kt", "ai/MyloAiService.kt", "voice/RealtimeProtocol.kt",
 )
 val logicTests = listOf(
-    "web/WebPolicyTest.kt", "web/TrackerBlockerTest.kt", "ai/AiCoreTest.kt", "ai/AiConversationTest.kt",
+    "web/WebPolicyTest.kt", "web/TrackerBlockerTest.kt", "ai/AiCoreTest.kt", "ai/AiConversationTest.kt", "voice/RealtimeProtocolTest.kt",
 )
 sourceSets {
     main { kotlin.setSrcDirs(emptyList<String>()); kotlin.srcDir(layout.buildDirectory.dir("logic/main")) }

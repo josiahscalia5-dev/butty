@@ -150,11 +150,14 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
     shift 2
     timeout 15 adb shell am force-stop "$app_package" || true
     timeout 15 adb logcat -c || true
+    # Each case starts with the microphone not yet allowed, so Android's prompt is part of the flow.
+    timeout 15 adb shell pm revoke "$app_package" android.permission.RECORD_AUDIO > /dev/null 2>&1 || true
+    timeout 15 adb shell pm clear-permission-flags "$app_package" android.permission.RECORD_AUDIO user-set user-fixed > /dev/null 2>&1 || true
     local output="$voice_dir/$method.txt"
     timeout "$limit" adb shell am instrument -w -r "$@" -e class "com.mylo.browser.VoiceModeFlowTest#$method" \
       com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
-    timeout 30 adb logcat -d -b events -v time 2> /dev/null | grep -E ' (wm|am)_' | tail -n 300 > "$voice_dir/$method-android-events.txt" || true
-    timeout 30 adb logcat -d -v time 2> /dev/null | grep -E 'ActivityTaskManager|ActivityManager|WindowManager|InputDispatcher|AndroidRuntime|InputMethod|mylo' | tail -n 400 > "$voice_dir/$method-android-system.txt" || true
+    timeout 30 adb logcat -d -b events -v time 2> /dev/null | grep -E '(wm|am)_[a-z_]+' | tail -n 300 > "$voice_dir/$method-android-events.txt" || true
+    timeout 30 adb logcat -d -v time 2> /dev/null | grep -E 'ActivityTaskManager|ActivityManager|InputDispatcher|AndroidRuntime|InputMethod|ImeTracker|LifecycleMonitor|SpeechRecognizer|RecognitionService' | grep -vE 'AppsFilter|WindowManagerShell' | tail -n 400 > "$voice_dir/$method-android-system.txt" || true
     local result
     if grep -q '^OK (1 test)' "$output"; then result=passed; else result=failed; voice_status=1; fi
     echo "$method: $result" | tee -a "$voice_summary"
