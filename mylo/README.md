@@ -59,8 +59,24 @@ the microphone, verified on the same emulator by `VoiceModeFlowTest` in the work
   separate microphone-off session.
 
 Real answers and Mylo's real voices (Marin, Cedar) need the gateway deployed with an OpenAI API key; the device test
-proves the app's side of every step. Not built yet: translating, cancel guidance, tab comparison, site checks and the
-rest of Action Preview (milestones 5–8).
+proves the app's side of every step.
+
+**Voice Mode (Milestones 4–8)** — verified by `VoiceModeFlowTest` ([run RUN48](https://github.com/josiahscalia5-dev/butty/actions/runs/RUN48), all
+four Voice cases passed):
+
+- *What Mylo can see, complete (4):* Location asks for Android's approximate-location permission and is rounded to about
+  a kilometre; Screenshot is the page Voice Mode was opened from, kept in memory only; Saved Mylo Memory is edited in
+  Voice settings. With all three allowed, the test provider confirmed it received an approximate location, one
+  remembered thing and a screenshot (`19-…`).
+- *Find, cancel, translate on the phone (5):* Find the pricing section marked the pricing on the page with no AI; Translate
+  this page detected Spanish and translated the test page to English with ML Kit on the phone (the page's text never left
+  it), and Show original brought the Spanish back (`20-…`).
+- *Page Coach and Compare tabs (6):* Help me cancel turned the page's own instructions into three coached steps, each
+  marked on the page; Compare tabs read prices from two open tabs and named the lower one per month (`20-…`).
+- *Is this site safe? (7):* on a test page imitating a scam (it collects nothing), checks on the phone flagged a password
+  field without encryption, a form sending to another site, pressure wording and gift-card/crypto payment requests (`21-…`).
+- *Action Preview for typed answers (8):* a typed answer's suggested action ("Show me Pricing") appeared as a button and
+  ran on the page only when tapped (`19-…`). Consequential suggestions (leaving the site, forms) ask first.
 
 `claude-ui` at `aa63420` (Settings-only search provider):
 
@@ -113,7 +129,11 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
     when asked), selected text, other tabs, history; Screenshot, Location and Saved Memory are marked "not used yet".
     Card numbers, ID numbers, bank accounts and secrets in links are hidden before anything leaves the phone, and
     every answer has a privacy receipt.
-  - The six page actions send the matching question (asking first when the page is off).
+  - The six page actions: *Explain* asks Mylo AI; *Find the pricing section* and *Help me cancel* find and mark the
+    section on the phone (cancel instructions become Page Coach steps; Mylo AI adds guidance when connected);
+    *Compare* reads prices from the open tabs on the phone; *Is this site safe?* runs on-phone checks of the address,
+    connection, forms and wording; *Translate* uses ML Kit on the phone. Mylo AI's reading can be added to each.
+  - Typed answers can suggest browser actions; they run only when tapped, through Action Preview.
   - *Talking*: with the Mylo AI service, a realtime voice call (OpenAI Realtime over WebRTC, opened with a short-lived
     session secret the service mints) with hands-free turn-taking or press and hold, live captions both ways, the
     real microphone and playback levels, Mute, tap to interrupt, Type instead answered aloud, and voice samples
