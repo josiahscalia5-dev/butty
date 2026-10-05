@@ -121,7 +121,7 @@ class PrivateModeFlowTest {
             evidence.put("privateProcessEnded", true)
             evidence.put("verified", true)
         } finally {
-            File(dir, "evidence.json").writeText(evidence.put("steps", steps).toString(2))
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
         }
     }
 
@@ -212,19 +212,28 @@ class PrivateModeFlowTest {
     private fun typeInto(selector: BySelector, what: String, text: String) {
         waitFor(selector, what).click()
         SystemClock.sleep(600)
-        runCatching { waitFor(selector, what).text = text }
+        dismissOtherAppsNotResponding()
+        // The box's description sits on a separate label node; Android's "set text" goes to the EditText itself.
+        val editable = device.findObject(By.clazz("android.widget.EditText").focused(true)) ?: device.findObject(selector)
+        runCatching { editable?.text = text }
         if (fieldShows(selector, text, 3_000)) return
-        runCatching { device.findObject(selector)?.clear() }
-        shell("input text " + text.replace("&", "\\&"))
+        val now = runCatching { device.findObject(By.clazz("android.widget.EditText").focused(true))?.text }.getOrNull().orEmpty()
+        // Keys still dropped at the end: type only what is missing; otherwise start again.
+        if (now.isNotEmpty() && text.startsWith(now)) { shell("input text " + escape(text.removePrefix(now))); if (fieldShows(selector, text, 10_000)) return }
+        runCatching { device.findObject(By.clazz("android.widget.EditText").focused(true))?.clear() }
+        shell("input text " + escape(text))
         if (fieldShows(selector, text, 15_000)) return
         throw AssertionError("Typing into $what did not finish: field ${if (device.hasObject(selector)) "shows \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"" else "not found"}")
     }
+
+    private fun escape(text: String) = text.replace("&", "\\&")
 
     /** The field holds [text]. Found by the text too: a filled field may no longer match a description selector. */
     private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
         val deadline = SystemClock.uptimeMillis() + timeout
         while (SystemClock.uptimeMillis() < deadline) {
             if (device.hasObject(By.text(text)) || runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
+            dismissOtherAppsNotResponding()
             SystemClock.sleep(200)
         }
         return false
@@ -235,8 +244,31 @@ class PrivateModeFlowTest {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use { it.readText() }
         }
 
-    private fun waitFor(selector: BySelector, what: String, timeout: Long = 15_000): UiObject2 =
-        device.wait(Until.findObject(selector), timeout) ?: throw AssertionError("$what did not appear")
+    private fun waitFor(selector: BySelector, what: String, timeout: Long = 15_000): UiObject2 {
+        val deadline = SystemClock.uptimeMillis() + timeout
+        while (true) {
+            device.findObject(selector)?.let { return it }
+            dismissOtherAppsNotResponding()
+            if (SystemClock.uptimeMillis() > deadline) throw AssertionError("$what did not appear")
+            SystemClock.sleep(250)
+        }
+    }
+
+    /**
+     * A busy CI emulator sometimes shows "Pixel Launcher isn't responding" over Mylo, taking its touches and
+     * keys. That dialog belongs to another app, so it is answered with Wait (and noted); a dialog about Mylo
+     * itself is never dismissed, so a real Mylo freeze still fails the test.
+     */
+    private fun dismissOtherAppsNotResponding() {
+        val title = device.findObject(By.textEndsWith("isn't responding")) ?: device.findObject(By.textEndsWith("isn’t responding")) ?: return
+        val text = runCatching { title.text }.getOrNull().orEmpty()
+        if (text.contains("Mylo", ignoreCase = true)) return
+        device.findObject(By.text("Wait"))?.click()
+        dismissed += text
+        SystemClock.sleep(500)
+    }
+
+    private val dismissed = mutableListOf<String>()
 
     private fun shot(dir: File, name: String) {
         SystemClock.sleep(700)

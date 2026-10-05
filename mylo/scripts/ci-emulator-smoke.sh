@@ -49,6 +49,9 @@ original_ime_setting="$(adb shell settings get secure show_ime_with_hard_keyboar
 adb shell settings put secure show_ime_with_hard_keyboard 1
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 0
+# Another app's "isn't responding" dialog (the emulator's launcher, on a busy runner) must not cover Mylo.
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell settings put global anr_show_background 0 || true
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell am force-stop "$app_package"
