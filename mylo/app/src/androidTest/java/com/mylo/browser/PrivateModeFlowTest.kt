@@ -2,10 +2,6 @@ package com.mylo.browser
 
 import android.content.Intent
 import android.os.SystemClock
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performImeAction
-import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,7 +17,6 @@ import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -36,9 +31,6 @@ class PrivateModeFlowTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
     private val device get() = UiDevice.getInstance(instrumentation)
-
-    /** Compose's test API for Home (in this process), as Mylo's search tests use it; Private Mode is driven through UiAutomator. */
-    @get:Rule val compose = createEmptyComposeRule()
 
     @Before fun setUp() {
         context.getSharedPreferences(PrivateActivity.TEST_PREFS, 0).edit().putBoolean(PrivateActivity.ALLOW_SCREENSHOTS, true).commit()
@@ -66,9 +58,8 @@ class PrivateModeFlowTest {
                 // 1. A normal tab visits the test page first, so its cookie exists outside Private Mode.
                 waitFor(By.desc("Search or enter address"), "Home search")
                 shot(dir, "00-home.png")
-                // Home's box through Compose's test API (no keyboard timing on a busy emulator), then its Search key.
-                compose.onNodeWithTag("search-input").performTextReplacement(NORMAL_PAGE)
-                compose.onNodeWithTag("search-input").performImeAction()
+                typeInto(By.desc("Search or enter address"), "Home search", NORMAL_PAGE)
+                submit()
                 waitFor(By.textContains("Visit 1 in this browser"), "the test page in a normal tab")
                 shot(dir, "01-normal-tab.png"); steps.put("normal tab visit 1")
                 device.pressBack()
@@ -223,16 +214,17 @@ class PrivateModeFlowTest {
         SystemClock.sleep(600)
         runCatching { waitFor(selector, what).text = text }
         if (fieldShows(selector, text, 3_000)) return
-        runCatching { waitFor(selector, what).clear() }
+        runCatching { device.findObject(selector)?.clear() }
         shell("input text " + text.replace("&", "\\&"))
         if (fieldShows(selector, text, 15_000)) return
-        throw AssertionError("Typing into $what did not finish: \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"")
+        throw AssertionError("Typing into $what did not finish: field ${if (device.hasObject(selector)) "shows \"${runCatching { device.findObject(selector)?.text }.getOrNull()}\"" else "not found"}")
     }
 
+    /** The field holds [text]. Found by the text too: a filled field may no longer match a description selector. */
     private fun fieldShows(selector: BySelector, text: String, timeout: Long): Boolean {
         val deadline = SystemClock.uptimeMillis() + timeout
         while (SystemClock.uptimeMillis() < deadline) {
-            if (runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
+            if (device.hasObject(By.text(text)) || runCatching { device.findObject(selector)?.text }.getOrNull() == text) return true
             SystemClock.sleep(200)
         }
         return false
