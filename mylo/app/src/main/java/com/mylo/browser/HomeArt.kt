@@ -140,6 +140,16 @@ internal object HomeArt {
         }
     }
 
+    /** Bolder magnifier at the start of Home's search field. */
+    val SearchBold: ImageVector by lazy {
+        icon("SearchBold") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 2.3f, strokeLineCap = StrokeCap.Round) {
+                circle(10.4f, 10.4f, 6.6f)
+                moveTo(15.3f, 15.3f); lineTo(20.2f, 20.2f)
+            }
+        }
+    }
+
     /** The glowing star beside Mylo in the hero. */
     val Star: ImageVector by lazy {
         icon("Star") {
@@ -149,6 +159,183 @@ internal object HomeArt {
                 lineTo(11.4f, 15.4f); lineTo(6.7f, 18.4f); lineTo(7.5f, 12.9f); lineTo(3.2f, 9.4f); lineTo(8.6f, 8.4f); close()
             }
         }
+    }
+
+    /** Crescent moon with two sparkles for the evening greeting (a 76-unit viewport: the greeting disc). */
+    val GreetingMoon: ImageVector by lazy {
+        ImageVector.Builder("GreetingMoon", 76.dp, 76.dp, 76f, 76f).apply {
+            path(fill = Brush.verticalGradient(listOf(Color(0xFFFFE394), Color(0xFFFFD06A), Color(0xFFF4BE57)), 20f, 56f)) {
+                // Outer arc of the moon, then the inner arc cut by an offset circle (target-measured).
+                moveTo(31.53f, 20.34f)
+                arcTo(18f, 18f, 0f, true, false, 52.66f, 41.47f)
+                arcTo(15f, 15f, 0f, false, true, 31.53f, 20.34f)
+                close()
+            }
+            path(fill = SolidColor(Color(0xFFFFD877))) { sparkle(48.5f, 22.5f, 2.7f); sparkle(54f, 32.5f, 4.6f) }
+        }.build()
+    }
+
+    /** The ✨ after "Have a brighter browse", drawn so it is the same gold on every device. */
+    val Sparkles: ImageVector by lazy {
+        ImageVector.Builder("Sparkles", 22.dp, 20.dp, 22f, 20f).apply {
+            path(fill = Brush.verticalGradient(listOf(Color(0xFFFFE36E), Color(0xFFFFC93A)), 1f, 19f)) {
+                sparkle(13.6f, 9.6f, 7.4f); sparkle(4.2f, 3.6f, 2.5f); sparkle(6.4f, 15.9f, 2.9f)
+            }
+        }.build()
+    }
+
+    /** Mylo Shield's badge: a mint shield with a white padlock. */
+    val ShieldBadge: ImageVector by lazy {
+        ImageVector.Builder("ShieldBadge", 33.dp, 37.6.dp, 33f, 37.6f).apply {
+            fun shield(inset: Float): PathBuilder.() -> Unit = {
+                val l = .4f + inset; val r = 32.6f - inset; val t = .5f + inset; val b = 37.2f - inset * 1.3f
+                moveTo(16.5f, t)
+                curveTo(19.9f, t + 2.4f, 24.6f, t + 4f, r - 1.3f, t + 4.4f)
+                curveTo(r - .3f, t + 4.5f, r, t + 5.2f, r, t + 6.2f)
+                lineTo(r, 17.5f)
+                curveTo(r, 26f, 24.6f, 32.4f, 16.5f, b)
+                curveTo(8.4f, 32.4f, l, 26f, l, 17.5f)
+                lineTo(l, t + 6.2f)
+                curveTo(l, t + 5.2f, l + .3f, t + 4.5f, l + 1.3f, t + 4.4f)
+                curveTo(8.4f, t + 4f, 13.1f, t + 2.4f, 16.5f, t)
+                close()
+            }
+            path(fill = Brush.verticalGradient(listOf(Color(0xFF8AF5CC), Color(0xFF3CCB97), Color(0xFF1C9D72)), 0f, 37f), pathBuilder = shield(0f))
+            path(fill = Brush.verticalGradient(listOf(Color(0xFF30D49B), Color(0xFF22B27F), Color(0xFF158A61)), 3f, 34f), pathBuilder = shield(2.2f))
+            path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {
+                // Body with a keyhole, then the shackle.
+                moveTo(10.6f, 16.9f); horizontalLineTo(22.4f)
+                curveTo(23.3f, 16.9f, 24f, 17.6f, 24f, 18.5f); verticalLineTo(26.4f)
+                curveTo(24f, 27.3f, 23.3f, 28f, 22.4f, 28f); horizontalLineTo(10.6f)
+                curveTo(9.7f, 28f, 9f, 27.3f, 9f, 26.4f); verticalLineTo(18.5f)
+                curveTo(9f, 17.6f, 9.7f, 16.9f, 10.6f, 16.9f); close()
+                circle(16.5f, 21.5f, 1.5f)
+                moveTo(15.8f, 22.3f); lineTo(17.2f, 22.3f); lineTo(17.5f, 25.2f); lineTo(15.5f, 25.2f); close()
+            }
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 2.3f, strokeLineCap = StrokeCap.Round) {
+                moveTo(12.2f, 17.1f); verticalLineTo(14.1f)
+                curveTo(12.2f, 11.6f, 14.1f, 9.8f, 16.5f, 9.8f); curveTo(18.9f, 9.8f, 20.8f, 11.6f, 20.8f, 14.1f); verticalLineTo(17.1f)
+            }
+        }.build()
+    }
+
+    /** Outline house for the bottom navigation when Home is not the current screen. */
+    val HomeOutline: ImageVector by lazy {
+        icon("HomeOutline") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.7f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+                moveTo(4.2f, 10.4f); lineTo(12f, 4f); lineTo(19.8f, 10.4f)
+                moveTo(6f, 9.2f); verticalLineTo(19.2f); curveTo(6f, 19.7f, 6.3f, 20f, 6.8f, 20f); horizontalLineTo(9.8f); verticalLineTo(14.6f)
+                horizontalLineTo(14.2f); verticalLineTo(20f); horizontalLineTo(17.2f); curveTo(17.7f, 20f, 18f, 19.7f, 18f, 19.2f); verticalLineTo(9.2f)
+            }
+        }
+    }
+
+    /** Mylo's round smiling face, as Home's navigation shows it. */
+    val MyloFaceRound: ImageVector by lazy {
+        icon("MyloFaceRound") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.5f) { circle(12f, 12f, 8.6f) }
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.5f, strokeLineCap = StrokeCap.Round) {
+                moveTo(8.2f, 10.4f); quadTo(9.2f, 11.9f, 10.2f, 10.4f)
+                moveTo(13.8f, 10.4f); quadTo(14.8f, 11.9f, 15.8f, 10.4f)
+                moveTo(9.4f, 14.1f); quadTo(12f, 16.5f, 14.6f, 14.1f)
+            }
+        }
+    }
+
+    /** Mylo's face with its tuft, as the browser screen's navigation shows it. */
+    val MyloFaceTuft: ImageVector by lazy {
+        icon("MyloFaceTuft") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.6f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+                moveTo(10.2f, 4.3f)
+                curveTo(5.9f, 5.1f, 3.4f, 8.6f, 3.4f, 12.6f)
+                curveTo(3.4f, 17.4f, 7.3f, 21f, 12f, 21f)
+                curveTo(16.7f, 21f, 20.6f, 17.4f, 20.6f, 12.6f)
+                curveTo(20.6f, 8.2f, 17.4f, 4.5f, 13f, 4.2f)
+                curveTo(12.2f, 5.6f, 13.6f, 7f, 14.6f, 6.1f)
+            }
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.6f, strokeLineCap = StrokeCap.Round) {
+                moveTo(8.3f, 12f); quadTo(9.3f, 10.5f, 10.3f, 12f)
+                moveTo(13.7f, 12f); quadTo(14.7f, 10.5f, 15.7f, 12f)
+                moveTo(9.7f, 15.1f); quadTo(12f, 17.6f, 14.3f, 15.1f)
+            }
+        }
+    }
+
+    /** Thin arrow for the browser toolbar (points left; mirrored for Forward). */
+    val ArrowThin: ImageVector by lazy {
+        icon("ArrowThin") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.9f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+                moveTo(20f, 12f); horizontalLineTo(4.6f)
+                moveTo(11.2f, 5.3f); lineTo(4.4f, 12f); lineTo(11.2f, 18.7f)
+            }
+        }
+    }
+
+    /** Solid rounded padlock shown in the address pill for secure (https) pages. */
+    val PadlockSolid: ImageVector by lazy {
+        icon("PadlockSolid") {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(6.8f, 10.2f); horizontalLineTo(17.2f)
+                curveTo(18.6f, 10.2f, 19.6f, 11.2f, 19.6f, 12.6f); verticalLineTo(19.4f)
+                curveTo(19.6f, 20.8f, 18.6f, 21.8f, 17.2f, 21.8f); horizontalLineTo(6.8f)
+                curveTo(5.4f, 21.8f, 4.4f, 20.8f, 4.4f, 19.4f); verticalLineTo(12.6f)
+                curveTo(4.4f, 11.2f, 5.4f, 10.2f, 6.8f, 10.2f); close()
+            }
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 2.3f, strokeLineCap = StrokeCap.Round) {
+                moveTo(7.9f, 10.6f); verticalLineTo(7.4f)
+                curveTo(7.9f, 4.9f, 9.7f, 3f, 12f, 3f); curveTo(14.3f, 3f, 16.1f, 4.9f, 16.1f, 7.4f); verticalLineTo(10.6f)
+            }
+        }
+    }
+
+    /** Circular reload arrow for the address pill. */
+    val Reload: ImageVector by lazy {
+        icon("Reload") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.9f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+                moveTo(19.3f, 11.6f)
+                curveTo(19.4f, 15.8f, 16.1f, 19.4f, 11.9f, 19.5f)
+                curveTo(7.7f, 19.6f, 4.3f, 16.3f, 4.3f, 12f)
+                curveTo(4.3f, 7.8f, 7.7f, 4.5f, 11.9f, 4.5f)
+                curveTo(14.4f, 4.5f, 16.6f, 5.7f, 18f, 7.6f)
+                moveTo(18.6f, 3.6f); lineTo(18.4f, 8f); lineTo(14f, 7.8f)
+            }
+        }
+    }
+
+    /** Stop loading: a thin cross in the reload position. */
+    val StopThin: ImageVector by lazy {
+        icon("StopThin") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.9f, strokeLineCap = StrokeCap.Round) {
+                moveTo(6.5f, 6.5f); lineTo(17.5f, 17.5f); moveTo(17.5f, 6.5f); lineTo(6.5f, 17.5f)
+            }
+        }
+    }
+
+    /** Bookmark ribbon: outlined when the page isn't saved, filled when it is. */
+    val BookmarkOutline: ImageVector by lazy {
+        icon("BookmarkOutline") {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.9f, strokeLineJoin = StrokeJoin.Round) { ribbon() }
+        }
+    }
+    val BookmarkSolid: ImageVector by lazy {
+        icon("BookmarkSolid") {
+            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.White), strokeLineWidth = 1.9f, strokeLineJoin = StrokeJoin.Round) { ribbon() }
+        }
+    }
+
+    private fun PathBuilder.ribbon() {
+        moveTo(6.4f, 3.4f); horizontalLineTo(17.6f); verticalLineTo(20.8f); lineTo(12f, 15.9f); lineTo(6.4f, 20.8f); close()
+    }
+
+    /** Four-point sparkle with gently curved sides. */
+    private fun PathBuilder.sparkle(cx: Float, cy: Float, r: Float) {
+        val k = r * .3f
+        moveTo(cx, cy - r)
+        curveTo(cx + k, cy - k, cx + k, cy - k, cx + r, cy)
+        curveTo(cx + k, cy + k, cx + k, cy + k, cx, cy + r)
+        curveTo(cx - k, cy + k, cx - k, cy + k, cx - r, cy)
+        curveTo(cx - k, cy - k, cx - k, cy - k, cx, cy - r)
+        close()
     }
 
     private inline fun icon(name: String, block: ImageVector.Builder.() -> Unit): ImageVector =

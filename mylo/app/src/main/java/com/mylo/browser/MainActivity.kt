@@ -105,12 +105,16 @@ private val Line = Color(0xFF303F67)
         surface = Panel, onSurface = Color(0xFFF6F4FF), secondary = Color(0xFF67D9C2)), content = content)
 }
 
-/** Shared by the activity and the native portrait preview. Insets belong to the shell. */
+/**
+ * Shared by the activity and the native portrait preview. Insets belong to the shell: Home draws its artwork
+ * behind the status bar, browser pages put the toolbar's navy there, and the bottom navigation keeps its own
+ * distance from the gesture area or navigation buttons (see [BottomBar]).
+ */
 @Composable fun MyloViewport(edgeToEdgeHome: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = if (edgeToEdgeHome) HomeNight else Night, modifier = Modifier.fillMaxSize()) {
+    Surface(color = if (edgeToEdgeHome) HomeNight else BrowserBar, modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize()
-                .windowInsetsPadding(if (edgeToEdgeHome) WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom) else WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(if (edgeToEdgeHome) WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
                 .imePadding(),
             content = content,
         )
@@ -343,11 +347,14 @@ class MainActivity : ComponentActivity() {
                         vpnLocation = homeVpn.location, vpnDetail = homeVpn.detail, onScan = scanCode)
                 } else {
                     key(tab.id) {
-                        BrowserScreen(tab, engine, store, store.provider, ::showHome, { url, title -> store.addBookmark(url, title); panel = "bookmarks" }, { error = it })
+                        BrowserScreen(tab, engine, store, store.provider, ::showHome, { url, title -> store.addBookmark(url, title); panel = "bookmarks" }, { error = it },
+                            isBookmarked = store::isBookmarked)
                     }
                 }
             }
-            BottomBar(onHome, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { dismissInput(); voiceOpen = true })
+            // Each screen keeps its approved navigation: Home selected on Home, Search on a page.
+            BottomBar(if (onHome) NavTab.Home else NavTab.Search, store.tabs.size, ::showHome, ::searchFromHome, { panel = "tabs" }, { dismissInput(); voiceOpen = true },
+                if (onHome) NavMetrics.Home else NavMetrics.Browser)
     }
     }
     // Full-screen video sits above everything, with the page still attached underneath.
@@ -372,7 +379,8 @@ private fun homeVpnStatus(shield: ShieldState, androidVpn: Boolean): HomeVpn {
             if (shield.exit is ExitStatus.Verified) "Encrypted · exit verified" else "Encrypted · exit not verified")
         is ShieldState.Connecting -> HomeVpn(false, null, "Connecting…")
         is ShieldState.Reconnecting -> HomeVpn(false, null, "Reconnecting…")
-        is ShieldState.Error -> HomeVpn(androidVpn, null, idle ?: if (shield.problem == ShieldProblem.NotConfigured) "Server setup required" else "Couldn't connect")
+        // Without a configured gateway Shield simply isn't connected; Set up explains the rest.
+        is ShieldState.Error -> HomeVpn(androidVpn, null, idle ?: if (shield.problem == ShieldProblem.NotConfigured) "Not connected" else "Couldn't connect")
         is ShieldState.Disconnected -> HomeVpn(androidVpn, null, idle ?: "Not connected")
     }
 }

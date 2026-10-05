@@ -179,7 +179,7 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
     }
     val level = if (inCall) (if (callState.phase == CallState.Phase.Speaking) callState.speakerLevel else callState.micLevel) else listen.level
     val ui = VoiceModeUi(phase = phase, level = level, micLive = listen.listening || (inCall && !callState.muted && callState.phase != CallState.Phase.Connecting),
-        access = access, tabs = tabs, caption = caption, problem = problem, inCall = inCall, muted = callState.muted)
+        access = access, tabs = tabs, caption = caption, problem = problem, inCall = inCall, muted = callState.muted, aiConnected = connectedHost != null)
     fun close() { speech.cancel(); call.close(); conversation.stop(); onClose() }
     fun runAction(action: VoiceAction) {
         val title = action.title.replace("\n", " ")

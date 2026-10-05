@@ -273,6 +273,11 @@ class TabEngine(
         return true
     }
 
+    /** Stops the tab's page load (the toolbar's Stop while a page is loading). */
+    fun stop(tabId: Long) {
+        live[tabId]?.webView?.stopLoading()
+    }
+
     fun reload(tab: BrowserTab) {
         val page = page(tab.id)
         if (page.crashed || !live.containsKey(tab.id)) {

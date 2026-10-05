@@ -120,7 +120,12 @@ data class VoiceModeUi(
     /** A realtime voice call is open (Mute appears next to the microphone indicator). */
     val inCall: Boolean = false,
     val muted: Boolean = false,
+    /** Whether a Mylo AI service is configured; when it isn't, the screen says so plainly. */
+    val aiConnected: Boolean = true,
 )
+
+/** The caption while no Mylo AI service is configured. */
+internal const val NOT_CONNECTED_CAPTION = "Mylo AI isn’t connected yet: I can listen, but answers need setup (see Settings)."
 
 private val VoiceNight = Color(0xFF071430)
 private val VoiceInk = Color(0xFFF3F4FC)
@@ -368,7 +373,9 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
             }
             Text(title, fontSize = layout.sp(if (ui.problem != null) 11.5f else 13.7f), fontWeight = FontWeight.SemiBold, color = VoiceInk, textAlign = TextAlign.Center, maxLines = 2,
                 modifier = Modifier.testTag("voice-title"))
-            Text(ui.caption ?: "Ask questions, get summaries, or let me help you navigate this page.", fontSize = layout.sp(9.7f), lineHeight = layout.sp(11.8f),
+            // Without a Mylo AI service the screen still opens and listens, and says plainly that answers need setup.
+            Text(ui.caption ?: if (!ui.aiConnected) NOT_CONNECTED_CAPTION else "Ask questions, get summaries, or let me help you navigate this page.",
+                fontSize = layout.sp(9.7f), lineHeight = layout.sp(11.8f),
                 color = Color(0xFFC6CAE6), textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = px(12f)).width(px(430f)).semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-caption"))
         }

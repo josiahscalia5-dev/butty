@@ -151,6 +151,11 @@ class BrowserStore(context: Context) : TabHost {
         persistBookmarks()
     }
 
+    fun isBookmarked(url: String): Boolean {
+        val normalized = normalizeWebUrl(url) ?: url
+        return bookmarks.any { it.url == normalized }
+    }
+
     fun removeBookmark(url: String) {
         val normalized = normalizeWebUrl(url) ?: url
         bookmarks.removeAll { it.url == normalized }

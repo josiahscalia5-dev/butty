@@ -43,6 +43,13 @@ class VoiceModePreviewTest {
         }
     }
 
+    /** A build without a Mylo AI service: the screen opens as approved and says plainly that answers need setup. */
+    @Test fun voiceModeWithoutService() {
+        paparazzi.snapshot(name = "mylo_voice_mode_not_connected_393x851") {
+            MyloTheme { Shell { VoiceModeScreen(VoiceModeUi(tabs = 3, aiConnected = false), statusBarInset = 30.dp) } }
+        }
+    }
+
     /** The same insets VoiceRoute applies: art behind the status bar, controls above the navigation bar. */
     @androidx.compose.runtime.Composable private fun Shell(content: @androidx.compose.runtime.Composable () -> Unit) {
         Box(Modifier.fillMaxSize().background(Color(0xFF071430)).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) { content() }

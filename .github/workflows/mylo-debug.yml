@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings); private = Private Mode (screen, private browsing, tracker blocking, Burn, Lock tabs, entrance recording); voice = Voice Mode (screen, typed chat through the reference Mylo AI gateway with a test upstream, switchboard, privacy receipt); build = compile, unit tests and Layoutlib renders only (no emulator)"
+        description: "screens = the approved screens (bottom Mylo → Voice Mode → Close → reopen; Home and a real Google results page at the approved targets' sizes) and publish the tested APK; full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets); compat = website-compatibility matrix (local test site + real sites from every provider, with recordings); private = Private Mode (screen, private browsing, tracker blocking, Burn, Lock tabs, entrance recording); voice = Voice Mode (screen, typed chat through the reference Mylo AI gateway with a test upstream, switchboard, privacy receipt); build = compile, unit tests and Layoutlib renders only (no emulator)"
         type: choice
-        options: [full, search-flow, shield, compat, private, voice, build]
+        options: [screens, full, search-flow, shield, compat, private, voice, build]
         default: full
   push:
     branches: ["mylo-development"]
@@ -100,7 +100,7 @@ jobs:
       - name: Render the production Home against the approved reference
         id: home_layoutlib
         continue-on-error: true
-        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests com.mylo.browser.HomePreviewTest --tests com.mylo.browser.PrivateModePreviewTest --tests com.mylo.browser.VoiceModePreviewTest
+        run: gradle --no-daemon --stacktrace :app:recordPaparazziDebug --tests 'com.mylo.browser.Home*' --tests com.mylo.browser.BrowserChromePreviewTest --tests com.mylo.browser.PrivateModePreviewTest --tests com.mylo.browser.VoiceModePreviewTest
       - name: Upload Android Home reference renders
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,7 +136,7 @@ jobs:
     needs: build
     if: inputs.scope != 'build'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || inputs.scope == 'voice' && 40 || inputs.scope == 'private' && 30 || 25 }}
+    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'screens' && 35 || inputs.scope == 'compat' && 60 || inputs.scope == 'voice' && 40 || inputs.scope == 'private' && 30 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -223,7 +223,7 @@ jobs:
           import base64, glob, io, os
           from PIL import Image
           root = "mylo/dist/preview"
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png") + glob.glob(f"{root}/private/*/*.png") + glob.glob(f"{root}/voice/*/*.png")):
+          for path in sorted(glob.glob(f"{root}/screens/*/*.png") + glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png") + glob.glob(f"{root}/compat/*/*.png") + glob.glob(f"{root}/private/*/*.png") + glob.glob(f"{root}/voice/*/*.png")):
               name = "/".join(path.split("/")[-2:])
               im = Image.open(path).convert("RGB")
               im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
@@ -232,10 +232,10 @@ jobs:
               print(f"-----BEGIN MYLO-IMAGE {name}-----")
               for i in range(0, len(data), 4000): print(data[i:i + 4000])
               print(f"-----END MYLO-IMAGE {name}-----")
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json") + glob.glob(f"{root}/compat/*/*.json")):
+          for path in sorted(glob.glob(f"{root}/screens/*/*.json") + glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json") + glob.glob(f"{root}/compat/*/*.json")):
               name = "/".join(path.split("/")[-2:])
               print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
-          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt", f"{root}/private-test.txt", f"{root}/voice-test.txt"):
+          for summary in (f"{root}/screens-test.txt", f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt", f"{root}/compat-test.txt", f"{root}/private-test.txt", f"{root}/voice-test.txt"):
               if os.path.exists(summary):
                   print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
           PY
@@ -316,3 +316,48 @@ jobs:
           git commit -q -m "Evidence for $GITHUB_REF_NAME @ ${GITHUB_SHA::7} (${{ inputs.scope }})"
           # The latest run of any scope, plus one branch per scope so parallel runs keep their own evidence.
           git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-ci-evidence HEAD:refs/heads/mylo-ci-evidence-${{ inputs.scope || 'full' }}
+
+  apk:
+    # The exact APK the emulator just verified, in a git branch (mylo-apk-<branch>) with its full commit SHA, for
+    # phones and reviewers that cannot download Actions artifacts. Only after the approved-screen checks passed.
+    name: Publish the verified APK to mylo-apk-<branch>
+    needs: [build, android-preview]
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'screens' && needs.android-preview.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download the verified APK
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-debug
+          path: handoff
+      - name: Download the device-check summary
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: Mylo-Android-preview
+          path: preview
+      - name: Push to mylo-apk-${{ github.ref_name }}
+        working-directory: handoff
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Commit: $GITHUB_SHA"
+            echo "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "Built at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "APK SHA-256: $(cut -d' ' -f1 Mylo-debug.apk.sha256)"
+            echo
+            echo "Device checks on the Android 35 emulator (this exact APK):"
+            cat ../preview/screens-test.txt 2> /dev/null || echo "  (summary missing)"
+          } > BUILD_INFO.txt
+          cat BUILD_INFO.txt
+          git init -q -b handoff
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Mylo-debug.apk Mylo-debug.apk.sha256 BUILD_INFO.txt
+          git commit -q -m "Mylo-debug.apk built and device-checked from $GITHUB_REF_NAME @ $GITHUB_SHA"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-apk-${GITHUB_REF_NAME}

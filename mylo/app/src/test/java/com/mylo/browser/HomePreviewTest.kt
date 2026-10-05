@@ -4,6 +4,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.android.resources.Density
 import org.junit.Rule
 import org.junit.Test
@@ -27,22 +28,33 @@ class HomePreviewTest {
             MyloTheme {
                 MyloViewport(edgeToEdgeHome = true) {
                     Box(Modifier.weight(1f)) { HomeScreen() }
-                    BottomBar(true, 0, {}, {}, {}, {})
+                    BottomBar(NavTab.Home, 0, {}, {}, {}, {})
                 }
             }
         }
     }
 
-    @Test fun approvedReferencePortrait() {
-        // Match the reference's sample state only inside this visual test. The app
-        // continues reading its actual Android VPN connection and browser tab count.
-        paparazzi.snapshot(name = "mylo_home_reference_state_393x851") {
+}
+
+/**
+ * The approved Home target's own phone: 1080 × 1920 px at 420 dpi (411.4 × 731.4 dp), exactly 1.25× the
+ * 864 × 1536 px target, so the render can be compared with design/reference/home-reference.jpg pixel for pixel.
+ */
+class HomeTargetPreviewTest {
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1080, screenHeight = 1920, density = Density(420)),
+        theme = "Theme.Mylo",
+        // The target's system bars (a 24 dp status bar, gesture navigation) are passed in explicitly.
+        showSystemUi = false,
+    )
+
+    @Test fun homeAtTargetSize() {
+        paparazzi.snapshot(name = "mylo_home_target_1080x1920") {
             MyloTheme {
                 MyloViewport(edgeToEdgeHome = true) {
-                    Box(Modifier.weight(1f)) {
-                        HomeScreen(vpnActive = true, vpnLocation = "Singapore")
-                    }
-                    BottomBar(true, 1, {}, {}, {}, {})
+                    Box(Modifier.weight(1f)) { HomeScreen(statusBarInset = 24.dp) }
+                    BottomBar(NavTab.Home, 0, {}, {}, {}, {}, navigationInset = 24.dp)
                 }
             }
         }
@@ -67,7 +79,7 @@ class HomeCompactPreviewTest {
             MyloTheme {
                 MyloViewport(edgeToEdgeHome = true) {
                     Box(Modifier.weight(1f)) { HomeScreen() }
-                    BottomBar(true, 0, {}, {}, {}, {})
+                    BottomBar(NavTab.Home, 0, {}, {}, {}, {})
                 }
             }
         }

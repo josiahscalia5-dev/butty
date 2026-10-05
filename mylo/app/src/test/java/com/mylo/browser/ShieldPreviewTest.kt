@@ -39,7 +39,7 @@ class ShieldPreviewTest {
             MyloTheme {
                 MyloViewport(edgeToEdgeHome = true) {
                     Box(Modifier.weight(1f)) { HomeScreen(vpnDetail = "Server setup required") }
-                    BottomBar(true, 0, {}, {}, {}, {})
+                    BottomBar(NavTab.Home, 0, {}, {}, {}, {})
                 }
             }
         }

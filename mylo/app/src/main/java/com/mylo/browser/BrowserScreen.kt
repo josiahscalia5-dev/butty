@@ -56,12 +56,12 @@ private val BrowserLavender = Color(0xFFCEC5FF)
     onBookmark: ((url: String, title: String) -> Unit)?,
     onMessage: (String) -> Unit,
     privateMode: Boolean = false,
+    isBookmarked: (String) -> Boolean = { false },
 ) {
     val page = engine.page(tab.id)
     val context = LocalContext.current
     var address by remember(tab.id) { mutableStateOf(page.url.ifBlank { tab.url }) }
     var editingAddress by remember(tab.id) { mutableStateOf(false) }
-    var menuOpen by remember(tab.id) { mutableStateOf(false) }
     var siteSettings by remember(tab.id) { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
@@ -83,27 +83,23 @@ private val BrowserLavender = Color(0xFFCEC5FF)
     }
     fun otherBrowser() = openInOtherBrowser(context, currentUrl) { onMessage("No other browser on this device can open this page.") }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = ::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
-            IconButton(onClick = { engine.webViewIfLive(tab.id)?.goForward() }, enabled = page.canGoForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Forward") }
-            OutlinedTextField(address, { address = it }, Modifier.weight(1f).padding(vertical = 5.dp).onFocusChanged { editingAddress = it.isFocused }.semantics { contentDescription = "Browser address" },
-                textStyle = TextStyle(fontSize = 13.sp), singleLine = true, shape = RoundedCornerShape(20.dp),
-                leadingIcon = if (privateMode) ({ Icon(PrivateArt.Incognito, "Private tab", tint = BrowserLavender, modifier = Modifier.size(20.dp)) }) else null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { submitAddress() }))
-            IconButton(onClick = { engine.reload(tab) }) { Icon(Icons.Rounded.Refresh, "Reload") }
-            if (onBookmark != null) IconButton(onClick = { onBookmark(currentUrl, page.title.ifBlank { tab.title }) }) { Icon(Icons.Rounded.BookmarkAdd, "Bookmark this page") }
-            Box {
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "More page options") }
-                DropdownMenu(menuOpen, { menuOpen = false }) {
+        BrowserToolbar(
+            url = currentUrl, loading = page.loading, progress = page.progress, canGoForward = page.canGoForward,
+            editing = editingAddress, address = address, onAddress = { address = it }, onEditing = { editingAddress = it },
+            onBack = ::back, onForward = { engine.webViewIfLive(tab.id)?.goForward() },
+            onReloadOrStop = { if (page.loading) engine.stop(tab.id) else engine.reload(tab) }, onSubmit = ::submitAddress,
+            bookmarked = isBookmarked(currentUrl), onBookmark = onBookmark?.let { add -> { add(currentUrl, page.title.ifBlank { tab.title }) } },
+            privateMode = privateMode,
+            menu = { open, onDismiss ->
+                DropdownMenu(open, onDismiss) {
                     DropdownMenuItem(text = { Text("Open in another browser") }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, null) },
-                        onClick = { menuOpen = false; otherBrowser() })
+                        onClick = { onDismiss(); otherBrowser() })
                     DropdownMenuItem(text = { Text("Site settings") }, leadingIcon = { Icon(Icons.Rounded.Tune, null) },
-                        onClick = { menuOpen = false; siteSettings = true })
+                        onClick = { onDismiss(); siteSettings = true })
                 }
-            }
-        }
+            },
+        )
         if (privateMode) PrivateStrip(page.trackersBlocked, engine.trackers?.enabled == true)
-        if (page.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = BrowserLavender)
         page.error?.let { Text(it, modifier = Modifier.padding(16.dp), color = Color(0xFFFFCCCF)) }
         page.notice?.let { notice ->
             PageNoticeBar(notice, onDismiss = { engine.dismissNotice(tab.id) }, onAllowPopups = {

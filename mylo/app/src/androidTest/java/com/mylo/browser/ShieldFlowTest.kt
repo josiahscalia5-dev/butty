@@ -58,8 +58,11 @@ class ShieldFlowTest {
         val evidence = JSONObject().put("verified", false)
         try {
             ActivityScenario.launch(MainActivity::class.java).use {
-                val strip = waitFor(By.textContains("VPN protection"), "Home's VPN strip")
-                assertFalse("Home claims no protection", device.hasObject(By.textContains("VPN protected")))
+                val strip = waitFor(By.textContains("Mylo Shield"), "Home's Mylo Shield row")
+                // Home says it isn't connected and offers Set up; it never claims protection it doesn't have.
+                waitFor(By.textContains("Not connected"), "Home's truthful Shield status")
+                waitFor(By.textContains("Set up"), "Set up")
+                assertFalse("Home claims no protection", device.hasObject(By.text("Connected")))
                 shot(dir, "01-home.png")
                 strip.click()
                 waitFor(By.res("shield-screen"), "the Shield screen")
@@ -71,7 +74,7 @@ class ShieldFlowTest {
                 assertNull("No connection details are shown", device.findObject(By.res("shield-details")))
                 shot(dir, "02-shield-unavailable.png")
                 device.pressBack()
-                waitFor(By.textContains("VPN protection"), "Home after Back")
+                waitFor(By.textContains("Mylo Shield"), "Home after Back")
                 evidence.put("verified", true).put("state", shield.engine.state.value.toString())
             }
         } finally {
@@ -95,7 +98,7 @@ class ShieldFlowTest {
 
             ActivityScenario.launch(MainActivity::class.java).use {
                 // 1. Disconnected Shield screen, with the gateway list from the real service.
-                waitFor(By.textContains("VPN protection"), "Home's VPN strip").click()
+                waitFor(By.textContains("Mylo Shield"), "Home's Mylo Shield row").click()
                 waitFor(By.res("shield-screen"), "the Shield screen")
                 val servers = awaitServers()
                 evidence.put("serversListed", JSONArray(servers.map { "${it.id} · ${it.label}" }))

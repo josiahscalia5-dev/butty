@@ -48,7 +48,7 @@ class HomeReferenceRenderTest {
                             Box(Modifier.weight(1f)) {
                                 HomeScreen(vpnActive = true, vpnLocation = "Singapore")
                             }
-                            BottomBar(true, 1, {}, {}, {}, {})
+                            BottomBar(NavTab.Home, 1, {}, {}, {}, {})
                         }
                     }
                 }

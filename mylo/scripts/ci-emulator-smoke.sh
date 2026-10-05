@@ -68,6 +68,53 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
   exit 1
 fi
 
+# The approved screens: the exact Voice Mode check (Home → bottom Mylo → Voice Mode → Close → Home → again, with no
+# Mylo AI service), then Home and a real Google results page at the approved targets' sizes, plus a small and a
+# large phone. Display sizes are set with `wm size`/`wm density` on the running emulator: real Android rendering.
+if [[ "${MYLO_SCOPE:-full}" == "screens" ]]; then
+  screens_status=0
+  screens_dir="$evidence_dir/screens"
+  screens_summary="$evidence_dir/screens-test.txt"
+  mkdir -p "$screens_dir"
+  : > "$screens_summary"
+  echo "Navigation mode (2 = gestures): $(adb shell settings get secure navigation_mode | tr -d '\r')" | tee -a "$screens_summary"
+  run_screen() {
+    local class="$1" method="$2" label="$3" limit="$4"
+    shift 4
+    timeout 15 adb shell am force-stop "$app_package" || true
+    local output="$screens_dir/$label.txt" result
+    timeout "$limit" adb shell am instrument -w -r "$@" -e class "com.mylo.browser.$class#$method" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || true
+    if grep -q '^OK (1 test)' "$output"; then result=passed; else result=failed; screens_status=1; fi
+    echo "$label: $result" | tee -a "$screens_summary"
+    [[ "$result" == passed ]] || grep -E '^(INSTRUMENTATION_(STATUS: stack|RESULT|CODE|ABORTED)|java\.|junit\.|Process crashed)' "$output" \
+      | cut -c1-500 | head -n 8 | sed 's/^/    /' >> "$screens_summary" || true
+    timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/screens/. "$screens_dir/" > /dev/null 2>&1 || true
+  }
+  set_display() { adb shell wm size "$1"; adb shell wm density "$2"; sleep 4; echo "Display $1 @ $2 dpi" | tee -a "$screens_summary"; }
+  reset_display() { adb shell wm size reset; adb shell wm density reset; sleep 4; }
+  # Pixel 6 (1080 x 2400 @ 420 dpi): the Voice Mode check, Home and the browser target's size.
+  run_screen VoiceEntry myloButtonOpensVoiceMode voice-entry 240
+  run_screen ApprovedScreensTest homeScreen home-pixel6 120 -e screenCase pixel6-1080x2400
+  run_screen ApprovedScreensTest googleResults browser-pixel6 240 -e screenCase pixel6-1080x2400
+  # The Home target's own phone: 1080 x 1920 @ 420 dpi (411 x 731 dp), exactly 1.25x the 864 x 1536 target.
+  set_display 1080x1920 420
+  run_screen ApprovedScreensTest homeScreen home-target 120 -e screenCase target-1080x1920
+  run_screen ApprovedScreensTest googleResults browser-target 240 -e screenCase target-1080x1920
+  # A small phone (360 x 640 dp) and a large one (412 x 915 dp at 560 dpi).
+  set_display 720x1280 320
+  run_screen ApprovedScreensTest homeScreen home-small 120 -e screenCase small-360x640
+  set_display 1440x3200 560
+  run_screen ApprovedScreensTest homeScreen home-large 120 -e screenCase large-412x915
+  reset_display
+  { echo 'Crash events during the screens run:'
+    timeout 30 adb logcat -d -v threadtime | grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |ANR in|Process com\.mylo\.browser.* has died' | cut -c1-300 | tail -n 20 || echo '  none recorded'
+  } >> "$screens_summary"
+  if (( screens_status )); then echo 'Approved-screen device checks failed. See screens evidence.' >&2; exit 1; fi
+  echo 'Every approved-screen device check passed.'
+  exit 0
+fi
+
 # Private Mode: the approved screen, private browsing on the local test site (tracker blocking, separate
 # cookies, Burn, no history), Lock tabs with a real screen lock, and a recording of the entrance animation.
 if [[ "${MYLO_SCOPE:-full}" == "private" ]]; then
