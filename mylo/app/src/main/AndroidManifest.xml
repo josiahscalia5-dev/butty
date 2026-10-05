@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Mylo Shield: the VPN service runs in the foreground while its tunnel carries traffic. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application android:name=".MyloApplication" android:theme="@style/Theme.Mylo" android:label="Mylo" android:icon="@drawable/ic_mylo" android:allowBackup="false" android:usesCleartextTraffic="true" android:supportsRtl="true">
         <activity android:name=".PrivateActivity" android:process=":private" android:exported="false" android:excludeFromRecents="true" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
@@ -10,5 +15,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Mylo Shield's VPN service: only Android (holding BIND_VPN_SERVICE) may bind it as a VPN. -->
+        <service
+            android:name=".shield.MyloVpnService"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <meta-data android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON" android:value="true" />
+        </service>
+        <!-- The WireGuard library's own VPN service is replaced by MyloVpnService. -->
+        <service android:name="com.wireguard.android.backend.GoBackend$VpnService" tools:node="remove" />
     </application>
 </manifest>

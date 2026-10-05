@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
@@ -89,6 +88,7 @@ fun MyloPanel(
     onOpenUrl: (String) -> Unit,
     onSelectTab: (BrowserTab) -> Unit,
     onNewTab: () -> Unit,
+    onOpenShield: () -> Unit = {},
 ) {
     var currentPanel by remember(panel) { mutableStateOf(panel) }
     var showAddBookmark by remember { mutableStateOf(false) }
@@ -101,7 +101,6 @@ fun MyloPanel(
         "tabs" -> "Your tabs"
         "settings" -> "Search engine"
         "tools" -> "Browser tools"
-        "vpn" -> "VPN & privacy"
         "mylo" -> "Hello, from Mylo"
         else -> "Mylo"
     }
@@ -114,7 +113,7 @@ fun MyloPanel(
         scrimColor = Color(0xAA030817),
     ) {
         Column(Modifier.fillMaxWidth().then(
-            if (currentPanel in listOf("settings", "tools", "vpn", "mylo")) Modifier.verticalScroll(panelScroll) else Modifier
+            if (currentPanel in listOf("settings", "tools", "mylo")) Modifier.verticalScroll(panelScroll) else Modifier
         ).padding(horizontal = 24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, Modifier.weight(1f), fontSize = 25.sp, fontWeight = FontWeight.SemiBold)
@@ -201,25 +200,11 @@ fun MyloPanel(
                         launchPanelIntent(context, Intent(DownloadManager.ACTION_VIEW_DOWNLOADS))
                     })
                     Spacer(Modifier.height(8.dp))
-                    PanelLinkRow(Icons.Outlined.Shield, "VPN settings", "Manage your VPN connection", onClick = { currentPanel = "vpn" })
+                    PanelLinkRow(Icons.Outlined.Shield, "Mylo Shield VPN", "Connect, choose a location and set up the kill switch", onClick = { onClose(); onOpenShield() })
                     Spacer(Modifier.height(8.dp))
                     PanelLinkRow(Icons.Outlined.Settings, "App settings", "Permissions, storage and notifications", onClick = {
                         launchPanelIntent(context, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
                     })
-                }
-                "vpn" -> {
-                    PanelDescription("Manage your VPN in Android settings.")
-                    Surface(color = PanelCard, shape = RoundedCornerShape(20.dp)) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Outlined.Shield, null, Modifier.size(32.dp), tint = PanelAccent)
-                            Text("Your connection, your choice", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = PanelText)
-                            Text("Mylo does not include a VPN service. To protect your connection or choose a country such as Singapore, connect with your installed VPN provider.", color = PanelMuted, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    PanelPrimaryButton("Open Android VPN settings", Icons.AutoMirrored.Outlined.OpenInNew) {
-                        launchPanelIntent(context, Intent(Settings.ACTION_VPN_SETTINGS))
-                    }
                 }
                 "mylo" -> {
                     Surface(color = PanelCard, shape = RoundedCornerShape(22.dp)) {

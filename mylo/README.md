@@ -24,7 +24,7 @@ Kotlin + Jetpack Compose Android browser with the navy/purple nighttime Mylo Hom
 - Shortcuts, cards (approved wording and chevrons), VPN strip and bottom navigation (Mylo face icon) use the reference's measured sizes, spacing and colours.
 - Discovery banner: the approved lake/cabin/moon scene, with baked-in text removed and upscaled 3× (`mylo_discovery_night.webp`). The title uses bundled Nunito Black (OFL, `third_party/nunito/OFL.txt`).
 - Greeting and search stay pinned. On short screens only the middle content scrolls; on tall screens spare height is shared between sections.
-- VPN: "VPN protected" appears only when Android reports an active VPN. The Singapore/ON sample exists only in reference renders that pass `vpnLocation`.
+- VPN strip: shows Mylo Shield's real state ("Server setup required" while no gateway is configured; a city only when connected through it), or that another app's VPN is on. The Singapore/ON sample exists only in reference renders that pass `vpnLocation`.
 - Polish (B + C): a taller search pill with a soft lavender glow, a slightly shorter hero, 16 dp card corners with top-lit edges, more even spacing and a compact banner. Shortcut rings keep the approved size. Taps get a subtle press-in, and the selected tab pill animates.
 - Search: the search provider is chosen only in **Settings** (the gear on Home → Search engine): Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage. The choice is saved on the device and kept after Mylo restarts. Back on Home, the user types straight into the same Home search box and presses the keyboard's Search key: words open the saved provider's real results page for the exact text, and a web address such as `facebook.com` opens directly. There is no separate search page, per-search provider control or one-off provider choice. The bottom **Search** button returns to Home and focuses that same box.
 
@@ -49,8 +49,8 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 - Bookmarks and normal browsing history persist locally. Tabs can be created, selected and closed; per-tab WebView navigation state is retained while the app process lives and through rotation. Tabs are not restored after process death.
 - Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
 - Private browsing runs in a separate process and WebView data directory, blocks cookies, disables persistent web storage and disk caching, clears private website data when opened/closed, and does not write Mylo history. It is not network anonymity; some websites need cookies.
-- VPN status reads Android's real network state. The strip opens VPN settings; Mylo has no VPN server or tunnel implementation and never displays a fabricated Singapore connection.
-- Tools open search preferences, Android downloads, VPN settings and app settings. Mylo opens a local about/preferences panel.
+- **Mylo Shield** ([docs/shield](docs/shield/README.md)): a WireGuard VPN client on Android's `VpnService`, with a disclosure, Android's VPN permission, a foreground service, real connection states, reconnect/renewal, server switching, fastest-server measurement, auto-connect and Always-on/kill-switch guidance. **No gateway is configured yet**, so the app shows *VPN unavailable · Server setup required* and never shows a location, speed or protection it doesn't have. One real test gateway is set up with [`shield-gateway/`](shield-gateway/README.md). The planned differentiators are in [docs/ROADMAP.md](docs/ROADMAP.md).
+- Tools open search preferences, Android downloads, Mylo Shield and app settings. Mylo opens a local about/preferences panel.
 
 ## Focused validation after setup
 
@@ -58,6 +58,6 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 2. Open a direct URL, then choose each provider in Settings and search words from the Home box. Submit a second URL before the first finishes. Verify Back returns through page history.
 3. Add/remove a bookmark, revisit history, clear history with confirmation, create/select/close tabs, and rotate the device.
 4. Check 360×640, 393×851 and 412×915 dp portrait layouts with gesture and three-button navigation. Focus search and verify IME resizing, scroll access and bottom-navigation insets.
-5. Open and close Private twice, confirming normal-session cookies and Mylo history remain separate. VPN status should follow the device's actual VPN.
+5. Open and close Private twice, confirming normal-session cookies and Mylo history remain separate. Home's VPN strip should follow Mylo Shield's real state, or another app's VPN.
 
 Keep this pass limited to the requested visual correction and verification.

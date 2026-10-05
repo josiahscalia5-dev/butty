@@ -4,3 +4,4 @@
 - No local emulator: the cloud workspace has no KVM, so device checks run in the `Mylo debug APK` workflow's Pixel emulator. Its `search-flow` scope covers Settings → provider → Home search box → real results, a relaunch, and a direct domain.
 - Live providers can refuse CI's datacenter network: in earlier full runs Startpage served its "Startpage Blocked" CAPTCHA page and Brave Search returned no results within 30 seconds. A denial stays a visible failure; no results are simulated.
 - The `full` device scope has not yet been run on the Settings-only search flow.
+- Mylo Shield has no real gateway yet. The client is complete and tested (unit tests, Layoutlib renders, the unconfigured device check), but the first milestone (a real tunnel and the public IP changing) needs one VPS set up with `shield-gateway/` and the `MYLO_SHIELD_TEST_URL` / `MYLO_SHIELD_TEST_TOKEN` secrets.

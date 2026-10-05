@@ -1,0 +1,27 @@
+[Unit]
+Description=Mylo Shield gateway session API
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+Requires=wg-quick@wg0.service
+
+[Service]
+Type=simple
+User=mylo-shield
+Group=mylo-shield
+EnvironmentFile=/etc/mylo-shield/gateway.env
+ExecStart=/usr/bin/python3 /opt/mylo-shield/mylo_shield_gateway.py
+Restart=on-failure
+# `wg set` needs CAP_NET_ADMIN and nothing else.
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=true
+StateDirectory=mylo-shield
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

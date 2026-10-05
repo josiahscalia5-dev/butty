@@ -65,6 +65,37 @@ if [[ ! -s "$evidence_dir/Mylo-Home-Android.png" ]]; then
   exit 1
 fi
 
+# Mylo Shield: the honest unconfigured screen always; the real-tunnel milestone only with a test gateway
+# from CI secrets, passed as instrumentation arguments so it never ends up in the APK or the logs.
+if [[ "${MYLO_SCOPE:-full}" == "shield" ]]; then
+  shield_status=0
+  shield_summary="$evidence_dir/shield-test.txt"
+  : > "$shield_summary"
+  shield_args=()
+  if [[ -n "${MYLO_SHIELD_TEST_URL:-}" ]]; then
+    shield_args=(-e shieldApiBaseUrl "$MYLO_SHIELD_TEST_URL")
+    # adb shell drops empty words, which would shift the arguments: pass the token only when there is one.
+    [[ -n "${MYLO_SHIELD_TEST_TOKEN:-}" ]] && shield_args+=(-e shieldDevToken "$MYLO_SHIELD_TEST_TOKEN")
+  else
+    echo 'No MYLO_SHIELD_TEST_URL secret: the real-tunnel milestone is skipped.' | tee -a "$shield_summary"
+  fi
+  for shield_case in withoutAGatewayShieldIsUnavailable realTunnelMilestone; do
+    case_output="$evidence_dir/shield-$shield_case.txt"
+    timeout 420 adb shell am instrument -w -r "${shield_args[@]}" -e class "com.mylo.browser.ShieldFlowTest#$shield_case" \
+      com.mylo.browser.test/androidx.test.runner.AndroidJUnitRunner > "$case_output" 2>&1 || true
+    if grep -q 'INSTRUMENTATION_STATUS_CODE: -4' "$case_output"; then shield_result='skipped (precondition not met)'
+    elif grep -q '^OK (1 test)' "$case_output"; then shield_result=passed
+    else shield_result='failed'; shield_status=1; fi
+    echo "$shield_case: $shield_result" | tee -a "$shield_summary"
+    [[ "$shield_result" == failed ]] && grep -E '^(INSTRUMENTATION_(STATUS: stack|RESULT|CODE|ABORTED)|java\.|junit\.|Process crashed)' "$case_output" \
+      | cut -c1-400 | head -n 8 | sed 's/^/    /' >> "$shield_summary" || true
+  done
+  timeout 60 adb pull /sdcard/Android/data/com.mylo.browser/files/test-artifacts/shield "$evidence_dir/" >/dev/null 2>&1 || true
+  if (( shield_status )); then echo 'Mylo Shield device checks failed. See shield evidence.' >&2; exit 1; fi
+  echo 'Mylo Shield device checks finished.'
+  exit 0
+fi
+
 # Keep layout and live-network results independent so either failure retains the other evidence.
 # The final search flow, one screenshot per step: Home's Settings gear → choose the provider →
 # back on Home, type into the same Home search box → keyboard Search → the provider's real results

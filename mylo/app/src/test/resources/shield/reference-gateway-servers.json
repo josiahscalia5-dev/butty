@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {
+      "id": "xa-test-1",
+      "countryCode": "XA",
+      "country": "Example Country",
+      "city": "Test City",
+      "hostname": "gateway.shield.example",
+      "endpoint": "203.0.113.10:51820",
+      "publicKey": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
+      "protocol": "wireguard",
+      "ipv6": false,
+      "probe": {
+        "host": "203.0.113.10",
+        "port": 443
+      },
+      "load": 0,
+      "available": true
+    }
+  ],
+  "ttlSeconds": 300
+}

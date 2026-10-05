@@ -70,6 +70,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.mylo.browser.shield.ExitStatus
+import com.mylo.browser.shield.MyloShield
+import com.mylo.browser.shield.ShieldProblem
+import com.mylo.browser.shield.ShieldState
 
 val Night = Color(0xFF09142E)
 private val Lavender = Color(0xFFCEC5FF)
@@ -108,6 +112,9 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
 }
 
 class MainActivity : ComponentActivity() {
+    /** Counts "open Mylo Shield" requests from the Shield notification. */
+    private val shieldRequests = mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -119,14 +126,25 @@ class MainActivity : ComponentActivity() {
             window.isStatusBarContrastEnforced = false
         }
         val session = ViewModelProvider(this)[BrowserSession::class.java]
-        setContent { MyloTheme { MyloApp(session) } }
+        if (savedInstanceState == null && intent?.action == MyloShield.ACTION_OPEN_SHIELD) shieldRequests.intValue++
+        setContent { MyloTheme { MyloApp(session, shieldRequests.intValue) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == MyloShield.ACTION_OPEN_SHIELD) shieldRequests.intValue++
     }
 }
 
-@Composable fun MyloApp(session: BrowserSession) {
+@Composable fun MyloApp(session: BrowserSession, shieldRequest: Int = 0) {
     val store = session.store
     val context = LocalContext.current
     var panel by rememberSaveable { mutableStateOf<String?>(null) }
+    val shield = remember { MyloShield.get(context) }
+    val shieldState by shield.engine.state.collectAsState()
+    var shieldOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(shieldRequest) { if (shieldRequest > 0) shieldOpen = true }
+    LaunchedEffect(Unit) { shield.autoConnectOnLaunch(context) }
     var currentTab by rememberSaveable { mutableStateOf<Long?>(null) }
     var home by rememberSaveable { mutableStateOf(true) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -168,14 +186,21 @@ class MainActivity : ComponentActivity() {
         }.onFailure { error = unavailable }
     }
     val onHome = home || store.tabs.none { it.id == currentTab }
+    val homeVpn = homeVpnStatus(shieldState, vpn)
+    // Mylo Shield replaces the browser while open; tabs keep their saved navigation state meanwhile.
+    if (shieldOpen) {
+        ShieldRoute(onClose = { shieldOpen = false })
+        return
+    }
     // Home draws its artwork behind the status bar; browser pages do not.
     MyloViewport(edgeToEdgeHome = onHome) {
             Box(Modifier.weight(1f)) {
                 val tab = store.tabs.firstOrNull { it.id == currentTab }
                 if (home || tab == null) {
-                    HomeScreen(query, { query = it }, { open(query) }, voiceSearch, { panel = it }, { open(it) }, {
+                    HomeScreen(query, { query = it }, { open(query) }, voiceSearch, { if (it == "vpn") shieldOpen = true else panel = it }, { open(it) }, {
                         context.startActivity(Intent(context, PrivateActivity::class.java))
-                    }, vpn, focusSearch = focusHomeSearch, onSearchFocused = { focusHomeSearch = false }, onScan = scanCode)
+                    }, homeVpn.active, focusSearch = focusHomeSearch, onSearchFocused = { focusHomeSearch = false },
+                        vpnLocation = homeVpn.location, vpnDetail = homeVpn.detail, onScan = scanCode)
                 } else {
                     key(tab.id) {
                         BrowserScreen(tab, session, ::showHome, { panel = "bookmarks" })
@@ -186,8 +211,23 @@ class MainActivity : ComponentActivity() {
     }
     panel?.let { selected -> MyloPanel(selected, store, { panel = null }, { open(it) }, {
         dismissInput(); currentTab = it.id; home = it.url.isBlank()
-    }, { currentTab = store.createTab().id; searchFromHome() }) }
+    }, { currentTab = store.createTab().id; searchFromHome() }, onOpenShield = { shieldOpen = true }) }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null }, title = { Text("Mylo") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
+}
+
+/** What Home's VPN strip may say: only Mylo Shield's real state, or that another app's VPN is on. */
+private data class HomeVpn(val active: Boolean, val location: String?, val detail: String)
+
+private fun homeVpnStatus(shield: ShieldState, androidVpn: Boolean): HomeVpn {
+    val idle = if (androidVpn) "Another VPN app is on" else null
+    return when (shield) {
+        is ShieldState.Connected -> HomeVpn(true, shield.server.city,
+            if (shield.exit is ExitStatus.Verified) "Encrypted · exit verified" else "Encrypted · exit not verified")
+        is ShieldState.Connecting -> HomeVpn(false, null, "Connecting…")
+        is ShieldState.Reconnecting -> HomeVpn(false, null, "Reconnecting…")
+        is ShieldState.Error -> HomeVpn(androidVpn, null, idle ?: if (shield.problem == ShieldProblem.NotConfigured) "Server setup required" else "Couldn't connect")
+        is ShieldState.Disconnected -> HomeVpn(androidVpn, null, idle ?: "Not connected")
+    }
 }
 
 @Composable private fun rememberVpnStatus(): Boolean {

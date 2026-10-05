@@ -1,0 +1,5 @@
+# HTTPS for the Mylo Shield session API (certificate from Let's Encrypt, renewed automatically).
+# No access log is configured, so client addresses are not written to disk by Caddy.
+{MYLO_HOSTNAME} {
+	reverse_proxy 127.0.0.1:8080
+}

@@ -105,8 +105,8 @@ private const val REFERENCE_WIDTH = 392.7f
     vpnActive: Boolean = false,
     // Focus this screen's search box (bottom Search, new tab); [onSearchFocused] marks the request handled.
     focusSearch: Boolean = false, onSearchFocused: () -> Unit = {},
-    // Production has no known endpoint location; only the reference render supplies one.
-    vpnLocation: String? = null, onScan: () -> Unit = {}, statusBarInset: Dp? = null,
+    // The connected Mylo Shield city (or the reference render's sample) and the strip's status line.
+    vpnLocation: String? = null, vpnDetail: String? = null, onScan: () -> Unit = {}, statusBarInset: Dp? = null,
 ) {
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -169,7 +169,7 @@ private const val REFERENCE_WIDTH = 392.7f
                                 }
                             }
                             Spacer(Modifier.height(13.dp)); Spacer(Modifier.weight(1f))
-                            VpnStrip(vpnActive, vpnLocation, Modifier.padding(horizontal = 13.5.dp)) { onPanel("vpn") }
+                            VpnStrip(vpnActive, vpnLocation, vpnDetail, Modifier.padding(horizontal = 13.5.dp)) { onPanel("vpn") }
                             Spacer(Modifier.height(13.dp)); Spacer(Modifier.weight(1f))
                             DiscoveryBanner(Modifier.padding(horizontal = 13.5.dp).testTag("home-discovery")) { onOpen("https://en.wikipedia.org/wiki/Special:Random") }
                         }
@@ -317,8 +317,9 @@ internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp
     }
 }
 
-@Composable private fun VpnStrip(active: Boolean, location: String?, modifier: Modifier, onClick: () -> Unit) {
-    // Live status is never simulated: "protected" appears only when Android reports an active VPN.
+@Composable private fun VpnStrip(active: Boolean, location: String?, detail: String?, modifier: Modifier, onClick: () -> Unit) {
+    // Live status is never simulated: "protected" appears only for a connected Mylo Shield tunnel or when
+    // Android reports another app's VPN; [detail] carries Shield's real state.
     val on = active
     val shape = RoundedCornerShape(16.dp)
     Row(modifier.fillMaxWidth().heightIn(min = 58.dp).clip(shape)
@@ -331,7 +332,7 @@ internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp
         }
         Column(Modifier.weight(1f).padding(start = 4.5.dp, end = 6.dp)) {
             Text(if (on) "VPN protected" else "VPN protection", fontSize = 12.75.sp, fontWeight = FontWeight.SemiBold, color = HomeInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(if (on) "Your connection is secure" else "Not connected", fontSize = 9.75.sp, color = HomeMuted, maxLines = 2, modifier = Modifier.padding(top = 1.dp))
+            Text(detail ?: if (on) "Your connection is secure" else "Not connected", fontSize = 9.75.sp, color = HomeMuted, maxLines = 2, modifier = Modifier.padding(top = 1.dp))
         }
         Box(Modifier.width(1.dp).height(20.dp).background(Color(0xFF33456A)))
         Row(Modifier.padding(start = 13.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -348,7 +349,7 @@ internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp
     }
 }
 
-/** Compact switch in the approved proportions; it opens the real Android VPN controls. */
+/** Compact switch in the approved proportions; it opens Mylo Shield. */
 @Composable private fun MyloToggle(checked: Boolean, onClick: () -> Unit) {
     val track by animateColorAsState(if (checked) Color(0xFF34C18E) else Color(0xFF3A4766), label = "track")
     val thumbX by animateDpAsState(if (checked) 21.5.dp else 1.5.dp, label = "thumb")
@@ -418,7 +419,7 @@ internal fun Modifier.searchPill(focused: Boolean) = fillMaxWidth().height(58.dp
 private fun Modifier.brushTint(brush: Brush) = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     .drawWithContent { drawContent(); drawRect(brush, blendMode = BlendMode.SrcIn) }
 
-/** Flag for the approved reference sample only; production never passes a VPN location. */
+/** Flag for the approved reference sample, or a connected Mylo Shield gateway that really is in Singapore. */
 @Composable private fun SingaporeFlag() {
     Canvas(Modifier.fillMaxSize()) {
         val u = size.width / 22f

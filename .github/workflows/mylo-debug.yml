@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL"
+        description: "full = every device check; search-flow = only Settings provider → Home search box → real results, relaunch, direct URL; shield = Mylo Shield (real-tunnel milestone needs the MYLO_SHIELD_TEST_URL/TOKEN secrets)"
         type: choice
-        options: [full, search-flow]
+        options: [full, search-flow, shield]
         default: full
   push:
     branches: ["mylo-development"]
@@ -130,7 +130,7 @@ jobs:
     name: Verify the APK on a Pixel emulator
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.scope == 'search-flow' && 15 || 25 }}
+    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:
@@ -175,6 +175,9 @@ jobs:
           script: bash mylo/scripts/ci-emulator-smoke.sh mylo/dist/Mylo-debug.apk mylo/dist/preview mylo/dist/tests/app-debug-androidTest.apk
         env:
           MYLO_SCOPE: ${{ inputs.scope || 'full' }}
+          # A real test gateway for the Shield milestone; never compiled into the APK.
+          MYLO_SHIELD_TEST_URL: ${{ secrets.MYLO_SHIELD_TEST_URL }}
+          MYLO_SHIELD_TEST_TOKEN: ${{ secrets.MYLO_SHIELD_TEST_TOKEN }}
       - name: Upload portrait Home screenshots and measurements
         if: always()
         id: home_portraits
@@ -213,7 +216,7 @@ jobs:
           import base64, glob, io, os
           from PIL import Image
           root = "mylo/dist/preview"
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png")):
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.png") + glob.glob(f"{root}/shield/*/*.png")):
               name = "/".join(path.split("/")[-2:])
               im = Image.open(path).convert("RGB")
               im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
@@ -222,12 +225,12 @@ jobs:
               print(f"-----BEGIN MYLO-IMAGE {name}-----")
               for i in range(0, len(data), 4000): print(data[i:i + 4000])
               print(f"-----END MYLO-IMAGE {name}-----")
-          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json")):
+          for path in sorted(glob.glob(f"{root}/provider-flow/*/*.json") + glob.glob(f"{root}/shield/*/*.json")):
               name = "/".join(path.split("/")[-2:])
               print(f"-----BEGIN MYLO-JSON {name}-----"); print(open(path).read()); print(f"-----END MYLO-JSON {name}-----")
-          summary = f"{root}/provider-flow-test.txt"
-          if os.path.exists(summary):
-              print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
+          for summary in (f"{root}/provider-flow-test.txt", f"{root}/shield-test.txt"):
+              if os.path.exists(summary):
+                  print("-----BEGIN MYLO-SUMMARY-----"); print(open(summary).read()); print("-----END MYLO-SUMMARY-----")
           PY
       - name: Link Android evidence
         if: always() && steps.preview.outputs.artifact-url != ''
