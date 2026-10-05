@@ -2,6 +2,7 @@
 
 Renders of the production Home and search composables from `tools/home-preview` (desktop Compose,
 393×851 dp unless noted). Real-emulator captures come from the `Mylo debug APK` workflow artifacts.
+`19-…` to `22-…` are built by `tools/compare/device_previews.py` from the workflow's `screens` scope.
 
 | File | What it shows |
 |---|---|
@@ -23,6 +24,10 @@ Renders of the production Home and search composables from `tools/home-preview` 
 | `17-voice-realtime-call-device-1.jpg` | Real emulator: a realtime voice call to a TEST provider (not an AI): microphone on, Mylo speaking with a caption, after the scroll-to-Pricing tool, muted |
 | `18-voice-realtime-call-device-2.jpg` | Real emulator: the call's turns in Type instead (with privacy receipts), a typed question answered aloud, the page showing the marked Pricing section after hanging up |
 | `16-voice-chat-through-test-service-device.jpg` | Real emulator: typed chat through the reference Mylo AI gateway with a TEST upstream (not an AI): answer, privacy receipt with the card number hidden, Current Page off, Allow once |
+| `19-home-target-vs-device.jpg` | New Home target (`design/reference/home-reference.jpg`) next to the real emulator at the target's own size (1080×1920 @ 420 dpi), with a difference image |
+| `20-browser-target-vs-device.jpg` | Browser target next to the real emulator: Mylo's toolbar and navigation around Google's real results page, and the address tapped (full editable URL) |
+| `21-voice-mode-entry-device.jpg` | Real emulator, no Mylo AI service: Home → bottom Mylo → Voice Mode → Close voice mode → Home → Mylo again → Close |
+| `22-home-sizes-device.jpg` | Home on the emulator at 360×640, 411×731 (target), 411×914 (Pixel 6) and 412×915 dp |
 
 `03` and `05` show an earlier search-provider direction ("Search with …" control and per-search sheet). It was
 replaced: the provider is now chosen only in Settings, and Home's own search box submits to it.
