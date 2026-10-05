@@ -183,6 +183,101 @@ class VoiceModeFlowTest {
         }
     }
 
+    /**
+     * Mylo's realtime voice through the Mylo AI service: a short-lived session, a WebRTC call to the TEST
+     * provider (a scripted peer that is not an AI and says so, with a tone as its voice), live captions, the
+     * page context the switchboard allows (card number hidden), a tool call run on the page, Mute, Type instead
+     * answered aloud, interruption, a voice sample, and the call ending with the microphone off.
+     */
+    @Test fun realtimeVoiceThroughTheTestService() {
+        val url = arguments.getString(URL_ARG)
+        assumeTrue("Pass -e $URL_ARG (and -e $TOKEN_ARG) to run against a Mylo AI test service", !url.isNullOrBlank())
+        AiPreferences(context).setTestService(com.mylo.browser.ai.AiEndpoint(url!!, arguments.getString(TOKEN_ARG)))
+        val dir = artifacts("realtime")
+        val evidence = JSONObject().put("verified", false)
+        val steps = JSONArray()
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { recording(dir) {
+                type(By.desc("Search or enter address"), "Home search", PLANS_PAGE)
+                waitFor(By.desc("Go"), "the Go button").click()
+                waitFor(By.text("Mylo Plans"), "the test page", 20_000)
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-mode-screen"), "the Voice Mode screen")
+
+                // Tap to talk: Android's microphone prompt, then the call (hands-free).
+                waitFor(By.res("voice-talk"), "the microphone").click()
+                waitFor(By.res("com.android.permissioncontroller:id/permission_allow_foreground_only_button"), "Android's microphone prompt", 20_000).click()
+                waitFor(By.res("voice-mute"), "the call's Mute control", 30_000)
+                waitFor(By.res("voice-mic-live"), "the microphone-on indicator")
+                shot(dir, "01-call-listening.png"); steps.put("call open, microphone on")
+
+                // The test provider "hears" a question, answers aloud and asks to show the pricing; Mylo runs it.
+                waitFor(By.textContains("Let me find the pricing on “Mylo Plans”"), "Mylo's spoken answer as a caption", 30_000)
+                shot(dir, "02-speaking-caption.png"); steps.put("spoken answer captioned")
+                waitFor(By.textContains("The pricing is on your screen now."), "Mylo's answer after the tool ran", 30_000)
+                val log = providerLog()
+                assertTrue("The page context arrived with the card number hidden: $log", log.any { it == "context title=Mylo Plans hidden=1" })
+                assertTrue("The tool call ran on the page: $log", log.any { it.startsWith("tool call_test_1 ok=true") || it.startsWith("tool call_test_1 ok=True") })
+                evidence.put("providerLog", JSONArray(log))
+                steps.put("context sent once (card hidden); scroll_to Pricing ran")
+
+                // Mute and unmute.
+                waitFor(By.res("voice-mute"), "Mute").click()
+                waitFor(By.res("voice-mic-muted"), "Microphone muted")
+                shot(dir, "03-muted.png")
+                waitFor(By.res("voice-mute"), "Unmute").click()
+                waitFor(By.res("voice-mic-live"), "Microphone on again")
+                steps.put("mute and unmute")
+
+                // Type instead keeps the same conversation; Mylo answers aloud; a tap interrupts.
+                waitFor(By.res("voice-type-instead"), "Type instead").click()
+                waitFor(By.textContains("Where is the pricing?"), "the spoken question in the conversation")
+                waitFor(By.textContains("The pricing is on your screen now."), "the spoken answer in the conversation")
+                shot(dir, "04-conversation-has-the-call.png")
+                type(By.res("voice-chat-input"), "the message box", "Tell me a long story")
+                waitFor(By.res("voice-chat-send"), "Send").click()
+                waitFor(By.res("voice-chat-close"), "close chat").click()
+                waitFor(By.text("Mylo is speaking · tap to interrupt"), "Mylo speaking the typed answer", 30_000)
+                shot(dir, "05-speaking.png")
+                waitFor(By.res("voice-talk"), "the microphone").click()
+                waitFor(By.text("Listening…"), "listening again after the interruption", 15_000)
+                val afterInterrupt = providerLog()
+                assertTrue("The interruption reached the provider: $afterInterrupt", afterInterrupt.contains("cancel") && afterInterrupt.contains("clear"))
+                steps.put("type instead answered aloud; tap interrupted")
+
+                // Hang up: the microphone is released.
+                waitFor(By.res("voice-close"), "Close voice mode").click()
+                waitFor(By.text("Mylo Plans"), "the page after closing Voice Mode")
+                assertTrue("The microphone is off after closing", !device.hasObject(By.res("voice-mic-live")))
+                waitFor(By.text("Pricing"), "the pricing section shown on the page")
+                shot(dir, "06-page-shows-pricing.png"); steps.put("call closed; the page shows the pricing")
+
+                // A voice sample plays through the same service (no microphone).
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-mode-screen"), "the Voice Mode screen")
+                waitFor(By.res("voice-settings").clickable(true), "Voice Mode settings").click()
+                waitFor(By.res("voice-sample-cedar"), "Play sample (Cedar)").click()
+                val deadline = SystemClock.uptimeMillis() + 20_000
+                while (!providerLog().contains("sample") && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(300)
+                assertTrue("The Cedar sample was requested", providerLog().contains("sample"))
+                steps.put("voice sample requested")
+            } }
+            evidence.put("verified", true)
+        } finally {
+            File(dir, "evidence.json").writeText(evidence.put("steps", steps).put("otherAppDialogsDismissed", JSONArray(dismissed)).toString(2))
+            AiPreferences(context).setTestService(null)
+        }
+    }
+
+    /** What the TEST provider received on the call's event channel. */
+    private fun providerLog(): List<String> = runCatching {
+        val connection = java.net.URL("http://localhost:8091/test/realtime").openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 3_000; connection.readTimeout = 3_000
+        val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+        val events = json.getJSONArray("events")
+        (0 until events.length()).map { events.getString(it) }
+    }.getOrDefault(emptyList())
+
     /** Fills a field through its accessibility "set text" action, falling back to Android's key events. */
     private fun type(selector: BySelector, what: String, text: String) {
         waitFor(selector, what).click()

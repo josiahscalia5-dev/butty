@@ -131,7 +131,7 @@ jobs:
     needs: build
     if: inputs.scope != 'build'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || (inputs.scope == 'private' || inputs.scope == 'voice') && 30 || 25 }}
+    timeout-minutes: ${{ (inputs.scope == 'search-flow' || inputs.scope == 'shield') && 15 || inputs.scope == 'compat' && 60 || inputs.scope == 'voice' && 40 || inputs.scope == 'private' && 30 || 25 }}
     # APK download remains available in the build job even if live verification fails.
     # A provider denial must remain a visible failure, never a claimed verification.
     steps:

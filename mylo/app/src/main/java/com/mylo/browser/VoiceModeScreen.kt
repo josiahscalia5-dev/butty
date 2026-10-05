@@ -117,6 +117,9 @@ data class VoiceModeUi(
     val caption: String? = null,
     /** A plain-language problem to show instead of the title (no microphone permission, no AI service…). */
     val problem: String? = null,
+    /** A realtime voice call is open (Mute appears next to the microphone indicator). */
+    val inCall: Boolean = false,
+    val muted: Boolean = false,
 )
 
 private val VoiceNight = Color(0xFF071430)
@@ -187,6 +190,7 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
     onSettings: () -> Unit = {},
     onNav: (VoiceNav) -> Unit = {},
     statusBarInset: Dp? = null,
+    onMute: () -> Unit = {},
 ) {
     val statusBar = statusBarInset ?: WindowInsets.safeDrawing.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding()
     CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.copy(letterSpacing = 0.sp, lineHeight = TextUnit.Unspecified)) {
@@ -200,7 +204,7 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
                     Box {
                         Column {
                             Spacer(Modifier.height(layout.px(V_HERO) + layout.shift))
-                            MicCard(layout, ui, level, breath, onTalk, onTypeInstead, onClose)
+                            MicCard(layout, ui, level, breath, onTalk, onTypeInstead, onClose, onMute)
                         }
                         VoiceHero(layout, ui, breath, onModeMenu, onSettings)
                     }
@@ -337,7 +341,7 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
 }
 
 /** The microphone card: Type instead, the glowing microphone with live waveforms, Close voice mode. */
-@Composable private fun MicCard(layout: VoiceLayout, ui: VoiceModeUi, level: Float, breath: Float, onTalk: () -> Unit, onTypeInstead: () -> Unit, onClose: () -> Unit) {
+@Composable private fun MicCard(layout: VoiceLayout, ui: VoiceModeUi, level: Float, breath: Float, onTalk: () -> Unit, onTypeInstead: () -> Unit, onClose: () -> Unit, onMute: () -> Unit = {}) {
     fun px(v: Float) = layout.px(v)
     val shape = RoundedCornerShape(px(42f))
     val glow = when (ui.phase) {
@@ -387,10 +391,18 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
                 MicGlyph(Modifier.size(px(78f)))
             }
         }
-        if (ui.micLive) Row(Modifier.align(Alignment.TopCenter).offset(y = px(-56f)).background(Color(0xE63A0F1E), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-live"), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(7.dp).background(Color(0xFFFF4D5E), CircleShape))
-            Text("Microphone on", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFFFE2E5))
+        if (ui.micLive || ui.inCall) Row(Modifier.align(Alignment.TopCenter).offset(y = px(-56f)), verticalAlignment = Alignment.CenterVertically) {
+            if (ui.muted) Row(Modifier.background(Color(0xE6252B4A), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-muted"), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(7.dp).background(Color(0xFF8E96BC), CircleShape))
+                Text("Microphone muted", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFD9DCEF))
+            } else if (ui.micLive) Row(Modifier.background(Color(0xE63A0F1E), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-live"), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(7.dp).background(Color(0xFFFF4D5E), CircleShape))
+                Text("Microphone on", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFFFE2E5))
+            }
+            if (ui.inCall) Text(if (ui.muted) "Unmute" else "Mute", Modifier.padding(start = 6.dp).clip(CircleShape).background(Color(0xE6252B4A))
+                .clickable(role = Role.Button, onClick = onMute).padding(horizontal = 10.dp, vertical = 2.dp).testTag("voice-mute"), fontSize = 11.sp, color = Color.White)
         }
     }
 }

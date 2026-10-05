@@ -97,7 +97,7 @@ class HttpMyloAiService(
                 }
                 buffer.toString("UTF-8")
             }
-            runCatching { AiContract.parseVoiceSession(text, nowSeconds()) }
+            runCatching { AiContract.parseVoiceSession(text, nowSeconds(), allowDevCleartext) }
                 .getOrElse { throw AiException(AiProblem.InvalidResponse, it.message, it) }
         } catch (e: IOException) {
             throw AiException(AiProblem.Unreachable, cause = e)
