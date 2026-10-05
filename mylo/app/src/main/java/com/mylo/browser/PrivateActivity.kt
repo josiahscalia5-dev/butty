@@ -273,8 +273,8 @@ private enum class PrivateScreen { Mode, Browse }
                 onNewTab = { sheet = null; newTabPage() },
                 onBurnNow = { sheet = null; dialog = PrivateDialog.BurnNow },
                 onLockChange = { on ->
-                    if (!on) settings.setLockTabs(false)
-                    else activity?.confirmLockOn { ok -> if (ok) settings.setLockTabs(true) else message = "Lock tabs stays off: Android's screen lock wasn't confirmed." }
+                    if (!on) settings.updateLockTabs(false)
+                    else activity?.confirmLockOn { ok -> if (ok) settings.updateLockTabs(true) else message = "Lock tabs stays off: Android's screen lock wasn't confirmed." }
                 },
                 onMessage = { message = it })
         }

@@ -98,7 +98,7 @@ internal fun burnMessage(report: BurnReport): String = buildString {
                     SheetTitle("Private Mode settings")
                     SettingSwitch("Block trackers", "Third-party ads, analytics and social trackers are blocked on every private page.", session.settings.blockTrackers, "private-setting-trackers") { session.setBlockTrackers(it) }
                     SettingSwitch("Lock tabs", lockSummary(session), session.settings.lockTabs, "private-setting-lock") { onLockChange(it) }
-                    SettingSwitch("Burn session on exit", "Leaving Private Mode clears its tabs, cookies, site data and permissions.", session.settings.burnOnExit, "private-setting-burn") { session.settings.setBurnOnExit(it) }
+                    SettingSwitch("Burn session on exit", "Leaving Private Mode clears its tabs, cookies, site data and permissions.", session.settings.burnOnExit, "private-setting-burn") { session.settings.updateBurnOnExit(it) }
                     SheetNote(PRIVATE_LIMIT)
                 }
                 PrivateSheet.Tabs -> TabsSheet(session, onSelectTab, onNewTab, onBurnNow)
@@ -163,7 +163,7 @@ internal fun burnMessage(report: BurnReport): String = buildString {
 @Composable private fun BurnSheet(session: PrivateSession, onBurnNow: () -> Unit) {
     SheetTitle("Burn session on exit")
     SettingSwitch("Burn session on exit", if (session.settings.burnOnExit) "On: leaving Private Mode clears everything below." else "Off: private tabs stay open while you browse normally, until you burn them.",
-        session.settings.burnOnExit, "private-burn-switch") { session.settings.setBurnOnExit(it) }
+        session.settings.burnOnExit, "private-burn-switch") { session.settings.updateBurnOnExit(it) }
     Text("A burn clears", color = SheetMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     listOf("Private tabs and their back/forward history", "Cookies and sign-ins", "Site storage, caches and service workers",
         "Camera, microphone and location permissions given this session", "Mylo’s tracker log for the session",

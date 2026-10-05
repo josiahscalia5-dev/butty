@@ -26,9 +26,9 @@ class PrivateSettings(context: Context) {
     var lockTabs by mutableStateOf(prefs.getBoolean(LOCK, false)); private set
     var burnOnExit by mutableStateOf(prefs.getBoolean(BURN, true)); private set
 
-    fun setBlockTrackers(on: Boolean) { blockTrackers = on; prefs.edit().putBoolean(BLOCK, on).apply() }
-    fun setLockTabs(on: Boolean) { lockTabs = on; prefs.edit().putBoolean(LOCK, on).apply() }
-    fun setBurnOnExit(on: Boolean) { burnOnExit = on; prefs.edit().putBoolean(BURN, on).apply() }
+    fun updateBlockTrackers(on: Boolean) { blockTrackers = on; prefs.edit().putBoolean(BLOCK, on).apply() }
+    fun updateLockTabs(on: Boolean) { lockTabs = on; prefs.edit().putBoolean(LOCK, on).apply() }
+    fun updateBurnOnExit(on: Boolean) { burnOnExit = on; prefs.edit().putBoolean(BURN, on).apply() }
 
     private companion object {
         const val BLOCK = "block_trackers"
@@ -98,7 +98,7 @@ class PrivateSession(private val app: Application) {
     fun unregister(burnable: Burnable) { burnables -= burnable }
 
     fun setBlockTrackers(on: Boolean) {
-        settings.setBlockTrackers(on)
+        settings.updateBlockTrackers(on)
         trackerBlocker.enabled = on
     }
 
