@@ -27,6 +27,25 @@ the test closes the activity. Each run's screenshots are on the `mylo-ci-evidenc
 
 Screens: `design/previews/claude-ui/09-…` to `13-…`. Earlier verification (search provider flow) follows.
 
+**Voice Mode (Milestones 1–2)** — the approved Voice Mode screen, the typed chat (Type instead), the AI switchboard and
+the microphone, verified on the same emulator by `VoiceModeFlowTest` in the workflow's `voice` scope
+([run RUN_ID](https://github.com/josiahscalia5-dev/butty/actions/runs/RUN_ID)), both cases passed:
+
+- Home's Mylo button opens the Voice Mode screen; it matches `design/reference/voice-mode-reference.png`
+  (`design/previews/claude-ui/14-…`). Close voice mode returns to Home or the page.
+- Without a Mylo AI service (the default build), Type instead sends nothing and says so ("Not sent"); What Mylo can see
+  lists all seven sources with Off / Allow once / Always (`15-…`).
+- With the reference gateway (`ai-gateway/`) in front of a **test upstream that is not an AI** and says so in every
+  reply: "Explain this page" streamed an answer about the open page; the card number on the page arrived at the
+  service hidden; the privacy receipt listed what was and wasn't shared; with Current Page off the next question
+  carried no page; "Is this site safe?" asked before reading the page, and the one-time grant was used up (`16-…`).
+- Microphone: Tap to talk asks for Android's microphone permission, then Mylo listens (on-device recognition first,
+  Android's standard recognizer when the phone lacks the language pack) or explains plainly why it can't; the
+  microphone is off afterwards. The CI emulator has no microphone audio, so real speech-to-text is for a phone.
+
+Not built yet: Mylo's spoken replies (OpenAI Realtime voice, milestone 3), and the page actions beyond asking (scrolling
+to pricing, translating, cancel guidance, tab comparison, site checks: milestones 5–8).
+
 `claude-ui` at `aa63420` (Settings-only search provider):
 
 - Local build: debug APK, instrumentation APK and all 16 URL resolver/state unit tests pass. Layoutlib (Paparazzi) Home renders at 393×851 and 360×640 dp are pixel-identical to the approved B+C Home before the search change.
@@ -70,6 +89,16 @@ Paparazzi output is under `app/src/test/snapshots/images/`. It is a native layou
 - Home uses native Compose elements with the approved dark palette, corgi hero, prominent search, shortcuts, browser cards, VPN strip, discovery area, and bottom navigation.
 - URLs open in Android WebView; words open the real results page of the provider saved in Settings (Google, Brave, DuckDuckGo, Bing, Yahoo or Startpage). Only HTTP(S) navigation is accepted.
 - Bookmarks and normal browsing history persist locally. Tabs can be created, selected and closed; per-tab WebView navigation state is retained while the app process lives and through rotation. Tabs are not restored after process death.
+- **Voice Mode** (the Mylo button): the approved screen, with the conversation shared between talking and typing.
+  Mylo AI runs as a separate service ([docs/ai/BACKEND_API.md](docs/ai/BACKEND_API.md), reference gateway in
+  [`ai-gateway/`](ai-gateway/README.md)): the app never holds an AI provider key; voice will use short-lived session
+  secrets the service mints. Without a configured service nothing is sent and the app says so.
+  - *What Mylo can see* decides what each question carries: the current page (visible text and address, read only
+    when asked), selected text, other tabs, history; Screenshot, Location and Saved Memory are marked "not used yet".
+    Card numbers, ID numbers, bank accounts and secrets in links are hidden before anything leaves the phone, and
+    every answer has a privacy receipt.
+  - The six page actions send the matching question (asking first when the page is off); Mylo answers in text until
+    spoken replies arrive.
 - Voice search uses the installed Android speech recognizer when available. The search-bar scanner uses Google Play services' code scanner and shows a message where it is unavailable.
 - **Private Mode** (Home's Private card): the approved Private Mode screen with its entrance animation (the
   sunglasses corgi settles onto the moon, the lenses catch the light, the shield pulses, Active fades in; instant when
