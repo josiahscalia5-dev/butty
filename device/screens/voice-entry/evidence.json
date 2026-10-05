@@ -1,0 +1,15 @@
+{
+  "verified": true,
+  "aiServiceConfigured": false,
+  "notConnectedStatus": "Mylo AI isn’t connected yet: I can listen, but answers need setup (see Settings).",
+  "steps": [
+    "launched: Home",
+    "tapped the bottom navigation's Mylo (time 1)",
+    "Voice Mode screen open (time 1)",
+    "Close voice mode returned to Home (time 1)",
+    "tapped the bottom navigation's Mylo (time 2)",
+    "Voice Mode screen open (time 2)",
+    "Close voice mode returned to Home (time 2)"
+  ],
+  "otherAppDialogsAnsweredWait": []
+}

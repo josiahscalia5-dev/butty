@@ -1,0 +1,13 @@
+Navigation mode (2 = gestures): 2
+voice-entry: passed
+home-pixel6: passed
+browser-pixel6: passed
+Display 1080x1920 @ 420 dpi
+home-target: passed
+browser-target: passed
+Display 720x1280 @ 320 dpi
+home-small: passed
+Display 1440x3200 @ 560 dpi
+home-large: passed
+Crash events during the screens run:
+  none recorded
