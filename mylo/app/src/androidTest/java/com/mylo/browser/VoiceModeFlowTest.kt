@@ -212,9 +212,10 @@ class VoiceModeFlowTest {
                 shot(dir, "01-call-listening.png"); steps.put("call open, microphone on")
 
                 // The test provider "hears" a question, answers aloud and asks to show the pricing; Mylo runs it.
-                waitFor(By.textContains("Let me find the pricing on “Mylo Plans”"), "Mylo's spoken answer as a caption", 30_000)
+                waitFor(By.textContains("Mylo: (test voice"), "Mylo's spoken answer as a caption", 30_000)
                 shot(dir, "02-speaking-caption.png"); steps.put("spoken answer captioned")
                 waitFor(By.textContains("The pricing is on your screen now."), "Mylo's answer after the tool ran", 30_000)
+                shot(dir, "02b-answer-after-tool.png")
                 val log = providerLog()
                 assertTrue("The page context arrived with the card number hidden: $log", log.any { it == "context title=Mylo Plans hidden=1" })
                 assertTrue("The tool call ran on the page: $log", log.any { it.startsWith("tool call_test_1 ok=true") || it.startsWith("tool call_test_1 ok=True") })

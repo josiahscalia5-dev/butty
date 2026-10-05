@@ -206,6 +206,8 @@ fun renderVoice(out: File) {
         "idle" to VoiceModeUi(tabs = 3),
         "listening" to VoiceModeUi(VoicePhase.Listening, level = .7f, micLive = true, tabs = 3, caption = "You: find the pricing section"),
         "speaking" to VoiceModeUi(VoicePhase.Speaking, level = .55f, tabs = 3, caption = "Mylo: The plans start at \$9 a month. I’ve scrolled to Pricing."),
+        "call" to VoiceModeUi(VoicePhase.Listening, level = .5f, micLive = true, tabs = 3, inCall = true, caption = "You: (test speech) Where is the pricing?"),
+        "muted" to VoiceModeUi(VoicePhase.Listening, level = 0f, tabs = 3, inCall = true, muted = true, caption = "Mylo: The pricing is on your screen now."),
     )
     for (p in privatePhones) {
         for ((name, ui) in if (p.name.startsWith("reference")) states else states.take(1)) {

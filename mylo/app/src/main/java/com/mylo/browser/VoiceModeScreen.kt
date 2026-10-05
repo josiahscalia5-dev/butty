@@ -391,19 +391,20 @@ internal class VoiceLayout(width: Dp, height: Dp, statusBar: Dp) {
                 MicGlyph(Modifier.size(px(78f)))
             }
         }
-        if (ui.micLive || ui.inCall) Row(Modifier.align(Alignment.TopCenter).offset(y = px(-56f)), verticalAlignment = Alignment.CenterVertically) {
-            if (ui.muted) Row(Modifier.background(Color(0xE6252B4A), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-muted"), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(7.dp).background(Color(0xFF8E96BC), CircleShape))
-                Text("Microphone muted", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFD9DCEF))
-            } else if (ui.micLive) Row(Modifier.background(Color(0xE63A0F1E), CircleShape).padding(horizontal = 8.dp, vertical = 2.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-live"), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(7.dp).background(Color(0xFFFF4D5E), CircleShape))
-                Text("Microphone on", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFFFE2E5))
-            }
-            if (ui.inCall) Text(if (ui.muted) "Unmute" else "Mute", Modifier.padding(start = 6.dp).clip(CircleShape).background(Color(0xE6252B4A))
-                .clickable(role = Role.Button, onClick = onMute).padding(horizontal = 10.dp, vertical = 2.dp).testTag("voice-mute"), fontSize = 11.sp, color = Color.White)
+        // The live microphone indicator (and Mute during a call) sit inside the card's top corners, where the
+        // artwork never covers them.
+        if (ui.muted) Row(Modifier.align(Alignment.TopStart).padding(start = px(28f), top = px(20f)).background(Color(0xE6252B4A), CircleShape)
+            .padding(horizontal = 8.dp, vertical = 2.dp).semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-muted"), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(7.dp).background(Color(0xFF8E96BC), CircleShape))
+            Text("Microphone muted", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFD9DCEF), maxLines = 1)
+        } else if (ui.micLive) Row(Modifier.align(Alignment.TopStart).padding(start = px(28f), top = px(20f)).background(Color(0xE63A0F1E), CircleShape)
+            .padding(horizontal = 8.dp, vertical = 2.dp).semantics { liveRegion = LiveRegionMode.Polite }.testTag("voice-mic-live"), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(7.dp).background(Color(0xFFFF4D5E), CircleShape))
+            Text("Microphone on", Modifier.padding(start = 6.dp), fontSize = 11.sp, color = Color(0xFFFFE2E5), maxLines = 1)
         }
+        if (ui.inCall) Text(if (ui.muted) "Unmute" else "Mute", Modifier.align(Alignment.TopEnd).padding(end = px(28f), top = px(20f)).clip(CircleShape)
+            .background(Color(0xE6252B4A)).clickable(role = Role.Button, onClick = onMute).padding(horizontal = 12.dp, vertical = 3.dp).testTag("voice-mute"),
+            fontSize = 11.sp, color = Color.White, maxLines = 1)
     }
 }
 

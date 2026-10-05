@@ -73,6 +73,7 @@ class RealtimeVoice(private val context: Context, private val onEvent: (Realtime
     private var levels: Job? = null
     private var handsFree = true
     private var microphone = true
+    private var sayingFor: String? = null
     private var savedAudioMode: Int? = null
 
     /** The event channel is open (context, typed text and tool results can be sent). */
@@ -201,8 +202,9 @@ class RealtimeVoice(private val context: Context, private val onEvent: (Realtime
             RealtimeEvent.SpeechStopped -> now.copy(phase = CallState.Phase.Thinking)
             is RealtimeEvent.HeardDelta -> now.copy(heard = now.heard + event.text)
             is RealtimeEvent.Heard -> now.copy(heard = event.text)
-            is RealtimeEvent.SayingDelta -> now.copy(saying = now.saying + event.text)
-            is RealtimeEvent.Said -> now.copy(saying = event.text)
+            // Each answer's caption starts fresh; it stays on screen until the person speaks again.
+            is RealtimeEvent.SayingDelta -> if (event.responseId != sayingFor) { sayingFor = event.responseId; now.copy(saying = event.text) } else now.copy(saying = now.saying + event.text)
+            is RealtimeEvent.Said -> { sayingFor = event.responseId; now.copy(saying = event.text) }
             RealtimeEvent.SpeakingStarted -> now.copy(phase = CallState.Phase.Speaking)
             RealtimeEvent.SpeakingStopped -> now.copy(phase = CallState.Phase.Listening)
             is RealtimeEvent.ResponseDone -> if (now.phase == CallState.Phase.Thinking) now.copy(phase = CallState.Phase.Listening) else now

@@ -159,8 +159,9 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
     val lastAnswer = messages.lastOrNull { it.role == AiTurn.Role.Assistant && (it.text.isNotBlank() || it.note != null) }
     val caption = when {
         inCall && callState.phase == CallState.Phase.Connecting -> "Connecting to Mylo’s voice…"
-        inCall && callState.phase == CallState.Phase.Speaking && callState.saying.isNotBlank() -> "Mylo: " + callState.saying.trim().takeLast(160)
-        inCall && callState.heard.isNotBlank() && callState.phase != CallState.Phase.Speaking -> "You: " + callState.heard.trim().takeLast(160)
+        // Mylo's words while (and after) it speaks; the person's words once they speak again.
+        inCall && callState.saying.isNotBlank() -> "Mylo: " + callState.saying.trim().takeLast(160)
+        inCall && callState.heard.isNotBlank() -> "You: " + callState.heard.trim().takeLast(160)
         listen.listening -> "You: " + listen.partial.ifBlank { "…" }.takeLast(160)
         lastAnswer != null && lastAnswer.text.isNotBlank() -> "Mylo: " + lastAnswer.text.trim().take(160)
         lastAnswer?.note != null -> lastAnswer.note

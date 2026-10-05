@@ -6,7 +6,7 @@ src = open(os.path.join(app, "MainActivity.kt")).read()
 imports = [l for l in src.splitlines() if l.startswith("import ")]
 drop = ("import android.", "import androidx.lifecycle.", "import androidx.activity.", "import com.google.",
         "import androidx.compose.ui.viewinterop.", "import androidx.compose.ui.platform.LocalContext",
-        "import com.mylo.browser.shield.", "import com.mylo.browser.web.")
+        "import com.mylo.browser.shield.", "import com.mylo.browser.web.", "import com.mylo.browser.ai.", "import com.mylo.browser.voice.")
 imports = [l for l in imports if not l.startswith(drop)]
 i = src.index("val Night"); j = src.index("class MyloApplication", i)
 open(os.path.join(out, "Theme.kt"), "w").write('@file:Suppress("unused")\npackage com.mylo.browser\n\n' + "\n".join(imports) + "\n\n" + src[i:j])
