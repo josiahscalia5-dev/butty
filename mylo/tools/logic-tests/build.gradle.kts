@@ -5,7 +5,7 @@ kotlin { jvmToolchain(21) }
 val app = rootDir.resolve("../../app/src")
 /** Pure-Kotlin sources (no android.* imports) and their tests. */
 val logic = listOf(
-    "web/WebPolicy.kt", "web/TrackerBlocker.kt", "web/TrackerList.kt",
+    "web/WebPolicy.kt", "web/SitePermissions.kt", "web/TrackerBlocker.kt", "web/TrackerList.kt",
 )
 val logicTests = listOf(
     "web/WebPolicyTest.kt", "web/TrackerBlockerTest.kt",

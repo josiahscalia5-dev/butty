@@ -34,6 +34,7 @@ class TrackerBlockerTest {
         assertNull("main frame", blocker.shouldBlock("https://www.doubleclick.net/", "https://example.com/", isMainFrame = true))
         assertNull("own site", blocker.shouldBlock("https://connect.facebook.net/sdk.js", "https://www.facebook.com/", false))
         assertNull("same tracker domain", blocker.shouldBlock("https://static.hotjar.com/c/hotjar.js", "https://www.hotjar.com/pricing", false))
+        assertNull("same company", blocker.shouldBlock("https://www.google-analytics.com/collect", "https://m.youtube.com/watch?v=1", false))
         assertNull("adservice on google.com", blocker.shouldBlock("https://adservice.google.com/ddm/fls", "https://www.google.com/search?q=x", false))
         assertEquals(0, blocker.blockedCount)
     }
@@ -51,6 +52,12 @@ class TrackerBlockerTest {
         assertNull(blocker.shouldBlock("blob:https://example.com/123", "https://example.com/", false))
         blocker.enabled = false
         assertNull(blocker.shouldBlock("https://www.google-analytics.com/collect", "https://example.com/", false))
+    }
+
+    @Test fun ownersOnlyCoverTheirOwnSites() {
+        assertNotNull(blocker.shouldBlock("https://connect.facebook.net/en_US/fbevents.js", "https://shop.example.com/", false))
+        assertNotNull(blocker.shouldBlock("https://www.googletagmanager.com/gtag/js", "https://www.facebook.com/", false))
+        TrackerList.owners.keys.forEach { assertTrue("$it is listed", it in TrackerList.domains) }
     }
 
     @Test fun unknownPageStillBlocksListedHosts() {

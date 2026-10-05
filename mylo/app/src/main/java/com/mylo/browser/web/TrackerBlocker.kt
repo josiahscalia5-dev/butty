@@ -17,13 +17,16 @@ data class BlockedTracker(val domain: String, val category: TrackerCategory, val
 
 /**
  * Mylo's tracker blocking for the shared browser engine. A sub-resource request is blocked when its host is
- * (or is under) a domain on [TrackerList] and the page itself does not belong to that same domain, so a site
- * keeps working when you visit it directly. Main-frame navigations are never blocked: the user always gets
+ * (or is under) a domain on [TrackerList] and the page does not belong to that domain or its company
+ * ([TrackerList.owners]), so a site keeps working when you visit it directly. Main-frame navigations are never blocked: the user always gets
  * the page they asked for.
  *
  * Thread-safe: WebView asks from its network thread.
  */
-class TrackerBlocker(private val list: Map<String, TrackerCategory> = TrackerList.domains) {
+class TrackerBlocker(
+    private val list: Map<String, TrackerCategory> = TrackerList.domains,
+    private val owners: Map<String, Set<String>> = TrackerList.owners,
+) {
     @Volatile var enabled: Boolean = true
 
     private val total = AtomicInteger(0)
@@ -55,8 +58,8 @@ class TrackerBlocker(private val list: Map<String, TrackerCategory> = TrackerLis
         val host = hostOf(requestUrl) ?: return null
         val listed = match(host) ?: return null
         val pageHost = pageUrl?.let(::hostOf)
-        // First-party: the page is the tracker's own site (e.g. visiting facebook.com itself).
-        if (pageHost != null && (match(pageHost) == listed || sameSite(pageHost, host))) return null
+        // First-party: the page is the tracker's own site, or another site of the same company.
+        if (pageHost != null && (match(pageHost) == listed || sameSite(pageHost, host) || site(pageHost) in owners[listed].orEmpty())) return null
         val category = list.getValue(listed)
         total.incrementAndGet()
         byDomain.getOrPut(listed) { AtomicInteger(0) }.incrementAndGet()

@@ -58,6 +58,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.core:core-ktx:1.15.0")
+    // Private Mode's Lock tabs: Android's BiometricPrompt (fingerprint, face or the device PIN/pattern/password).
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     // Mylo Shield: the official WireGuard Android tunnel library (wireguard-go, Apache-2.0).
     implementation("com.wireguard.android:tunnel:1.0.20260102")

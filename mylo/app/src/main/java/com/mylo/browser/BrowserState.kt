@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.mylo.browser.web.TabHost
 import java.net.IDN
 import java.net.URI
 import java.net.URLEncoder
@@ -94,18 +95,22 @@ private fun normalizeWebUrl(value: String): String? = runCatching {
     }.let { URI(it).toASCIIString() }
 }.getOrNull()
 
+/** The search provider saved in Settings, read on its own (Private Mode reads nothing else of normal browsing). */
+fun savedSearchProvider(context: Context): SearchProvider =
+    SearchProvider.entries.firstOrNull { it.name == context.applicationContext.getSharedPreferences("mylo_browser", Context.MODE_PRIVATE).getString("provider", null) }
+        ?: SearchProvider.DUCKDUCKGO
+
 data class Bookmark(val url: String, val title: String, val addedAt: Long)
 data class HistoryEntry(val url: String, val title: String, val visitedAt: Long)
 /** [openerId]: the tab whose page opened this one as a new window (a pop-up or target=_blank link). */
 data class BrowserTab(val id: Long, val title: String, val url: String, val privateMode: Boolean, val openerId: Long? = null)
 
 /**
- * Small local browser model. Bookmarks, normal history and the selected search
- * provider survive app restarts. Tabs remain in memory. Private visits are not
- * recorded, but this class does not isolate WebView cookies or website storage.
- * Only call its mutation methods on the main thread.
+ * Small local browser model for normal browsing. Bookmarks, history and the selected search provider
+ * survive app restarts; tabs remain in memory. Private Mode has its own [com.mylo.browser.privacy.PrivateTabs]
+ * in a separate process and never writes here. Only call its mutation methods on the main thread.
  */
-class BrowserStore(context: Context) {
+class BrowserStore(context: Context) : TabHost {
     private val preferences = context.applicationContext.getSharedPreferences("mylo_browser", Context.MODE_PRIVATE)
     private var nextTabId = 1L
 
@@ -152,7 +157,9 @@ class BrowserStore(context: Context) {
         persistBookmarks()
     }
 
-    fun recordVisit(url: String, title: String, privateMode: Boolean = false) {
+    override fun recordVisit(url: String, title: String) = recordVisit(url, title, privateMode = false)
+
+    fun recordVisit(url: String, title: String, privateMode: Boolean) {
         if (privateMode) return
         val normalized = normalizeWebUrl(url) ?: return
         history.removeAll { it.url == normalized }
@@ -174,7 +181,7 @@ class BrowserStore(context: Context) {
     }
 
     /** A tab a page opened as a new window; it sits next to its opener, which stays open behind it. */
-    fun createChildTab(openerId: Long): BrowserTab {
+    override fun createChildTab(openerId: Long): BrowserTab {
         val tab = BrowserTab(nextTabId++, "New window", "", privateMode = false, openerId = openerId)
         val index = tabs.indexOfFirst { it.id == openerId }
         if (index < 0) tabs.add(tab) else tabs.add(index + 1, tab)
@@ -194,14 +201,14 @@ class BrowserStore(context: Context) {
         return tab
     }
 
-    fun updateTab(id: Long, url: String, title: String) {
+    override fun updateTab(id: Long, url: String, title: String) {
         val index = tabs.indexOfFirst { it.id == id }
         if (index < 0) return
         val safeUrl = normalizeWebUrl(url) ?: return
         tabs[index] = tabs[index].copy(url = safeUrl, title = title.trim().ifEmpty { safeUrl })
     }
 
-    fun closeTab(id: Long) {
+    override fun closeTab(id: Long) {
         tabs.removeAll { it.id == id }
     }
 

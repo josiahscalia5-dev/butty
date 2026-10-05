@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo tracker test</title>
+<link rel="stylesheet" href="mylo.css">
+</head>
+<body>
+<h1>Mylo tracker test</h1>
+<p>A first-party visit counter (cookie and local storage) and four requests to well-known third-party trackers.
+Mylo's Private Mode should block the trackers and keep the counter separate from normal tabs.</p>
+<p id="visits">Counting visits…</p>
+<ul id="results"></ul>
+<p id="summary">Waiting for tracker requests…</p>
+<img src="favicon.png" alt="first-party image" width="32" height="32" id="first-party">
+<script>
+  // First-party state: cookie and local storage, so isolation and Burn can be seen on screen.
+  const cookieVisits = Number((document.cookie.match(/(?:^|; )mylo_visits=(\d+)/) || [0, 0])[1]) + 1;
+  document.cookie = "mylo_visits=" + cookieVisits + "; path=/; max-age=86400";
+  let stored = 0;
+  try { stored = Number(localStorage.getItem("mylo_visits") || 0) + 1; localStorage.setItem("mylo_visits", String(stored)); } catch (e) { stored = "unavailable"; }
+  document.getElementById("visits").textContent = "Visit " + cookieVisits + " in this browser (cookie) · storage visit " + stored;
+
+  const trackers = [
+    ["Google Analytics", "https://www.google-analytics.com/analytics.js?mylo-test=1"],
+    ["DoubleClick", "https://stats.g.doubleclick.net/r/collect?mylo-test=1"],
+    ["Facebook Pixel", "https://connect.facebook.net/en_US/fbevents.js?mylo-test=1"],
+    ["Bing Ads", "https://bat.bing.com/bat.js?mylo-test=1"],
+  ];
+  let done = 0, blocked = 0;
+  for (const [name, url] of trackers) {
+    const li = document.createElement("li");
+    li.textContent = name + ": loading…";
+    document.getElementById("results").appendChild(li);
+    const s = document.createElement("script");
+    s.src = url;
+    s.onload = () => { li.textContent = name + ": loaded"; finish(false); };
+    s.onerror = () => { li.textContent = name + ": blocked or failed"; finish(true); };
+    document.head.appendChild(s);
+  }
+  function finish(failed) {
+    done++; if (failed) blocked++;
+    if (done === trackers.length) document.getElementById("summary").textContent = "Tracker requests finished: " + blocked + " of " + trackers.length + " did not load";
+  }
+</script>
+</body>
+</html>

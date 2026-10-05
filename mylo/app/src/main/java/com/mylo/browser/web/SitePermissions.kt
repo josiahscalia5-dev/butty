@@ -1,7 +1,5 @@
 package com.mylo.browser.web
 
-import android.content.Context
-
 /** What a website may ask for; each is always asked first and never granted automatically. */
 enum class SitePermission(val key: String, val label: String) {
     Camera("camera", "Camera"),
@@ -21,8 +19,8 @@ interface KeyValues {
 }
 
 /**
- * Remembered per-site choices for normal browsing (Private browsing never remembers). Only secure origins
- * are remembered; everything else is asked each time.
+ * Remembered per-site choices. Normal browsing keeps them on the device ([from]); Private Mode keeps them in
+ * [SessionValues] until the session is burned. Only secure origins are remembered; others are asked each time.
  */
 class SitePermissionStore(private val values: KeyValues) {
     fun decision(origin: String?, permission: SitePermission): SiteDecision? =
@@ -40,16 +38,14 @@ class SitePermissionStore(private val values: KeyValues) {
 
     private fun key(origin: String, permission: SitePermission) = "$origin|${permission.key}"
 
-    companion object {
-        fun from(context: Context): SitePermissionStore {
-            val prefs = context.getSharedPreferences("mylo_site_permissions", Context.MODE_PRIVATE)
-            return SitePermissionStore(object : KeyValues {
-                override fun get(key: String) = prefs.getString(key, null)
-                override fun put(key: String, value: String?) {
-                    prefs.edit().apply { if (value == null) remove(key) else putString(key, value) }.apply()
-                }
-                override fun keys(): Set<String> = prefs.all.keys
-            })
-        }
-    }
+    companion object
+}
+
+/** Choices kept only in memory: Private Mode's "this session" permissions, destroyed with the session. */
+class SessionValues : KeyValues {
+    private val map = java.util.concurrent.ConcurrentHashMap<String, String>()
+    override fun get(key: String) = map[key]
+    override fun put(key: String, value: String?) { if (value == null) map.remove(key) else map[key] = value }
+    override fun keys(): Set<String> = map.keys.toSet()
+    fun clear() = map.clear()
 }

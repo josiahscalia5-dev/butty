@@ -9,7 +9,7 @@ settle onto the moon when Private Mode opens:
   private_hero_corgi.webp   the sunglasses corgi on transparency, registered to the scene
   private_hero_lenses.webp  an alpha mask of the sunglasses lenses, for the one-time highlight
 
-All three share one coordinate space: the reference's top 480 px (941 px wide), upscaled ×SCALE.
+All three share one coordinate space: the reference's top 468 px (941 px wide), upscaled ×SCALE.
 Requires Python 3 with numpy, Pillow and opencv-python-headless.
 
   python3 tools/private-art/build_private_art.py [--debug OUT_DIR]
@@ -25,7 +25,7 @@ from PIL import Image, ImageFilter
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 REFERENCE = os.path.join(ROOT, "design", "reference", "private-mode-reference.png")
 OUT = os.path.join(ROOT, "app", "src", "main", "res", "drawable-nodpi")
-HERO_HEIGHT = 480  # reference px; the status card starts at 471
+HERO_HEIGHT = 468  # reference px; the status card (and its baked-in border) starts at 471
 SCALE = 2
 SEED = 7
 
@@ -230,6 +230,9 @@ def fill_behind_corgi(rgb, hole, rng):
     filled = add_grain(filled, sky_hole, rng, sigma=2.0)
     filled = add_stars(filled, sky_hole, rng, density=0.0005)
     filled = add_grain(filled, moon_hole.astype(np.uint8) * 255, rng, sigma=2.5)
+    # The corgi's soft shadow on the moon's surface (seen only while it settles).
+    shade = cv2.GaussianBlur(moon_hole.astype(np.float32), (9, 9), 0)[..., None]
+    filled = (filled.astype(np.float32) * (1 - .3 * shade)).astype(np.uint8)
     # Feather the fill into the untouched picture.
     soft = cv2.GaussianBlur((hole > 0).astype(np.float32), (7, 7), 0)[..., None]
     return (filled * soft + rgb.astype(np.float32) * (1 - soft)).astype(np.uint8)
@@ -274,7 +277,7 @@ def main():
     scene = fill_behind_corgi(clean, dilate(corgi, 6), rng)
 
     # Corgi layer: the original pixels (words removed) with a feathered alpha.
-    alpha = cv2.GaussianBlur(corgi, (5, 5), 0)
+    alpha = cv2.GaussianBlur(corgi, (3, 3), 0)
     corgi_rgba = np.dstack([clean, alpha])
     bx, by, bw, bh = cv2.boundingRect(corgi)
     pad = 6

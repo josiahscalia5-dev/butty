@@ -147,9 +147,53 @@ val scenes: Map<String, @Composable (Phone) -> Unit> = mapOf(
     }
 }
 
+/** Private Mode at the reference's own size (941 × 1672 px) and on real phone profiles. */
+val privatePhones = listOf(
+    Phone("reference_941x1672", 393, 698, 941f / 392.7f, 24.dp, 24.dp, gesture = true),
+    Phone("pixel5_393x851", 393, 851, 2.75f, 30.dp, 24.dp, gesture = true),
+    Phone("pixel6_411x914", 411, 914, 2.625f, 32.dp, 24.dp, gesture = true),
+    Phone("compact_360x640_3button", 360, 640, 2f, 24.dp, 48.dp, gesture = false),
+)
+
+@Composable fun PrivateDevice(phone: Phone, ui: PrivateModeUi, play: Boolean) {
+    MyloTheme {
+        Box(Modifier.fillMaxSize().background(PrivateNight)) {
+            Column(Modifier.fillMaxSize().padding(bottom = phone.nav)) {
+                PrivateModeScreen(ui, statusBarInset = phone.status, playEntrance = play)
+            }
+            SystemStatusBar(phone.status)
+            Box(Modifier.align(Alignment.BottomCenter)) { SystemNavBar(phone) }
+        }
+    }
+}
+
+fun renderPrivate(out: File) {
+    val ui = PrivateModeUi()
+    for (p in privatePhones) {
+        val w = if (p.name.startsWith("reference")) 941 else (p.w * p.density).toInt()
+        val h = if (p.name.startsWith("reference")) 1672 else (p.h * p.density).toInt()
+        val sc = ImageComposeScene(w, h, Density(p.density)) { PrivateDevice(p, ui, play = false) }
+        sc.render(0); sc.render(16_000_000)
+        File(out, "private_${p.name}.png").writeBytes(sc.render(600_000_000).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+        sc.close(); println("rendered private_${p.name}")
+    }
+    // The entrance animation, frame by frame, on the Pixel 5 profile.
+    val p = privatePhones[1]
+    val sc = ImageComposeScene((p.w * p.density).toInt(), (p.h * p.density).toInt(), Density(p.density)) { PrivateDevice(p, ui, play = true) }
+    var t = 0L
+    val frames = listOf(0, 80, 160, 260, 360, 480, 640, 800, 960, 1120, 1400, 2000)
+    for (ms in 0..2000 step 16) {
+        val image = sc.render(t)
+        if (frames.any { it in ms until ms + 16 }) File(out, "private_anim_%04d.png".format(ms)).writeBytes(image.encodeToData(EncodedImageFormat.PNG)!!.bytes)
+        t += 16_000_000
+    }
+    sc.close(); println("rendered private animation frames")
+}
+
 fun main(args: Array<String>) {
     val out = File(args.getOrElse(0) { "out" }).apply { mkdirs() }
     val only = args.getOrNull(1)?.takeIf { it.isNotBlank() }
+    if (only == "private") { renderPrivate(out); return }
     if (only == "scenes") {
         val p = phones.first()
         for ((name, scene) in scenes) {

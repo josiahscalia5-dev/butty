@@ -68,6 +68,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.mylo.browser.web.DownloadPrompt
+import com.mylo.browser.web.EngineMode
 import com.mylo.browser.web.ExternalApps
 import com.mylo.browser.web.ExternalPrompt
 import com.mylo.browser.web.FullscreenRequest
@@ -135,7 +136,7 @@ private val WebSheet = Color(0xFF101B35)
         is PermissionPrompt ->
             // A choice the user saved for this site is reused; Android may still need to ask.
             if (prompt.preApproved) LaunchedEffect(prompt) { allowSite(prompt, remember = false) }
-            else PermissionDialog(prompt, onAllow = { allowSite(prompt, it) }, onBlock = { remember ->
+            else PermissionDialog(prompt, sessionOnly = engine.mode == EngineMode.Private, onAllow = { allowSite(prompt, it) }, onBlock = { remember ->
                 prompt.answer(allow = false, remember = remember)
                 engine.answered(prompt)
             })
@@ -166,7 +167,7 @@ private fun permissionPhrase(permissions: List<SitePermission>): String = permis
     }
 }
 
-@Composable private fun PermissionDialog(prompt: PermissionPrompt, onAllow: (Boolean) -> Unit, onBlock: (Boolean) -> Unit) {
+@Composable private fun PermissionDialog(prompt: PermissionPrompt, sessionOnly: Boolean, onAllow: (Boolean) -> Unit, onBlock: (Boolean) -> Unit) {
     var remember by remember(prompt) { mutableStateOf(false) }
     val canRemember = prompt.origin?.let(Origins::rememberable) == true
     AlertDialog(
@@ -175,8 +176,8 @@ private fun permissionPhrase(permissions: List<SitePermission>): String = permis
         title = { Text("Allow ${prompt.host} to use ${permissionPhrase(prompt.permissions)}?") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Only allow sites you trust. You can change this later in Site settings.", color = WebMuted, fontSize = 14.sp)
-                if (canRemember) CheckRow("Remember my choice for this site", remember) { remember = it }
+                Text(if (sessionOnly) "Only allow sites you trust. In Private Mode, permissions end when the session burns." else "Only allow sites you trust. You can change this later in Site settings.", color = WebMuted, fontSize = 14.sp)
+                if (canRemember) CheckRow(if (sessionOnly) "Remember for this private session" else "Remember my choice for this site", remember) { remember = it }
             }
         },
         confirmButton = { TextButton(onClick = { onAllow(remember) }) { Text("Allow") } },
