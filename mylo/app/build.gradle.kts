@@ -37,6 +37,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Phones (64- and 32-bit ARM) and the 64-bit emulator; 32-bit x86 emulators only add native-library size.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         buildConfigField("String", "SHIELD_API_BASE_URL", buildConfigString(shieldApiBaseUrl))
         buildConfigField("String", "MYLO_AI_API_BASE_URL", buildConfigString(aiApiBaseUrl))
     }
@@ -76,6 +78,9 @@ dependencies {
     // Mylo Shield: the official WireGuard Android tunnel library (wireguard-go, Apache-2.0).
     implementation("com.wireguard.android:tunnel:1.0.20260102")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    // Mylo's realtime voice: WebRTC (Google's libwebrtc, packaged by Stream, Apache-2.0/BSD) for the call to the
+    // provider the Mylo AI service chose; opened with a short-lived session secret, never an API key.
+    implementation("io.getstream:stream-webrtc-android:1.3.10")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")

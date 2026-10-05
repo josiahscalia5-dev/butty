@@ -20,6 +20,8 @@ Renders of the production Home and search composables from `tools/home-preview` 
 | `13-private-entrance-animation-device.jpg` | Real emulator recording: the entrance animation, frame by frame (125 ms apart) |
 | `14-voice-mode-reference-vs-device.jpg` | Approved Voice Mode reference next to the real emulator (Pixel 6, API 35) |
 | `15-voice-chat-and-switchboard-device.jpg` | Real emulator: Type instead without an AI service (nothing sent, and it says so); What Mylo can see with all seven sources |
+| `17-voice-realtime-call-device-1.jpg` | Real emulator: a realtime voice call to a TEST provider (not an AI): microphone on, Mylo speaking with a caption, after the scroll-to-Pricing tool, muted |
+| `18-voice-realtime-call-device-2.jpg` | Real emulator: the call's turns in Type instead (with privacy receipts), a typed question answered aloud, the page showing the marked Pricing section after hanging up |
 | `16-voice-chat-through-test-service-device.jpg` | Real emulator: typed chat through the reference Mylo AI gateway with a TEST upstream (not an AI): answer, privacy receipt with the card number hidden, Current Page off, Allow once |
 
 `03` and `05` show an earlier search-provider direction ("Search with …" control and per-search sheet). It was

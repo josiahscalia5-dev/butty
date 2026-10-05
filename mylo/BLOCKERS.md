@@ -12,10 +12,13 @@
 - Private Mode limits: Android lets one process use one WebView data directory, so all private tabs share one
   session (no per-tab capsules yet). A burn deletes cookies and storage through WebView's APIs and ends the process;
   files of a session Android killed are removed on Mylo's next start, not instantly.
-- Mylo AI has no real service yet. The client, the switchboard, the privacy receipt and the reference gateway are built
-  and tested (unit tests, gateway tests, and the device test against a test upstream that is not an AI). Real answers
+- Mylo AI has no real service yet. The client, the switchboard, the privacy receipt, the realtime voice call and the
+  reference gateway are built and tested (unit tests, gateway tests, and device tests against a test provider that is
+  not an AI, including a real WebRTC call). Mylo's real voices and answers need it. Real answers
   need the gateway deployed with an OpenAI API key (`ai-gateway/README.md`) and its address/token given to the build
   (`MYLO_AI_API_BASE_URL`, `MYLO_AI_DEV_TOKEN` for debug builds) or entered on a debug device (Voice Mode → ⚙).
 - Speech on the CI emulator: there is no microphone audio and no offline language pack, so the device test checks the
   permission flow, the listening state or its explanation, and that the microphone turns off; real speech-to-text is
   checked on a phone.
+- Voice audio quality, echo cancellation and interruption timing with real speech can only be judged on a phone: the
+  CI emulator records silence, so the test provider simulates the person's turn.

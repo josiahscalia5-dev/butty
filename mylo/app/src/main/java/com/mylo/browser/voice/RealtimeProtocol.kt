@@ -75,6 +75,10 @@ object Realtime {
 
     fun respond(): String = JSONObject().put("type", "response.create").toString()
 
+    /** A voice sample: Mylo says [text] in the session's voice. */
+    fun say(text: String): String = JSONObject().put("type", "response.create").put("response", JSONObject()
+        .put("instructions", "Say exactly this, warmly and naturally, and nothing else: $text")).toString()
+
     /** Stop speaking: cancel the answer in progress and drop the audio not yet played. */
     fun stopSpeaking(): List<String> = listOf(JSONObject().put("type", "response.cancel").toString(), JSONObject().put("type", "output_audio_buffer.clear").toString())
 

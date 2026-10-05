@@ -142,9 +142,41 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
     val switchboard = MyloAi.switchboard(application)
     /** The tab on screen, which is the page Mylo AI may read. */
     var aiTab: Long? = null
+    private val aiService = MyloAi.service(application)
     /** One conversation for typing and talking; kept in memory only. */
-    val conversation = AiConversation(MyloAi.service(application), switchboard,
+    val conversation = AiConversation(aiService, switchboard,
         viewModelScope, private = false, gather = ::gather)
+    /** Tabs a voice action opened or changed, for the browser to show. */
+    val shown = kotlinx.coroutines.flow.MutableSharedFlow<Long>(extraBufferCapacity = 4)
+
+    /** What Mylo's voice may do in the browser (after Action Preview): find and show, go back, search, open a link. */
+    private val tools = object : com.mylo.browser.voice.ToolHost {
+        override val pageUrl: String? get() = store.tabs.firstOrNull { it.id == aiTab }?.url?.takeIf { it.isNotBlank() }
+
+        override suspend fun run(action: com.mylo.browser.ai.BrowserAction): Pair<Boolean, String> {
+            val tab = store.tabs.firstOrNull { it.id == aiTab && it.url.isNotBlank() }
+            val view = tab?.let { engine.webViewIfLive(it.id) }
+            suspend fun show(what: String) = view?.let { com.mylo.browser.voice.PageActions.show(it, what) }
+            return when (action) {
+                is com.mylo.browser.ai.BrowserAction.ScrollTo -> show(action.what)?.let { true to "Scrolled to and marked “${action.what}”. It says: $it" }
+                    ?: (false to "“${action.what}” isn't on this page.")
+                is com.mylo.browser.ai.BrowserAction.Highlight -> show(action.what)?.let { true to "Marked “${action.what}”. It says: $it" }
+                    ?: (false to "“${action.what}” isn't on this page.")
+                is com.mylo.browser.ai.BrowserAction.ReadAloud -> show(action.what)?.let { true to it } ?: (false to "“${action.what}” isn't on this page.")
+                com.mylo.browser.ai.BrowserAction.GoBack -> if (tab != null && engine.back(tab.id)) true to "Went back to the previous page." else false to "There's no earlier page in this tab."
+                is com.mylo.browser.ai.BrowserAction.Search -> store.navigateInCurrentTab(aiTab, action.query)?.let { next ->
+                    engine.load(next.id, next.url); aiTab = next.id; shown.tryEmit(next.id); true to "Searching for “${action.query}”."
+                } ?: (false to "That search couldn't be opened.")
+                is com.mylo.browser.ai.BrowserAction.OpenLink -> if (tab == null) false to "No page is open." else {
+                    engine.load(tab.id, action.url); shown.tryEmit(tab.id); true to "Opened ${action.label.ifBlank { action.url }}."
+                }
+                else -> false to "Mylo can't do that from voice."
+            }
+        }
+    }
+
+    /** Mylo's realtime voice (needs the Mylo AI service; without it Voice Mode uses on-device speech). */
+    val voiceCall = com.mylo.browser.voice.VoiceCall(application, aiService, conversation, switchboard, ::gather, tools, viewModelScope, private = false)
 
     /** Reads exactly the sources a question was allowed, from the live tabs and normal history. */
     private suspend fun gather(allowed: Set<AiDataSource>): Gathered {
@@ -169,7 +201,7 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
         return Gathered(AiContext(page = page, tabs = tabs, history = history), unavailable)
     }
 
-    override fun onCleared() = engine.destroyAll()
+    override fun onCleared() { voiceCall.destroy(); engine.destroyAll() }
 }
 
 class MainActivity : ComponentActivity() {
@@ -275,6 +307,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    LaunchedEffect(session) { session.shown.collect { id -> currentTab = id; home = false } }
     val onHome = home || store.tabs.none { it.id == currentTab }
     // Mylo AI may read only the page on screen (and only what its switchboard allows).
     session.aiTab = if (onHome) null else currentTab
@@ -287,7 +320,7 @@ class MainActivity : ComponentActivity() {
     // Home draws its artwork behind the status bar; browser pages do not.
     Box(Modifier.fillMaxSize()) {
     if (voiceOpen) {
-        VoiceRoute(session.conversation, session.switchboard, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false },
+        VoiceRoute(session.conversation, session.switchboard, session.voiceCall, hasPage = !onHome, tabs = store.tabs.size, onClose = { voiceOpen = false },
             onNav = { destination ->
                 voiceOpen = false
                 when (destination) {

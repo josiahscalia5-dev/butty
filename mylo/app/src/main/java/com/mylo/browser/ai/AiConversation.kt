@@ -103,6 +103,16 @@ class AiConversation(
         }
     }
 
+    /**
+     * A spoken turn from a realtime voice call (the person's words or Mylo's), kept in the same conversation so
+     * Type instead shows it and later typed questions carry it. [receipt] goes on Mylo's turns.
+     */
+    fun record(role: AiTurn.Role, text: String, receipt: PrivacyReceipt? = null) {
+        val words = text.trim()
+        if (words.isEmpty()) return
+        add(ChatMessage(nextId++, role, words, receipt = receipt))
+    }
+
     /** A question Mylo can answer without the service, such as "open a page first". Nothing is sent. */
     fun answerLocally(question: String, reply: String) {
         stop()

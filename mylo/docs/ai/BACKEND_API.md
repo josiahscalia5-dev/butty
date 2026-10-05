@@ -87,11 +87,36 @@ Response:
 
 The reference gateway mints this with OpenAI's `POST /v1/realtime/client_secrets` (session type
 `realtime`, the configured model, Mylo's persona and voice style as instructions, the voice, and the
-browser tools as function definitions). The app will use the secret once to open a WebRTC call
-(milestone 3); the realtime model's function calls go through the same Action Preview rules. The
+browser tools as function definitions). The app uses the secret once to open a WebRTC call (below); the
+realtime model's function calls go through the same Action Preview rules. The
 provider name lets other realtime providers (ElevenLabs, Gemini Live) be added behind the same endpoint.
 
 The app refuses a session that isn't HTTPS, has already expired, or whose secret starts with `sk-`.
+
+### The call itself (app ↔ provider, after the session is minted)
+
+The app (`voice/RealtimeVoice.kt`) opens one WebRTC call: microphone audio up, Mylo's voice back as an audio
+track, JSON events on the `oai-events` data channel. It POSTs its SDP offer to `webrtcUrl` with
+`Authorization: Bearer <clientSecret>` and `Content-Type: application/sdp`, and uses the SDP answer. Events the app
+sends:
+
+| Event | When |
+|---|---|
+| `session.update` with `audio.input.turn_detection` = `semantic_vad` (hands-free) or `null` (press and hold), input transcription and near-field noise reduction | when the channel opens |
+| `conversation.item.create` (role `system`, the switchboard's browser data as one untrusted block, sensitive details hidden) | once per call, if anything was allowed |
+| `input_audio_buffer.clear` / `input_audio_buffer.commit` + `response.create` | press and hold starts / ends |
+| `conversation.item.create` (role `user`, typed text) + `response.create` | Type instead during a call |
+| `response.cancel` + `output_audio_buffer.clear` | the person taps the microphone while Mylo speaks |
+| `conversation.item.create` (`function_call_output`) + `response.create` | after a tool call ran, was refused, or the person answered Action Preview |
+
+It reads captions (`conversation.item.input_audio_transcription.*`, `response.output_audio_transcript.*`), turn
+events (`input_audio_buffer.speech_started/stopped`, `output_audio_buffer.started/stopped/cleared`), tool calls
+(`response.function_call_arguments.done`) and `error`. Tool calls never touch the page directly: scrolling to and
+marking text, going back, searching and same-site links run at once; anything consequential (leaving the site,
+forms, purchases) shows Action Preview first; unknown tools are refused.
+
+Voice samples use the same path with the microphone off: one `response.create` whose instructions say the sample
+sentence, then the call ends.
 
 ## `GET /v1/status`
 

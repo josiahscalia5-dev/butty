@@ -137,6 +137,8 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
   printf '%s\n' "$(printf '%s' "$voice_token" | sha256sum | cut -d' ' -f1)" > "$gateway_dir/token_hashes"
   python3 "$script_dir/../compat-site/serve.py" > "$voice_dir/test-site.log" 2>&1 &
   site_pid=$!
+  # The TEST provider answers WebRTC voice calls with aiortc (a scripted peer, not an AI).
+  python3 -m pip install --quiet --disable-pip-version-check aiortc > "$voice_dir/pip.log" 2>&1 || echo 'aiortc could not be installed; the realtime case will fail.' | tee -a "$voice_summary"
   python3 "$script_dir/../ai-gateway/fake_openai.py" 8091 test-upstream-key 0.04 > "$voice_dir/test-upstream.log" 2>&1 &
   upstream_pid=$!
   MYLO_OPENAI_KEY_FILE="$gateway_dir/openai_api_key" MYLO_OPENAI_BASE_URL=http://127.0.0.1:8091 MYLO_TOKEN_HASHES_FILE="$gateway_dir/token_hashes" \
@@ -145,6 +147,8 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
   adb reverse tcp:8080 tcp:8080
   adb reverse tcp:8081 tcp:8081
   adb reverse tcp:8090 tcp:8090
+  # The provider's SDP endpoint for the voice call (media and events then flow over WebRTC to the host).
+  adb reverse tcp:8091 tcp:8091
   sleep 2
   curl -sf http://localhost:8080/plans.html > /dev/null || { echo 'The test site did not start.' >&2; exit 1; }
   curl -sf -H "Authorization: Bearer $voice_token" http://127.0.0.1:8090/v1/status > /dev/null || { echo 'The Mylo AI test gateway did not start.' >&2; cat "$voice_dir/gateway.log" >&2; exit 1; }
@@ -170,6 +174,8 @@ if [[ "${MYLO_SCOPE:-full}" == "voice" ]]; then
   }
   run_voice voiceModeWithoutAServiceSendsNothing 240
   run_voice typedChatThroughTheMyloAiService 300 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
+  run_voice realtimeVoiceThroughTheTestService 360 -e aiServiceUrl http://localhost:8090 -e aiServiceToken "$voice_token"
+  timeout 10 curl -s http://127.0.0.1:8091/test/realtime > "$voice_dir/provider-events.json" || true
   kill "$site_pid" "$upstream_pid" "$gateway_pid" 2> /dev/null || true
   { echo 'Crash and memory events during the Voice Mode run:'
     timeout 30 adb logcat -d -v threadtime | grep -E 'FATAL EXCEPTION| [EF] AndroidRuntime: |ANR in|Process com\.mylo\.browser.* has died' | cut -c1-300 | tail -n 20 || echo '  none recorded'
