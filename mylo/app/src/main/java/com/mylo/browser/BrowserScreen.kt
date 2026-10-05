@@ -56,6 +56,8 @@ private val BrowserLavender = Color(0xFFCEC5FF)
     onBookmark: ((url: String, title: String) -> Unit)?,
     onMessage: (String) -> Unit,
     privateMode: Boolean = false,
+    /** Shown under the page (Mylo's Page Coach), when there is something to show. */
+    underPage: (@Composable () -> Unit)? = null,
 ) {
     val page = engine.page(tab.id)
     val context = LocalContext.current
@@ -124,6 +126,7 @@ private val BrowserLavender = Color(0xFFCEC5FF)
                 }, onRelease = { it.removeAllViews() }, modifier = Modifier.fillMaxSize())
             }
         }
+        underPage?.invoke()
     }
     if (siteSettings) SiteSettingsSheet(engine, currentUrl) { siteSettings = false }
     BackHandler { back() }

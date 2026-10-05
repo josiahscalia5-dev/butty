@@ -6,6 +6,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
@@ -205,11 +206,50 @@ class BrowserSession(application: Application) : AndroidViewModel(application) {
 
         override suspend fun signals(): com.mylo.browser.ai.PageSignals? = view()?.let { com.mylo.browser.voice.PageActions.signals(it) }
 
+        override suspend fun tabPrices(): List<com.mylo.browser.ai.TabPrices> {
+            val current = tabId()
+            // This tab first, then the other tabs that are open in this session.
+            val ids = listOfNotNull(current) + store.tabs.map { it.id }.filter { it != current && engine.isLive(it) }
+            return ids.take(6).mapNotNull { id ->
+                val view = engine.webViewIfLive(id) ?: return@mapNotNull null
+                val (title, url, lines) = com.mylo.browser.voice.PageActions.priceLines(view) ?: return@mapNotNull null
+                com.mylo.browser.ai.TabPrices(title.ifBlank { url }, com.mylo.browser.web.TrackerBlocker.hostOf(url) ?: url, com.mylo.browser.ai.PageCoach.prices(lines))
+            }
+        }
+
+        override fun coach(steps: List<com.mylo.browser.ai.PageCoach.Step>) {
+            val id = tabId() ?: return
+            this@BrowserSession.coach = Coach(id, steps, 0, found = true)
+            coachShow()
+        }
+
         override suspend fun showOriginal() {
             val id = tabId() ?: return
             engine.webViewIfLive(id)?.let { com.mylo.browser.voice.PageTranslator.restore(it) }
             translations.remove(id)
         }
+    }
+
+    /** Page Coach on a tab: the steps, where the person is, and whether this step's words are on the page. */
+    data class Coach(val tabId: Long, val steps: List<com.mylo.browser.ai.PageCoach.Step>, val index: Int, val found: Boolean)
+    var coach by androidx.compose.runtime.mutableStateOf<Coach?>(null)
+
+    /** Finds and marks the current step's words on the page. */
+    fun coachShow() {
+        val current = coach ?: return
+        val view = engine.webViewIfLive(current.tabId) ?: return
+        viewModelScope.launch {
+            val found = com.mylo.browser.voice.PageActions.show(view, current.steps[current.index].target) != null
+            if (coach?.index == current.index && coach?.tabId == current.tabId) coach = coach?.copy(found = found)
+        }
+    }
+
+    fun coachMove(delta: Int) {
+        val current = coach ?: return
+        val next = current.index + delta
+        if (next !in current.steps.indices) { coach = null; return }
+        coach = current.copy(index = next, found = true)
+        coachShow()
     }
 
     /** Mylo's realtime voice (needs the Mylo AI service; without it Voice Mode uses on-device speech). */
@@ -393,7 +433,12 @@ class MainActivity : ComponentActivity() {
                         vpnLocation = homeVpn.location, vpnDetail = homeVpn.detail, onScan = scanCode)
                 } else {
                     key(tab.id) {
-                        BrowserScreen(tab, engine, store, store.provider, ::showHome, { url, title -> store.addBookmark(url, title); panel = "bookmarks" }, { error = it })
+                        val coach = session.coach?.takeIf { it.tabId == tab.id }
+                        BrowserScreen(tab, engine, store, store.provider, ::showHome, { url, title -> store.addBookmark(url, title); panel = "bookmarks" }, { error = it },
+                            underPage = if (coach == null) null else ({
+                                CoachBar(coach.steps[coach.index].text, coach.steps[coach.index].target, coach.index, coach.steps.size, coach.found,
+                                    onBack = { session.coachMove(-1) }, onNext = { session.coachMove(1) }, onDone = { session.coach = null })
+                            }))
                     }
                 }
             }

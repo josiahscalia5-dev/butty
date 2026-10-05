@@ -317,11 +317,36 @@ class VoiceModeFlowTest {
                 waitFor(By.text("Pricing"), "the pricing section on screen")
                 shot(dir, "01-pricing-found.png"); steps.put("pricing found and marked on the phone")
 
+                // Help me cancel: the page's own instructions become Page Coach steps, each marked on the page.
                 waitFor(By.text("Mylo"), "the Mylo button").click()
                 waitFor(By.res("voice-action-helpcancel"), "Help me cancel").click()
-                waitFor(By.textStartsWith("Mylo found how to cancel and marked it."), "the cancel note", 15_000)
+                waitFor(By.text("Mylo Coach · Step 1 of 3"), "Page Coach", 15_000)
+                waitFor(By.text("Open Account"), "the first step")
+                shot(dir, "02-coach-step-1.png")
+                waitFor(By.res("coach-next"), "Next step").click()
+                waitFor(By.text("Choose Plan"), "the second step")
+                waitFor(By.res("coach-next"), "Next step").click()
+                waitFor(By.text("Cancel plan"), "the last step")
                 waitFor(By.text("Cancel your plan"), "the cancel section on screen")
-                shot(dir, "02-cancel-found.png"); steps.put("cancel section found and marked")
+                shot(dir, "02b-coach-step-3.png")
+                waitFor(By.res("coach-done"), "Done").click()
+                device.wait(Until.gone(By.res("coach-bar")), 5_000)
+                steps.put("page coach: three steps from the page's instructions")
+
+                // Compare tabs: prices read from two open tabs, on the phone.
+                waitFor(By.text("Tabs"), "Tabs in the bottom bar").click()
+                waitFor(By.text("New tab"), "New tab").click()
+                type(By.desc("Search or enter address"), "Home search", PLANS_PAGE_2)
+                waitFor(By.desc("Go"), "the Go button").click()
+                waitFor(By.text("Mylo Starter"), "the second shop", 20_000)
+                waitFor(By.text("Mylo"), "the Mylo button").click()
+                waitFor(By.res("voice-action-comparetabs"), "Compare tabs").click()
+                val comparison = waitFor(By.res("compare-summary"), "the comparison", 15_000)
+                assertTrue("The cheaper plan per month wins: ${comparison.text}", comparison.text.startsWith("The lowest price is on “Mylo Starter”") && comparison.text.contains("\$48 a year"))
+                evidence.put("comparison", comparison.text)
+                shot(dir, "02c-compare-tabs.png"); steps.put("compared prices across two tabs on the phone")
+                waitFor(By.res("voice-compare-close"), "close the comparison").click()
+                waitFor(By.res("voice-close"), "Close voice mode").click()
 
                 // Translate a Spanish page on the phone, then show the original.
                 waitFor(By.text("Home"), "Home in the bottom bar").click()
@@ -465,6 +490,7 @@ class VoiceModeFlowTest {
         const val PLANS_PAGE = "http://localhost:8080/plans.html"
         const val SPANISH_PAGE = "http://localhost:8080/planes.html"
         const val SCAM_PAGE = "http://localhost:8080/scam.html"
+        const val PLANS_PAGE_2 = "http://localhost:8080/plans2.html"
         val CURRENT_PAGE_OFF: BySelector = By.res("voice-access-currentpage").hasDescendant(By.text("OFF"))
     }
 }

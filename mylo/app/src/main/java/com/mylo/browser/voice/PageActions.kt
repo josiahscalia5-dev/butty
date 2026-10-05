@@ -44,6 +44,29 @@ object PageActions {
     scripts: Array.prototype.filter.call(document.scripts, function(s){ try { return s.src && new URL(s.src).hostname !== location.hostname; } catch (e) { return false; } }).length});
 })()"""
 
+    private const val PRICES = """(function(){
+  var out = [], re = /(US\$|A\$|C\$|\$|€|£|¥|₹)\s?\d|\d\s?(USD|EUR|GBP|dollars?|euros?)/i;
+  if (document.body) {
+    var walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n;
+    while ((n = walk.nextNode()) && out.length < 60) {
+      if (re.test(n.nodeValue)) { var p = n.parentElement, t = ((p && p.innerText) || n.nodeValue).trim().replace(/\s+/g, ' '); if (t.length <= 200 && out.indexOf(t) < 0) out.push(t); }
+    }
+  }
+  return JSON.stringify({title: document.title || '', url: location.href, lines: out});
+})()"""
+
+    /** The page's title, address and the short pieces of text that mention prices. Main thread only. */
+    suspend fun priceLines(view: WebView): Triple<String, String, List<String>>? {
+        val raw = withTimeoutOrNull(4_000) {
+            suspendCancellableCoroutine<String?> { done -> view.evaluateJavascript(PRICES) { if (done.isActive) done.resume(it) } }
+        } ?: return null
+        return runCatching {
+            val json = JSONObject(JSONArray("[$raw]").getString(0))
+            val lines = json.optJSONArray("lines") ?: JSONArray()
+            Triple(json.optString("title"), json.optString("url"), (0 until lines.length()).map { lines.getString(it) })
+        }.getOrNull()
+    }
+
     /** The page's safety signals: field counts and form destinations, never anything typed. Main thread only. */
     suspend fun signals(view: WebView): com.mylo.browser.ai.PageSignals? {
         val raw = withTimeoutOrNull(4_000) {

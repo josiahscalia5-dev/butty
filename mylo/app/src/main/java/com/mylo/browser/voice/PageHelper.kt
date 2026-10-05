@@ -15,6 +15,10 @@ interface PageHelper {
     suspend fun showOriginal()
     /** What matters for "Is this site safe?" (field counts and form destinations, never what is typed). */
     suspend fun signals(): com.mylo.browser.ai.PageSignals?
+    /** Prices on this tab and the other open tabs, read from their own words. */
+    suspend fun tabPrices(): List<com.mylo.browser.ai.TabPrices>
+    /** Starts Page Coach on this tab: each step's words are found and marked in turn. */
+    fun coach(steps: List<com.mylo.browser.ai.PageCoach.Step>)
 }
 
 /** Words that mark the sections the page actions look for, in order of preference. */

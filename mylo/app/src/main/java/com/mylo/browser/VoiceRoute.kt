@@ -88,7 +88,7 @@ private val NoteBack = Color(0xFF33290F)
 private val NoteInk = Color(0xFFFFDB91)
 private val OnMint = Color(0xFF52E0AE)
 
-private enum class VoiceSheet { Chat, Access, Settings, Translate, Safety }
+private enum class VoiceSheet { Chat, Access, Settings, Translate, Safety, Compare }
 
 
 
@@ -214,14 +214,18 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
                 else if (connectedHost != null) ask(action)
                 else { conversation.answerLocally(title, "I couldn’t find a pricing section on this page."); sheet = VoiceSheet.Chat }
             }
+            // Cancelling: the page's own instructions become Page Coach steps; Mylo AI adds guidance when connected.
             VoiceAction.HelpCancel -> scope.launch {
-                val found = page.show(PageTargets.cancel) != null
+                val section = page.show(PageTargets.cancel)
+                val steps = section?.let { com.mylo.browser.ai.PageCoach.steps(it) }.orEmpty()
                 when {
                     connectedHost != null -> ask(action)
-                    found -> { page.note("Mylo found how to cancel and marked it. Step-by-step help needs the Mylo AI service."); close() }
+                    steps.size >= 2 -> { page.coach(steps); close() }
+                    section != null -> { page.note("Mylo found how to cancel and marked it."); close() }
                     else -> { conversation.answerLocally(title, "I couldn’t find a cancel option on this page. Look for Account, Plan or Subscription settings."); sheet = VoiceSheet.Chat }
                 }
             }
+            VoiceAction.CompareTabs -> sheet = VoiceSheet.Compare
             VoiceAction.Translate -> sheet = VoiceSheet.Translate
             // The site check runs on the phone; Mylo AI's reading can be added when it is connected.
             VoiceAction.SiteSafety -> sheet = VoiceSheet.Safety
@@ -268,13 +272,15 @@ internal fun voicePrompt(action: VoiceAction, language: String = Locale.getDefau
         VoiceSheet.Chat -> ChatSheet(messages, busy, connectedHost,
             // During a voice call the typed words join the same conversation and Mylo answers aloud.
             onSend = { if (inCall) call.type(it) else conversation.send(it) }, onStop = conversation::stop, onAnswerAsk = { conversation.answerAsk(it); accessVersion++ },
-            onNewChat = conversation::clear, onAdjust = { sheet = VoiceSheet.Access }, onClose = { sheet = null })
+            onNewChat = conversation::clear, onAdjust = { sheet = VoiceSheet.Access }, onClose = { sheet = null },
+            onCoach = if (hasPage) ({ text: String -> sheet = null; page.coach(com.mylo.browser.ai.PageCoach.steps(text)); close() }) else null)
         VoiceSheet.Access -> AccessSheet(switchboard, accessVersion, { source, grant ->
             switchboard.set(source, grant); accessVersion++
             // Location needs Android's (approximate) location permission; asked for when it is turned on.
             if (source == AiDataSource.Location && grant != AiGrant.Off && !DeviceContext.hasLocationPermission(context))
                 askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         }, onClose = { sheet = null })
+        VoiceSheet.Compare -> CompareSheet(page, aiAvailable = connectedHost != null, onAskAi = { ask(VoiceAction.CompareTabs) }, onClose = { sheet = null })
         VoiceSheet.Safety -> SafetySheet(page, aiAvailable = connectedHost != null, onAskAi = { report ->
             val (prompt, needs) = voicePrompt(VoiceAction.SiteSafety)
             val findings = report.findings.filter { it.concern != com.mylo.browser.ai.Concern.Good }.joinToString("; ") { it.title }
@@ -329,6 +335,7 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
     onNewChat: () -> Unit,
     onAdjust: () -> Unit,
     onClose: () -> Unit,
+    onCoach: ((String) -> Unit)? = null,
 ) {
     VoiceSheetFrame("Chat with Mylo", "voice-chat", onClose, actions = {
         if (messages.isNotEmpty()) TextButton(onClick = onNewChat, modifier = Modifier.testTag("voice-chat-new")) { Text("New chat", color = SheetAccent) }
@@ -344,13 +351,13 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
                 Text("Ask Mylo anything about this page, or about the web in general. Mylo reads only what What Mylo can see allows.",
                     Modifier.padding(6.dp).testTag("voice-chat-empty"), color = SheetMuted, fontSize = 14.sp, lineHeight = 19.sp)
             }
-            items(messages, key = { it.id }) { message -> ChatRow(message, onAnswerAsk, onAdjust) }
+            items(messages, key = { it.id }) { message -> ChatRow(message, onAnswerAsk, onAdjust, onCoach) }
         }
         ChatInput(busy, onSend, onStop)
     }
 }
 
-@Composable private fun ChatRow(message: ChatMessage, onAnswerAsk: (Boolean) -> Unit, onAdjust: () -> Unit) {
+@Composable private fun ChatRow(message: ChatMessage, onAnswerAsk: (Boolean) -> Unit, onAdjust: () -> Unit, onCoach: ((String) -> Unit)? = null) {
     if (message.role == AiTurn.Role.User) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
             Text(message.text, Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp)).background(UserBubble)
@@ -387,6 +394,8 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
                 if (!ask.answered) TextButton(onClick = onAdjust) { Text("Change What Mylo can see", color = SheetAccent, fontSize = 13.sp) }
             }
             message.receipt?.let { ReceiptRow(it) }
+            if (onCoach != null && message.state == ChatMessage.State.Done && com.mylo.browser.ai.PageCoach.steps(message.text).size >= 2)
+                TextButton(onClick = { onCoach(message.text) }, Modifier.testTag("voice-chat-coach")) { Text("Coach me through these steps on the page", color = SheetAccent, fontSize = 13.sp) }
         }
     }
 }
@@ -425,6 +434,61 @@ internal const val VOICE_SAMPLE = "Hi, I’m Mylo, your browsing buddy. Ask me a
             modifier = Modifier.size(48.dp).testTag("voice-chat-stop")) { Icon(Icons.Rounded.Stop, "Stop answer", tint = SheetInk) }
         else FilledIconButton(onClick = ::send, enabled = text.isNotBlank(), colors = IconButtonDefaults.filledIconButtonColors(containerColor = SheetAccent, contentColor = UserInk),
             modifier = Modifier.size(48.dp).testTag("voice-chat-send")) { Icon(Icons.AutoMirrored.Rounded.Send, "Send") }
+    }
+}
+
+// Compare tabs ------------------------------------------------------------------------------------------
+
+@Composable private fun CompareSheet(page: PageHelper, aiAvailable: Boolean, onAskAi: () -> Unit, onClose: () -> Unit) {
+    var tabs by remember { mutableStateOf<List<com.mylo.browser.ai.TabPrices>?>(null) }
+    LaunchedEffect(Unit) { tabs = page.tabPrices() }
+    VoiceSheetFrame("Compare tabs", "voice-compare", onClose) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 620.dp).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 18.dp).testTag("compare-list")) {
+            val current = tabs
+            when {
+                current == null -> Text("Reading the prices on your open tabs…", fontSize = 15.sp)
+                current.size < 2 -> Text("Open the other page in another tab first, then compare again.", Modifier.testTag("compare-one-tab"), fontSize = 15.sp)
+                else -> {
+                    Text(com.mylo.browser.ai.PageCoach.compare(current) ?: "Mylo couldn't find prices on enough of these tabs to compare them.",
+                        Modifier.testTag("compare-summary"), fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Read from each page's own words on this phone. Check the details (what's included, taxes, contract length) before choosing.",
+                        Modifier.padding(top = 4.dp), color = SheetMuted, fontSize = 12.5.sp, lineHeight = 17.sp)
+                    current.forEach { tab ->
+                        Column(Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(SheetCard).padding(12.dp).testTag("compare-tab")) {
+                            Text(tab.title, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(tab.host, color = SheetMuted, fontSize = 12.sp)
+                            if (tab.prices.isEmpty()) Text("No prices found on this tab.", Modifier.padding(top = 4.dp), color = SheetMuted, fontSize = 13.sp)
+                            tab.prices.take(5).forEach { price ->
+                                Row(Modifier.padding(top = 4.dp)) {
+                                    Text(com.mylo.browser.ai.PageCoach.format(price), Modifier.width(120.dp), color = if (price == tab.lowest) OnMint else SheetInk, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    Text(price.label, color = SheetMuted, fontSize = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (aiAvailable && (current?.size ?: 0) >= 2) TextButton(onClick = onAskAi, Modifier.padding(top = 8.dp).testTag("compare-ask-ai")) {
+                Text("Ask Mylo AI for the key differences", color = SheetAccent)
+            }
+        }
+    }
+}
+
+/** Page Coach: one step at a time, its words marked on the page. */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable internal fun CoachBar(text: String, target: String, index: Int, total: Int, found: Boolean, onBack: () -> Unit, onNext: () -> Unit, onDone: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(SheetNight).padding(horizontal = 14.dp, vertical = 10.dp).semantics { testTagsAsResourceId = true }.testTag("coach-bar")) {
+        Text("Mylo Coach · Step ${index + 1} of $total", color = SheetAccent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(text, Modifier.padding(top = 2.dp).semantics { liveRegion = LiveRegionMode.Polite }.testTag("coach-step"), color = SheetInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        if (!found) Text("Mylo can't see “$target” on this page yet. It may appear after the step before.", Modifier.padding(top = 2.dp), color = NoteInk, fontSize = 12.5.sp)
+        Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (index > 0) TextButton(onClick = onBack, modifier = Modifier.testTag("coach-back")) { Text("Back", color = SheetInk) }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDone, modifier = Modifier.testTag("coach-done")) { Text(if (index == total - 1) "Done" else "Stop", color = SheetMuted) }
+            if (index < total - 1) Button(onClick = onNext, colors = ButtonDefaults.buttonColors(containerColor = SheetAccent, contentColor = UserInk),
+                modifier = Modifier.testTag("coach-next")) { Text("Next step") }
+        }
     }
 }
 
