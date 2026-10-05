@@ -1,0 +1,83 @@
+name: Mylo APK handoff
+
+# Builds the debug APK from a pinned claude-ui commit (never from this branch's own code) and publishes the
+# APK file to the mylo-apk-handoff branch, so it can be fetched with git from environments that cannot
+# download Actions artifacts. The app source is checked out at BUILD_REF; only this workflow lives here.
+on:
+  push:
+    branches: ["ccr-a427e29c-jby9gf"]
+    paths: [".github/workflows/mylo-apk-handoff.yml"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit or branch of the app to build"
+        default: "claude-ui"
+
+permissions:
+  contents: write
+
+env:
+  BUILD_REF: ${{ inputs.ref || '2b7ba2f4cfcdf21f056919ffadf4896f8d76c3a4' }}
+
+jobs:
+  apk:
+    name: Build Mylo-debug.apk and publish it to mylo-apk-handoff
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the app source at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BUILD_REF }}
+          path: source
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Ensure Android 35 build tools
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Build the debug APK and run the unit tests
+        working-directory: source/mylo
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest --tests com.mylo.browser.BrowserStateTest --tests 'com.mylo.browser.web.*'
+      - name: Verify the APK signature and record what was built
+        run: |
+          mkdir -p handoff
+          cp source/mylo/app/build/outputs/apk/debug/app-debug.apk handoff/Mylo-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs handoff/Mylo-debug.apk > handoff/signature.txt
+          (cd handoff && sha256sum Mylo-debug.apk > Mylo-debug.apk.sha256)
+          {
+            echo "Built from: $(git -C source rev-parse HEAD)"
+            echo "Requested ref: $BUILD_REF"
+            echo "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "Unit tests: BrowserStateTest and com.mylo.browser.web.* passed"
+            echo "Built at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > handoff/BUILD_INFO.txt
+          cat handoff/BUILD_INFO.txt handoff/Mylo-debug.apk.sha256
+      - name: Upload the APK as an Actions artifact too
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mylo-debug
+          path: handoff/
+          retention-days: 14
+      - name: Publish the APK to the mylo-apk-handoff branch
+        working-directory: handoff
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q -b mylo-apk-handoff
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Mylo-debug.apk built from $(head -n1 BUILD_INFO.txt | cut -d' ' -f3)"
+          # A single-commit branch owned by this workflow: each build replaces the previous APK.
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/mylo-apk-handoff
